@@ -1,0 +1,155 @@
+# Prometheus Alert Rules for ClickHouse Monitoring
+# Purpose: Define alerting conditions for operational issues
+
+groups:
+  - name: clickhouse_alerts
+    interval: 30s
+    rules:
+      # ClickHouse Server Health
+      - alert: ClickHouseDown
+        expr: up{job="clickhouse"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "ClickHouse instance {{ $labels.instance }} is down"
+          description: "ClickHouse server has been unreachable for more than 1 minute"
+
+      - alert: ClickHouseRestarts
+        expr: rate(clickhouse_server_uptime_seconds_total[5m]) < 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "ClickHouse instance {{ $labels.instance }} restarted"
+          description: "ClickHouse server appears to have restarted recently"
+
+  - name: system_alerts
+    interval: 30s
+    rules:
+      # Memory Alerts
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is above 85% on {{ $labels.instance }}"
+
+      - alert: CriticalMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.95
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical memory usage on {{ $labels.instance }}"
+          description: "Memory usage is above 95% on {{ $labels.instance }}"
+
+      # Disk Alerts
+      - alert: HighDiskUsage
+        expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) > 0.80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High disk usage on {{ $labels.instance }}"
+          description: "Disk usage is above 80% on {{ $labels.instance }}"
+
+      - alert: CriticalDiskUsage
+        expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) > 0.90
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical disk usage on {{ $labels.instance }}"
+          description: "Disk usage is above 90% on {{ $labels.instance }}"
+
+      # CPU Alerts
+      - alert: HighCPUUsage
+        expr: (100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is above 80% on {{ $labels.instance }}"
+
+      # Network Alerts
+      - alert: NetworkErrors
+        expr: rate(node_network_transmit_errs_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Network errors on {{ $labels.instance }}"
+          description: "Network transmission errors detected on {{ $labels.instance }}"
+
+  - name: container_alerts
+    interval: 30s
+    rules:
+      # Container CPU Alert
+      - alert: HighContainerCPU
+        expr: (rate(container_cpu_usage_seconds_total[5m]) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage in container {{ $labels.container_name }}"
+          description: "Container {{ $labels.container_name }} CPU usage is above 80%"
+
+      # Container Memory Alert
+      - alert: HighContainerMemory
+        expr: (container_memory_usage_bytes / container_spec_memory_limit_bytes) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage in container {{ $labels.container_name }}"
+          description: "Container {{ $labels.container_name }} memory usage is above 80%"
+
+  - name: query_performance
+    interval: 30s
+    rules:
+      # Query execution time alert
+      - alert: SlowQueries
+        expr: histogram_quantile(0.95, rate(clickhouse_query_duration_ms_bucket[5m])) > 30000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow queries detected on {{ $labels.instance }}"
+          description: "95th percentile query duration exceeds 30 seconds"
+
+      # High query concurrency
+      - alert: HighQueryConcurrency
+        expr: clickhouse_queries_running > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High query concurrency on {{ $labels.instance }}"
+          description: "More than 100 queries are currently running"
+
+  - name: data_quality
+    interval: 60s
+    rules:
+      # Merge operations stalled
+      - alert: MergesStalled
+        expr: rate(clickhouse_merge_operations_total[5m]) == 0 and clickhouse_parts_count > 100
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Merge operations stalled on {{ $labels.instance }}"
+          description: "No merge operations detected while parts count is high"
+
+      # Failed inserts
+      - alert: HighInsertFailureRate
+        expr: rate(clickhouse_insert_queries_errors_total[5m]) / rate(clickhouse_insert_queries_total[5m]) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High insert failure rate on {{ $labels.instance }}"
+          description: "More than 1% of inserts are failing"

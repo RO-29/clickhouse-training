@@ -1,0 +1,70 @@
+version: '3.8'
+
+# Single Node ClickHouse with Client
+# Purpose: Development and testing environment with a single ClickHouse instance
+# Usage: docker-compose -f docker-compose-single.yml up -d
+
+services:
+  clickhouse-server:
+    image: clickhouse/clickhouse-server:latest
+    container_name: clickhouse-single
+    hostname: clickhouse-server
+    ports:
+      - "8123:8123"      # HTTP interface
+      - "9000:9000"      # Native protocol
+      - "9009:9009"      # TCP SSL
+    environment:
+      CLICKHOUSE_DB: tutorial
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ""
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - clickhouse_logs:/var/log/clickhouse-server
+      - ./configs/single-node.xml:/etc/clickhouse-server/config.d/custom-config.xml
+    networks:
+      - clickhouse-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+    restart: unless-stopped
+
+  clickhouse-client:
+    image: clickhouse/clickhouse-client:latest
+    container_name: clickhouse-client
+    depends_on:
+      clickhouse-server:
+        condition: service_healthy
+    environment:
+      CLICKHOUSE_HOST: clickhouse-server
+      CLICKHOUSE_PORT: 9000
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ""
+    volumes:
+      - ./init-scripts:/docker-entrypoint-initdb.d
+      - ./configs/client-config.xml:/etc/clickhouse-client/config.xml
+    networks:
+      - clickhouse-network
+    entrypoint: /bin/sleep
+    command: infinity
+    restart: unless-stopped
+
+volumes:
+  clickhouse_data:
+    driver: local
+  clickhouse_logs:
+    driver: local
+
+networks:
+  clickhouse-network:
+    driver: bridge

@@ -1,0 +1,36 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Thumbnails
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temporary files
+*.tmp
+*.temp
+
+# Claude artifacts
+.claude/
+
+# Build artifacts (if any)
+dist/
+build/
+*.pyc
+__pycache__/
+
+# Environment files (if you add any secrets)
+.env
+.env.local

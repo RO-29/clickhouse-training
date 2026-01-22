@@ -1,0 +1,358 @@
+version: '3.8'
+
+# Production-Grade ClickHouse Cluster: 3 Shards × 2 Replicas
+# Purpose: Full distributed cluster with replication and sharding
+# Topology: 6 ClickHouse nodes + 3 ZooKeeper nodes
+# Usage: docker-compose -f docker-compose-cluster.yml up -d
+
+services:
+  # ZooKeeper Ensemble (3 nodes for production quorum)
+  zookeeper-1:
+    image: zookeeper:latest
+    container_name: zookeeper-1
+    hostname: zookeeper-1
+    ports:
+      - "2181:2181"
+    environment:
+      ZOO_CFG_EXTRA: "server.1=zookeeper-1:2888:3888 server.2=zookeeper-2:2888:3888 server.3=zookeeper-3:2888:3888"
+      ZOO_MY_ID: 1
+    volumes:
+      - zk_data_1:/var/lib/zookeeper/data
+      - zk_datalog_1:/var/lib/zookeeper/datalog
+    networks:
+      - clickhouse-cluster
+    healthcheck:
+      test: ["CMD", "echo", "ruok", "|", "nc", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    restart: unless-stopped
+
+  zookeeper-2:
+    image: zookeeper:latest
+    container_name: zookeeper-2
+    hostname: zookeeper-2
+    ports:
+      - "2182:2181"
+    environment:
+      ZOO_CFG_EXTRA: "server.1=zookeeper-1:2888:3888 server.2=zookeeper-2:2888:3888 server.3=zookeeper-3:2888:3888"
+      ZOO_MY_ID: 2
+    volumes:
+      - zk_data_2:/var/lib/zookeeper/data
+      - zk_datalog_2:/var/lib/zookeeper/datalog
+    networks:
+      - clickhouse-cluster
+    healthcheck:
+      test: ["CMD", "echo", "ruok", "|", "nc", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    restart: unless-stopped
+
+  zookeeper-3:
+    image: zookeeper:latest
+    container_name: zookeeper-3
+    hostname: zookeeper-3
+    ports:
+      - "2183:2181"
+    environment:
+      ZOO_CFG_EXTRA: "server.1=zookeeper-1:2888:3888 server.2=zookeeper-2:2888:3888 server.3=zookeeper-3:2888:3888"
+      ZOO_MY_ID: 3
+    volumes:
+      - zk_data_3:/var/lib/zookeeper/data
+      - zk_datalog_3:/var/lib/zookeeper/datalog
+    networks:
+      - clickhouse-cluster
+    healthcheck:
+      test: ["CMD", "echo", "ruok", "|", "nc", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    restart: unless-stopped
+
+  # Shard 1, Replica 1
+  clickhouse-shard1-replica1:
+    image: clickhouse/clickhouse-server:latest
+    container_name: clickhouse-s1r1
+    hostname: clickhouse-s1r1
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    environment:
+      CLICKHOUSE_DB: default
+    volumes:
+      - clickhouse_data_s1r1:/var/lib/clickhouse
+      - ./configs/cluster-node.xml:/etc/clickhouse-server/config.d/cluster-config.xml
+      - ./configs/macros-s1r1.xml:/etc/clickhouse-server/config.d/macros.xml
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - clickhouse-cluster
+    depends_on:
+      zookeeper-1:
+        condition: service_healthy
+      zookeeper-2:
+        condition: service_healthy
+      zookeeper-3:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+    restart: unless-stopped
+
+  # Shard 1, Replica 2
+  clickhouse-shard1-replica2:
+    image: clickhouse/clickhouse-server:latest
+    container_name: clickhouse-s1r2
+    hostname: clickhouse-s1r2
+    ports:
+      - "8124:8123"
+      - "9001:9000"
+    environment:
+      CLICKHOUSE_DB: default
+    volumes:
+      - clickhouse_data_s1r2:/var/lib/clickhouse
+      - ./configs/cluster-node.xml:/etc/clickhouse-server/config.d/cluster-config.xml
+      - ./configs/macros-s1r2.xml:/etc/clickhouse-server/config.d/macros.xml
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - clickhouse-cluster
+    depends_on:
+      zookeeper-1:
+        condition: service_healthy
+      zookeeper-2:
+        condition: service_healthy
+      zookeeper-3:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+    restart: unless-stopped
+
+  # Shard 2, Replica 1
+  clickhouse-shard2-replica1:
+    image: clickhouse/clickhouse-server:latest
+    container_name: clickhouse-s2r1
+    hostname: clickhouse-s2r1
+    ports:
+      - "8125:8123"
+      - "9002:9000"
+    environment:
+      CLICKHOUSE_DB: default
+    volumes:
+      - clickhouse_data_s2r1:/var/lib/clickhouse
+      - ./configs/cluster-node.xml:/etc/clickhouse-server/config.d/cluster-config.xml
+      - ./configs/macros-s2r1.xml:/etc/clickhouse-server/config.d/macros.xml
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - clickhouse-cluster
+    depends_on:
+      zookeeper-1:
+        condition: service_healthy
+      zookeeper-2:
+        condition: service_healthy
+      zookeeper-3:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+    restart: unless-stopped
+
+  # Shard 2, Replica 2
+  clickhouse-shard2-replica2:
+    image: clickhouse/clickhouse-server:latest
+    container_name: clickhouse-s2r2
+    hostname: clickhouse-s2r2
+    ports:
+      - "8126:8123"
+      - "9003:9000"
+    environment:
+      CLICKHOUSE_DB: default
+    volumes:
+      - clickhouse_data_s2r2:/var/lib/clickhouse
+      - ./configs/cluster-node.xml:/etc/clickhouse-server/config.d/cluster-config.xml
+      - ./configs/macros-s2r2.xml:/etc/clickhouse-server/config.d/macros.xml
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - clickhouse-cluster
+    depends_on:
+      zookeeper-1:
+        condition: service_healthy
+      zookeeper-2:
+        condition: service_healthy
+      zookeeper-3:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+    restart: unless-stopped
+
+  # Shard 3, Replica 1
+  clickhouse-shard3-replica1:
+    image: clickhouse/clickhouse-server:latest
+    container_name: clickhouse-s3r1
+    hostname: clickhouse-s3r1
+    ports:
+      - "8127:8123"
+      - "9004:9000"
+    environment:
+      CLICKHOUSE_DB: default
+    volumes:
+      - clickhouse_data_s3r1:/var/lib/clickhouse
+      - ./configs/cluster-node.xml:/etc/clickhouse-server/config.d/cluster-config.xml
+      - ./configs/macros-s3r1.xml:/etc/clickhouse-server/config.d/macros.xml
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - clickhouse-cluster
+    depends_on:
+      zookeeper-1:
+        condition: service_healthy
+      zookeeper-2:
+        condition: service_healthy
+      zookeeper-3:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+    restart: unless-stopped
+
+  # Shard 3, Replica 2
+  clickhouse-shard3-replica2:
+    image: clickhouse/clickhouse-server:latest
+    container_name: clickhouse-s3r2
+    hostname: clickhouse-s3r2
+    ports:
+      - "8128:8123"
+      - "9005:9000"
+    environment:
+      CLICKHOUSE_DB: default
+    volumes:
+      - clickhouse_data_s3r2:/var/lib/clickhouse
+      - ./configs/cluster-node.xml:/etc/clickhouse-server/config.d/cluster-config.xml
+      - ./configs/macros-s3r2.xml:/etc/clickhouse-server/config.d/macros.xml
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - clickhouse-cluster
+    depends_on:
+      zookeeper-1:
+        condition: service_healthy
+      zookeeper-2:
+        condition: service_healthy
+      zookeeper-3:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+    restart: unless-stopped
+
+volumes:
+  # ZooKeeper volumes
+  zk_data_1:
+  zk_datalog_1:
+  zk_data_2:
+  zk_datalog_2:
+  zk_data_3:
+  zk_datalog_3:
+  # ClickHouse volumes
+  clickhouse_data_s1r1:
+  clickhouse_data_s1r2:
+  clickhouse_data_s2r1:
+  clickhouse_data_s2r2:
+  clickhouse_data_s3r1:
+  clickhouse_data_s3r2:
+
+networks:
+  clickhouse-cluster:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

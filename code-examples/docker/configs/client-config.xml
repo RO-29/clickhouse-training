@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<!-- ClickHouse Client Configuration -->
+<!-- Purpose: Client-side settings for connecting to ClickHouse servers -->
+
+<config>
+    <!-- Connection settings -->
+    <host>clickhouse-server</host>
+    <port>9000</port>
+    <user>default</user>
+    <password></password>
+    <database>default</database>
+
+    <!-- Display settings -->
+    <profile>default</profile>
+
+    <!-- Query settings -->
+    <query_param_max_size>1024</query_param_max_size>
+    <max_query_size>262144</max_query_size>
+
+    <!-- Output format -->
+    <format>TabSeparated</format>
+
+    <!-- Connection timeout in seconds -->
+    <connect_timeout>10</connect_timeout>
+    <send_timeout>300</send_timeout>
+    <recv_timeout>300</recv_timeout>
+
+    <!-- Compression for communication -->
+    <compression>lz4</compression>
+
+    <!-- SSL settings (if needed) -->
+    <!--
+    <secure>1</secure>
+    <ca_cert_file>/path/to/ca.crt</ca_cert_file>
+    <client_cert_file>/path/to/client.crt</client_cert_file>
+    <client_key_file>/path/to/client.key</client_key_file>
+    -->
+
+</config>

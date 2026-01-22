@@ -1,0 +1,92 @@
+<?xml version="1.0"?>
+<!-- ClickHouse Configuration for Monitoring Stack -->
+<!-- Optimized for storing and querying high-volume metrics data -->
+
+<config>
+    <!-- Logger configuration -->
+    <logger>
+        <level>notice</level>
+        <log>/var/log/clickhouse-server/clickhouse-server.log</log>
+        <errorlog>/var/log/clickhouse-server/clickhouse-server.err.log</errorlog>
+        <size>1000M</size>
+        <count>10</count>
+    </logger>
+
+    <!-- System tables logging -->
+    <query_log>
+        <database>system</database>
+        <table>query_log</table>
+        <partition_by>toYYYYMM(event_time)</partition_by>
+        <flush_interval_ms>7500</flush_interval_ms>
+    </query_log>
+
+    <!-- Memory settings optimized for metrics -->
+    <max_memory_usage>3221225472</max_memory_usage>
+    <max_memory_usage_for_user>2684354560</max_memory_usage_for_user>
+
+    <!-- Compression settings - optimize for time-series data -->
+    <compression>
+        <case>
+            <min_part_size>10000000</min_part_size>
+            <min_part_size_ratio>0.01</min_part_size_ratio>
+            <method>lz4</method>
+        </case>
+    </compression>
+
+    <!-- Network settings -->
+    <listen_host>0.0.0.0</listen_host>
+    <http_port>8123</http_port>
+    <tcp_port>9000</tcp_port>
+    <interserver_http_port>9009</interserver_http_port>
+
+    <!-- Prometheus HTTP handler -->
+    <http_handlers>
+        <prometheus>
+            <rule>
+                <url_regex>^/metrics</url_regex>
+                <methods>GET</methods>
+                <handler_type>prometheus</handler_type>
+            </rule>
+        </prometheus>
+    </http_handlers>
+
+    <!-- Performance tuning for metrics -->
+    <max_connections>4096</max_connections>
+    <keep_alive_timeout>3</keep_alive_timeout>
+
+    <!-- Background pool settings -->
+    <background_pool_size>24</background_pool_size>
+    <background_schedule_pool_size>24</background_schedule_pool_size>
+
+    <!-- Merge tree settings optimized for time-series -->
+    <merge_tree>
+        <max_parts_in_queue>500</max_parts_in_queue>
+        <number_of_free_entries_in_pool_to_execute_mutation>8</number_of_free_entries_in_pool_to_execute_mutation>
+    </merge_tree>
+
+    <!-- Quotas -->
+    <quotas>
+        <default>
+            <interval>
+                <duration>3600</duration>
+                <queries>0</queries>
+                <errors>0</errors>
+                <result_rows>0</result_rows>
+                <read_rows>0</read_rows>
+                <execution_time>0</execution_time>
+            </interval>
+        </default>
+    </quotas>
+
+    <!-- Default profile -->
+    <default_profile>default</default_profile>
+
+    <!-- Storage paths -->
+    <path>/var/lib/clickhouse/</path>
+    <tmp_path>/var/lib/clickhouse/tmp/</tmp_path>
+    <user_files_path>/var/lib/clickhouse/user_files/</user_files_path>
+
+    <!-- Format schema paths -->
+    <format_schema_path>/var/lib/clickhouse/format_schemas/</format_schema_path>
+
+</config>

@@ -1,0 +1,255 @@
+<?xml version="1.0"?>
+<yandex>
+    <!--
+    ClickHouse Keeper Configuration
+    Keeper is ClickHouse's native distributed coordination service
+    It replaces ZooKeeper for ClickHouse deployments
+
+    This file configures Keeper nodes. For full ClickHouse + Keeper setup,
+    embed this configuration in the main server config.xml file under <keeper_server> section
+    -->
+
+    <!--
+    ============================================
+    KEEPER SERVER CONFIGURATION
+    ============================================
+    -->
+    <keeper_server>
+        <!-- Enable or disable the keeper server -->
+        <enabled>true</enabled>
+
+        <!-- Port for client connections -->
+        <tcp_port>2181</tcp_port>
+
+        <!-- Secure (TLS) port for client connections -->
+        <!-- <tcp_port_secure>2281</tcp_port_secure> -->
+
+        <!-- IP/Interface to listen on -->
+        <server_id>1</server_id>  <!-- Must be unique per Keeper node -->
+
+        <!-- Storage and data directory for Keeper -->
+        <path>/var/lib/clickhouse/keeper</path>
+
+        <!-- Snapshot directory (snapshots of Keeper state) -->
+        <snapshot_storage_path>/var/lib/clickhouse/keeper/snapshots</snapshot_storage_path>
+
+        <!-- Log directory for write-ahead logs -->
+        <log_storage_path>/var/lib/clickhouse/keeper/logs</log_storage_path>
+
+        <!--
+        ============================================
+        CLUSTER CONFIGURATION (Keeper Quorum)
+        ============================================
+        Define all Keeper nodes in the cluster
+        Each Keeper node must know about all other nodes
+        -->
+        <raft_configuration>
+            <!-- Keeper Node 1 (this node) -->
+            <server>
+                <id>1</id>
+                <hostname>keeper-1.example.com</hostname>
+                <port>9234</port>  <!-- Port for server-to-server communication -->
+            </server>
+
+            <!-- Keeper Node 2 -->
+            <server>
+                <id>2</id>
+                <hostname>keeper-2.example.com</hostname>
+                <port>9234</port>
+            </server>
+
+            <!-- Keeper Node 3 -->
+            <server>
+                <id>3</id>
+                <hostname>keeper-3.example.com</hostname>
+                <port>9234</port>
+            </server>
+        </raft_configuration>
+
+        <!--
+        ============================================
+        TIMING AND PERFORMANCE PARAMETERS
+        ============================================
+        -->
+
+        <!-- Session timeout for clients (milliseconds) -->
+        <!-- Default: 30000 (30 seconds) -->
+        <!-- Recommended range: 4000-40000 -->
+        <session_timeout_ms>30000</session_timeout_ms>
+
+        <!-- Minimum session timeout -->
+        <min_session_timeout_ms>4000</min_session_timeout_ms>
+
+        <!-- Maximum session timeout -->
+        <max_session_timeout_ms>40000</max_session_timeout_ms>
+
+        <!-- Timeout for individual operations (milliseconds) -->
+        <operation_timeout_ms>10000</operation_timeout_ms>
+
+        <!-- Heartbeat interval between servers (milliseconds) -->
+        <!-- Lower value = faster failure detection, higher CPU usage -->
+        <heart_beat_interval_ms>500</heart_beat_interval_ms>
+
+        <!-- Election timeout (milliseconds) -->
+        <!-- Time to wait before starting new leader election -->
+        <election_timeout_ms>3000</election_timeout_ms>
+
+        <!-- Startup timeout for new servers joining cluster (milliseconds) -->
+        <startup_timeout_ms>15000</startup_timeout_ms>
+
+        <!--
+        ============================================
+        SNAPSHOT AND LOG MANAGEMENT
+        ============================================
+        -->
+
+        <!-- Auto-create snapshots at this interval (milliseconds) -->
+        <!-- 3600000 = 1 hour -->
+        <snapshot_creation_delay>3600000</snapshot_creation_delay>
+
+        <!-- Auto-compact snapshots to keep filesystem size manageable -->
+        <snapshots_to_keep>3</snapshots_to_keep>
+
+        <!-- Force snapshot after N transactions -->
+        <stale_log_gap>10000</stale_log_gap>
+
+        <!-- Remove logs when we have N snapshots -->
+        <reserved_log_items>100000</reserved_log_items>
+
+        <!-- Commit logs batch size for performance -->
+        <commit_logs_batch_size>100</commit_logs_batch_size>
+
+        <!--
+        ============================================
+        PERFORMANCE TUNING
+        ============================================
+        -->
+
+        <!-- Maximum number of concurrent connections -->
+        <max_connections>10000</max_connections>
+
+        <!-- Number of threads for snapshot creation -->
+        <snapshots_builder_threads>4</snapshots_builder_threads>
+
+        <!-- Number of threads for replaying logs -->
+        <log_replayer_threads>4</log_replayer_threads>
+
+        <!-- Enable fast snapshot serialization -->
+        <fast_snapshot_creation>true</fast_snapshot_creation>
+
+        <!--
+        ============================================
+        SECURITY SETTINGS
+        ============================================
+        -->
+
+        <!-- Enable server-to-server authentication -->
+        <!-- <server_auth_enabled>false</server_auth_enabled> -->
+
+        <!-- Authentication mechanism for servers -->
+        <!-- Options: none, digest, sasl -->
+        <!-- <server_auth_type>digest</server_auth_type> -->
+
+        <!-- Client authentication -->
+        <!-- Enable basic auth for clients connecting to Keeper -->
+        <client_auth_type>digest</client_auth_type>
+
+        <!-- Secure communication for server-to-server -->
+        <!-- <server_ssl_enabled>false</server_ssl_enabled> -->
+
+        <!-- Secure communication for client connections -->
+        <!-- <client_ssl_enabled>false</client_ssl_enabled> -->
+
+        <!--
+        ============================================
+        MEMORY AND RESOURCE LIMITS
+        ============================================
+        -->
+
+        <!-- Maximum memory usage for Keeper (bytes) -->
+        <!-- 8GB example: 8589934592 -->
+        <max_memory_usage>8589934592</max_memory_usage>
+
+        <!-- Memory limit for snapshots processing -->
+        <snapshot_max_memory_usage>2147483648</snapshot_max_memory_usage>
+
+        <!--
+        ============================================
+        LOG AND MONITORING
+        ============================================
+        -->
+
+        <!-- Logging level for Keeper -->
+        <!-- Options: trace, debug, information, warning, error, critical, none -->
+        <logger>
+            <level>information</level>
+            <log>/var/log/clickhouse-keeper/keeper.log</log>
+            <size>1000M</size>
+            <count>5</count>
+        </logger>
+
+        <!-- Enable verbose logging for debugging -->
+        <log_verbose_queries>false</log_verbose_queries>
+
+        <!-- Log all client operations -->
+        <log_all_operations>false</log_all_operations>
+
+        <!-- Metrics export settings -->
+        <enable_metrics_export>true</enable_metrics_export>
+
+        <!--
+        ============================================
+        STORAGE CONFIGURATION
+        ============================================
+        -->
+
+        <!-- Compression for snapshots -->
+        <snapshot_compression_method>zstd</snapshot_compression_method>
+
+        <!-- Compression level (1-22 for zstd) -->
+        <snapshot_compression_level>3</snapshot_compression_level>
+
+        <!-- Format for snapshots: pb (protobuf) -->
+        <snapshot_format>pb</snapshot_format>
+
+        <!--
+        ============================================
+        SPECIAL SETTINGS
+        ============================================
+        -->
+
+        <!-- Enable checkpoints for data integrity -->
+        <enable_checkpoints>true</enable_checkpoints>
+
+        <!-- Check interval for data consistency (milliseconds) -->
+        <consistency_check_interval_ms>3600000</consistency_check_interval_ms>
+
+        <!-- Auto-stop followers on leader failure (for single-server deployments) -->
+        <!-- <auto_dead_follower_removal>false</auto_dead_follower_removal> -->
+
+        <!-- Enable read-only mode recovery -->
+        <readonly_mode_disable_timeout_ms>60000</readonly_mode_disable_timeout_ms>
+
+        <!-- Maximum message size between servers (bytes) -->
+        <!-- 100MB example: 104857600 -->
+        <max_message_size>104857600</max_message_size>
+
+        <!-- Network timeout for server communication (milliseconds) -->
+        <server_network_timeout_ms>3000</server_network_timeout_ms>
+
+    </keeper_server>
+
+    <!--
+    ============================================
+    KEEPER CLIENT SETTINGS (for other ClickHouse servers connecting to this Keeper)
+    ============================================
+    If this configuration is in a regular ClickHouse server config, this section
+    tells ClickHouse how to connect to Keeper servers
+    -->
+    <keeper_client>
+        <session_timeout_ms>30000</session_timeout_ms>
+        <operation_timeout_ms>10000</operation_timeout_ms>
+        <retry_timeout_ms>5000</retry_timeout_ms>
+    </keeper_client>
+
+</yandex>

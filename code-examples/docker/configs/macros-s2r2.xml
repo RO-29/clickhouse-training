@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<!-- Macro Configuration for Shard 2, Replica 2 -->
+<config>
+    <macros>
+        <cluster>clickhouse_cluster</cluster>
+        <shard>2</shard>
+        <replica>2</replica>
+        <replica_id>s2r2</replica_id>
+    </macros>
+</config>

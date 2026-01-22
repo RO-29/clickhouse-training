@@ -1,0 +1,39 @@
+# Grafana Datasources Configuration
+# Purpose: Define data sources for Grafana dashboards
+
+apiVersion: 1
+
+datasources:
+  # Prometheus datasource
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      timeInterval: 15s
+
+  # ClickHouse datasource (if using grafana-clickhouse-datasource plugin)
+  - name: ClickHouse
+    type: grafana-clickhouse-datasource
+    access: proxy
+    url: http://clickhouse-server:8123
+    database: default
+    user: default
+    password: ''
+    isDefault: false
+    editable: true
+    jsonData:
+      usePost: true
+      defaultDatabase: default
+
+  # Optional: Loki datasource for log aggregation
+  # - name: Loki
+  #   type: loki
+  #   access: proxy
+  #   url: http://loki:3100
+  #   isDefault: false
+  #   editable: true
+  #   jsonData:
+  #     maxLines: 1000

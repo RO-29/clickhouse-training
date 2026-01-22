@@ -1,0 +1,290 @@
+<?xml version="1.0"?>
+<yandex>
+    <!--
+    ZooKeeper and ClickHouse Keeper Cluster Configuration
+
+    This file defines the coordination service cluster used for:
+    - Leader election in ReplicatedMergeTree tables
+    - Distributed DDL coordination
+    - Metadata synchronization across replicas
+    - Shard-replica consistency management
+
+    Alternative: Can be embedded in config.xml instead of using this separate file
+    -->
+
+    <!--
+    ============================================
+    ZOOKEEPER CLUSTER DEFINITION
+    ============================================
+    Standard ZooKeeper cluster (3-node ensemble recommended for HA)
+    -->
+    <zookeeper>
+        <!--
+        Node 1: Primary ZooKeeper server
+        This node will coordinate replication metadata
+        -->
+        <node index="1">
+            <host>zookeeper-1.example.com</host>
+            <port>2181</port>
+            <!-- Optional: Secure communication port -->
+            <!-- <secure_port>2281</secure_port> -->
+        </node>
+
+        <!--
+        Node 2: Secondary ZooKeeper server
+        Provides high availability if Node 1 fails
+        -->
+        <node index="2">
+            <host>zookeeper-2.example.com</host>
+            <port>2181</port>
+        </node>
+
+        <!--
+        Node 3: Tertiary ZooKeeper server
+        Ensures quorum for fault tolerance (2 out of 3)
+        -->
+        <node index="3">
+            <host>zookeeper-3.example.com</host>
+            <port>2181</port>
+        </node>
+
+        <!--
+        ============================================
+        SESSION AND TIMEOUT SETTINGS
+        ============================================
+        -->
+
+        <!-- Timeout for ZooKeeper session (milliseconds) -->
+        <!-- Default: 30000 (30 seconds) -->
+        <!-- Range: 4000-40000 -->
+        <!-- Higher values = more tolerance to network delays but slower failure detection -->
+        <session_timeout_ms>30000</session_timeout_ms>
+
+        <!-- Timeout for individual ZooKeeper operations (milliseconds) -->
+        <!-- Default: 10000 (10 seconds) -->
+        <!-- Timeout for read/write operations to ZooKeeper -->
+        <operation_timeout_ms>10000</operation_timeout_ms>
+
+        <!-- Retry timeout for failed operations (milliseconds) -->
+        <!-- Default: 5000 (5 seconds) -->
+        <!-- Time to wait before retrying a failed operation -->
+        <retry_timeout_ms>5000</retry_timeout_ms>
+
+        <!-- Enable or disable secure communication -->
+        <!-- <secure>false</secure> -->
+
+        <!-- Chroot path for ClickHouse operations -->
+        <!-- All ClickHouse operations will be under /clickhouse/data path in ZooKeeper -->
+        <!-- This isolates ClickHouse data from other applications using the same ZooKeeper -->
+        <!-- <zookeeper_path>/clickhouse</zookeeper_path> -->
+    </zookeeper>
+
+    <!--
+    ============================================
+    CLICKHOUSE KEEPER CLUSTER (Alternative to ZooKeeper)
+    ============================================
+    Modern replacement for ZooKeeper - embedded in ClickHouse
+    Recommended for new deployments
+    -->
+    <keeper_servers>
+        <!--
+        Keeper Node 1
+        -->
+        <node index="1">
+            <!-- Hostname/IP for external connections (from ClickHouse servers) -->
+            <host>keeper-1.example.com</host>
+            <!-- Port for client connections (ClickHouse to Keeper) -->
+            <port>2181</port>
+
+            <!-- Server-to-server ports (for inter-keeper communication) -->
+            <server_port>9234</server_port>
+
+            <!-- Optional: Server election port -->
+            <election_port>9235</election_port>
+        </node>
+
+        <!--
+        Keeper Node 2
+        -->
+        <node index="2">
+            <host>keeper-2.example.com</host>
+            <port>2181</port>
+            <server_port>9234</server_port>
+            <election_port>9235</election_port>
+        </node>
+
+        <!--
+        Keeper Node 3
+        -->
+        <node index="3">
+            <host>keeper-3.example.com</host>
+            <port>2181</port>
+            <server_port>9234</server_port>
+            <election_port>9235</election_port>
+        </node>
+
+        <!--
+        Keeper Session and Operation Timeouts
+        -->
+        <session_timeout_ms>30000</session_timeout_ms>
+        <operation_timeout_ms>10000</operation_timeout_ms>
+        <retry_timeout_ms>5000</retry_timeout_ms>
+    </keeper_servers>
+
+    <!--
+    ============================================
+    SHARD DEFINITIONS
+    ============================================
+    Define cluster topology for distributed queries
+    This should match the <remote_servers> section in config.xml
+    -->
+
+    <!-- Production Cluster: 3 shards × 2 replicas -->
+    <remote_servers>
+        <production>
+            <!--
+            Shard 1: Contains replica-1 and replica-2
+            Data for keys 0-1000000 goes here
+            -->
+            <shard>
+                <weight>1</weight>                    <!-- Load balancing weight -->
+                <internal_replication>true</internal_replication>
+
+                <!-- Primary replica for Shard 1 -->
+                <replica>
+                    <host>ch-prod-shard1-replica1.example.com</host>
+                    <port>9000</port>
+                    <user>default</user>
+                    <password></password>
+                </replica>
+
+                <!-- Secondary replica for Shard 1 (replicates from primary) -->
+                <replica>
+                    <host>ch-prod-shard1-replica2.example.com</host>
+                    <port>9000</port>
+                    <user>default</user>
+                    <password></password>
+                </replica>
+            </shard>
+
+            <!--
+            Shard 2: Contains replica-1 and replica-2
+            Data for keys 1000001-2000000 goes here
+            -->
+            <shard>
+                <weight>1</weight>
+                <internal_replication>true</internal_replication>
+
+                <replica>
+                    <host>ch-prod-shard2-replica1.example.com</host>
+                    <port>9000</port>
+                    <user>default</user>
+                    <password></password>
+                </replica>
+
+                <replica>
+                    <host>ch-prod-shard2-replica2.example.com</host>
+                    <port>9000</port>
+                    <user>default</user>
+                    <password></password>
+                </replica>
+            </shard>
+
+            <!--
+            Shard 3: Contains replica-1 and replica-2
+            Data for keys 2000001-3000000 goes here
+            -->
+            <shard>
+                <weight>1</weight>
+                <internal_replication>true</internal_replication>
+
+                <replica>
+                    <host>ch-prod-shard3-replica1.example.com</host>
+                    <port>9000</port>
+                    <user>default</user>
+                    <password></password>
+                </replica>
+
+                <replica>
+                    <host>ch-prod-shard3-replica2.example.com</host>
+                    <port>9000</port>
+                    <user>default</user>
+                    <password></password>
+                </replica>
+            </shard>
+        </production>
+
+        <!--
+        Analytics Cluster: Simpler structure, no replication
+        Used for historical data and heavy analytics workloads
+        -->
+        <analytics>
+            <shard>
+                <weight>1</weight>
+                <internal_replication>false</internal_replication>
+                <replica>
+                    <host>ch-analytics-1.example.com</host>
+                    <port>9000</port>
+                    <user>readonly</user>
+                    <password></password>
+                </replica>
+            </shard>
+
+            <shard>
+                <weight>1</weight>
+                <internal_replication>false</internal_replication>
+                <replica>
+                    <host>ch-analytics-2.example.com</host>
+                    <port>9000</port>
+                    <user>readonly</user>
+                    <password></password>
+                </replica>
+            </shard>
+        </analytics>
+    </remote_servers>
+
+    <!--
+    ============================================
+    MACROS (Replication Macro Definitions)
+    ============================================
+    Macros are used in table definitions for replication
+    Format: {macro_name} gets replaced with macro value
+    Each server should override these in its own config
+    -->
+    <macros>
+        <!-- Shard number (0-based indexing for distributed sharding) -->
+        <!-- This will be overridden per-server -->
+        <shard>01</shard>
+
+        <!-- Replica number within the shard (0-based) -->
+        <!-- This will be overridden per-server -->
+        <replica>01</replica>
+
+        <!-- Cluster name for DDL queries -->
+        <cluster>production</cluster>
+    </macros>
+
+    <!--
+    ============================================
+    DISTRIBUTED QUERY PROCESSING
+    ============================================
+    -->
+
+    <!-- Path in ZooKeeper for distributed DDL queue -->
+    <distributed_ddl>
+        <path>/clickhouse/task_queue/ddl</path>
+    </distributed_ddl>
+
+    <!--
+    ============================================
+    REPLICATION SETTINGS
+    ============================================
+    -->
+
+    <!-- Maximum replicas to keep in ZooKeeper per table -->
+    <max_replicated_table_replicas>100</max_replicated_table_replicas>
+
+    <!-- Maximum shards per table -->
+    <max_replicated_table_shards>100</max_replicated_table_shards>
+
+</yandex>

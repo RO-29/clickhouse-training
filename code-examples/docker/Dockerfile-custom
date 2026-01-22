@@ -1,0 +1,46 @@
+# Custom ClickHouse Docker Image
+# Purpose: Pre-configured ClickHouse with optimized settings and additional tools
+# Build: docker build -f Dockerfile-custom -t clickhouse-custom:latest .
+
+FROM clickhouse/clickhouse-server:latest
+
+# Install additional tools for development and debugging
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    git \
+    vim \
+    htop \
+    net-tools \
+    telnet \
+    dnsutils \
+    iputils-ping \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create directories for custom configurations and scripts
+RUN mkdir -p /etc/clickhouse-server/config.d \
+    && mkdir -p /etc/clickhouse-server/users.d \
+    && mkdir -p /docker-entrypoint-initdb.d
+
+# Copy custom configuration files
+COPY ./configs/custom-config.xml /etc/clickhouse-server/config.d/custom-config.xml
+COPY ./configs/users-custom.xml /etc/clickhouse-server/users.d/users-custom.xml
+
+# Copy initialization scripts
+COPY ./init-scripts/ /docker-entrypoint-initdb.d/
+
+# Set environment variables for ClickHouse tuning
+ENV CLICKHOUSE_DB=default
+ENV CLICKHOUSE_USER=default
+ENV CLICKHOUSE_PASSWORD=""
+
+# Expose standard ClickHouse ports
+EXPOSE 8123 9000 9009
+
+# Health check
+HEALTHCHECK --interval=10s --timeout=5s --retries=5 --start-period=30s \
+    CMD wget --spider -q http://localhost:8123/ping || exit 1
+
+# Default command - start ClickHouse server
+CMD ["/entrypoint.sh"]

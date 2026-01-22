@@ -1,0 +1,366 @@
+CLICKHOUSE CONFIGURATION FILES - COMPLETE FILE LISTING
+=======================================================
+
+Created Location:
+/Users/megharaizada/Desktop/Rohit Important/clickhouse-ks/code-examples/configs/
+
+All Configuration Files (5 files):
+──────────────────────────────────────────────────────────────────────────────
+
+1. config.xml
+   Location: /Users/megharaizada/Desktop/Rohit Important/clickhouse-ks/code-examples/configs/config.xml
+   Size: 15 KB
+   Lines: 443
+   Purpose: Main ClickHouse server configuration
+   - Network ports (HTTP, TCP, MySQL, PostgreSQL)
+   - Path configuration
+   - Memory and resource limits
+   - Logging configuration
+   - Compression settings
+   - Cluster topology (3 shards × 2 replicas)
+   - ZooKeeper configuration
+   - Distributed DDL settings
+   - Storage policies
+
+2. users.xml
+   Location: /Users/megharaizada/Desktop/Rohit Important/clickhouse-ks/code-examples/configs/users.xml
+   Size: 16 KB
+   Lines: 435
+   Purpose: User management and access control
+   - 6 predefined users (default, admin, readonly, app_user, replicator, monitoring)
+   - Quotas (per-minute, per-hour, per-day)
+   - Profiles (settings templates)
+   - Network restrictions
+   - Password hashing
+   - Resource limits per user
+
+3. metrika.xml
+   Location: /Users/megharaizada/Desktop/Rohit Important/clickhouse-ks/code-examples/configs/metrika.xml
+   Size: 9.5 KB
+   Lines: 290
+   Purpose: ZooKeeper and ClickHouse Keeper cluster configuration
+   - ZooKeeper 3-node ensemble
+   - ClickHouse Keeper configuration
+   - Remote server definitions
+   - Cluster topology
+   - Macros definition
+
+4. keeper_config.xml
+   Location: /Users/megharaizada/Desktop/Rohit Important/clickhouse-ks/code-examples/configs/keeper_config.xml
+   Size: 8.9 KB
+   Lines: 255
+   Purpose: ClickHouse Keeper (coordination service) configuration
+   - Server configuration
+   - Cluster definition (Raft)
+   - Timing parameters
+   - Snapshot management
+   - Performance tuning
+   - Security settings
+   - Logging configuration
+
+5. macros.xml
+   Location: /Users/megharaizada/Desktop/Rohit Important/clickhouse-ks/code-examples/configs/macros.xml
+   Size: 7.0 KB
+   Lines: 220
+   Purpose: Replication and sharding macro definitions
+   - {shard} - Horizontal sharding identifier
+   - {replica} - Vertical replication identifier
+   - {cluster} - Cluster name
+   - {database} - Database name
+   - {environment} - Environment tier
+   - {node} - Server identifier
+   - {zk_path} - ZooKeeper path prefix
+
+Documentation Files (3 files):
+──────────────────────────────────────────────────────────────────────────────
+
+1. README.md
+   Location: /Users/megharaizada/Desktop/Rohit Important/clickhouse-ks/code-examples/configs/README.md
+   Size: 13 KB
+   Lines: 452
+   Purpose: Comprehensive deployment and configuration guide
+   - Detailed explanation of each configuration file
+   - Step-by-step deployment procedure
+   - Security recommendations for production
+   - Backup and recovery strategies
+   - Monitoring setup
+   - Complete cluster topology
+   - Common customizations
+   - Verification commands
+   - Troubleshooting guide
+
+2. QUICK_START.md
+   Location: /Users/megharaizada/Desktop/Rohit Important/clickhouse-ks/code-examples/configs/QUICK_START.md
+   Size: 8.3 KB
+   Lines: 313
+   Purpose: Quick reference guide for fast setup
+   - File summary table
+   - Key features overview
+   - Deployment checklist
+   - Configuration customization examples
+   - Common SQL examples
+   - Troubleshooting quick links
+   - Password generation
+   - File location reference
+
+3. INDEX.md
+   Location: /Users/megharaizada/Desktop/Rohit Important/clickhouse-ks/code-examples/configs/INDEX.md
+   Size: ~11 KB (varies)
+   Purpose: Complete navigation and reference guide
+   - File-by-file detailed explanation
+   - Configuration relationships diagram
+   - Deployment workflow
+   - Security features
+   - Production checklist
+   - Getting started guide
+   - File statistics
+
+Utility Files (1 file):
+──────────────────────────────────────────────────────────────────────────────
+
+1. FILE_LOCATIONS.txt
+   Location: /Users/megharaizada/Desktop/Rohit Important/clickhouse-ks/code-examples/configs/FILE_LOCATIONS.txt
+   Purpose: This file - complete listing of all created files with locations
+
+TOTAL STATISTICS:
+──────────────────────────────────────────────────────────────────────────────
+Total Files: 9
+Total Size: ~92 KB
+Total Lines: ~2,500
+All XML Files: Valid (xmllint verified)
+
+DEPLOYMENT INSTRUCTIONS:
+──────────────────────────────────────────────────────────────────────────────
+
+Step 1: Copy Configuration Files
+─────────────────────────────────
+scp /Users/megharaizada/Desktop/Rohit\ Important/clickhouse-ks/code-examples/configs/config.xml \
+    username@clickhouse-server:/etc/clickhouse-server/
+
+scp /Users/megharaizada/Desktop/Rohit\ Important/clickhouse-ks/code-examples/configs/users.xml \
+    username@clickhouse-server:/etc/clickhouse-server/
+
+scp /Users/megharaizada/Desktop/Rohit\ Important/clickhouse-ks/code-examples/configs/metrika.xml \
+    username@clickhouse-server:/etc/clickhouse-server/
+
+scp /Users/megharaizada/Desktop/Rohit\ Important/clickhouse-ks/code-examples/configs/macros.xml \
+    username@clickhouse-server:/etc/clickhouse-server/
+
+# For Keeper setup:
+scp /Users/megharaizada/Desktop/Rohit\ Important/clickhouse-ks/code-examples/configs/keeper_config.xml \
+    username@keeper-server:/etc/clickhouse-server/
+
+Step 2: Reference Documentation
+─────────────────────────────────
+- Read: /Users/megharaizada/Desktop/Rohit\ Important/clickhouse-ks/code-examples/configs/QUICK_START.md
+- Deep Dive: /Users/megharaizada/Desktop/Rohit\ Important/clickhouse-ks/code-examples/configs/README.md
+- Reference: /Users/megharaizada/Desktop/Rohit\ Important/clickhouse-ks/code-examples/configs/INDEX.md
+
+Step 3: Customize for Your Environment
+────────────────────────────────────────
+1. Update hostnames in all files
+2. Customize macros.xml per server (shard/replica numbers)
+3. Change passwords (generate with: echo -n 'password' | sha256sum)
+4. Adjust paths for your storage layout
+5. Update IP ranges in users.xml for your network
+
+Step 4: Validate Configuration
+───────────────────────────────
+xmllint --noout config.xml users.xml metrika.xml macros.xml keeper_config.xml
+clickhouse-server --validate-config
+
+Step 5: Deploy and Verify
+──────────────────────────
+systemctl restart clickhouse-server
+clickhouse-client -q "SELECT * FROM system.clusters"
+clickhouse-client -q "SELECT * FROM system.replicas"
+
+QUICK REFERENCE - KEY FEATURES:
+──────────────────────────────────────────────────────────────────────────────
+
+Network Ports:
+  - HTTP: 8123 (8443 secure)
+  - TCP Native: 9000 (9440 secure)
+  - MySQL Protocol: 3306
+  - PostgreSQL Protocol: 5432
+  - Interserver: 9009 (9010 secure)
+  - ZooKeeper: 2181
+
+Users Configured:
+  1. default - Development (no restrictions)
+  2. admin - Administrator (localhost only)
+  3. readonly - Read-only access (2GB memory, 30s timeout)
+  4. app_user - Application (5GB memory, 5min timeout)
+  5. replicator - System (inter-replica communication)
+  6. monitoring - Monitoring (1GB memory, 100 q/min)
+
+Cluster Topology:
+  - 3 Shards × 2 Replicas Each = 6 Data Nodes
+  - 3 ZooKeeper/Keeper Nodes for Coordination
+  - Total: 9 Nodes (6 data + 3 coordination)
+
+Resource Limits:
+  - Max Memory: 10 GB per query
+  - Max Threads: 16
+  - Max Connections: 4,096
+  - Max Concurrent Queries: 100
+
+Compression:
+  - Storage: LZ4 (fast & efficient)
+  - Network: LZ4 (streaming)
+
+Quotas:
+  - readonly: 10,000 q/hour, 100M rows
+  - app_user: 1,000 q/minute, 500M rows/hour
+  - monitoring: 100 q/minute, 1M rows
+
+SECURITY FEATURES:
+──────────────────────────────────────────────────────────────────────────────
+
+Authentication:
+  - SHA256 password hashing (recommended)
+  - Network-based access control (IP whitelist)
+  - Per-user profiles and quotas
+
+Authorization:
+  - 6 predefined roles
+  - Read-only access for reports
+  - Administrative controls for admins
+  - System operations separation
+
+Encryption:
+  - Optional TLS/SSL support
+  - Secure interserver communication
+  - Network isolation by IP ranges
+
+Audit:
+  - Query logging (every query)
+  - Thread logging (execution metrics)
+  - Trace logging (performance profiling)
+  - Error logging (separate error log)
+
+ZOOKEEPER CONFIGURATION:
+──────────────────────────────────────────────────────────────────────────────
+
+3-Node Ensemble:
+  - zookeeper-1:2181
+  - zookeeper-2:2181
+  - zookeeper-3:2181
+
+Session Timeout: 30 seconds
+Operation Timeout: 10 seconds
+Retry Timeout: 5 seconds
+
+Paths:
+  /clickhouse/tables/{shard}/{database}/{table}/replicas/{replica}
+  /clickhouse/task_queue/ddl
+
+REPLICATION SETUP:
+──────────────────────────────────────────────────────────────────────────────
+
+Example ReplicatedMergeTree Table:
+
+CREATE TABLE events ON CLUSTER production
+(
+    event_id UInt64,
+    event_time DateTime,
+    event_type String
+)
+ENGINE = ReplicatedMergeTree(
+    '/clickhouse/tables/{shard}/default/events',
+    '{replica}'
+)
+ORDER BY event_id
+PARTITION BY toYYYYMM(event_time);
+
+Example Distributed Table:
+
+CREATE TABLE events_distributed ON CLUSTER production
+(
+    event_id UInt64,
+    event_time DateTime,
+    event_type String
+)
+ENGINE = Distributed(production, default, events);
+
+MACRO CUSTOMIZATION PER SERVER:
+──────────────────────────────────────────────────────────────────────────────
+
+Shard 01, Replica 01:
+  <shard>01</shard>
+  <replica>01</replica>
+
+Shard 01, Replica 02:
+  <shard>01</shard>
+  <replica>02</replica>
+
+Shard 02, Replica 01:
+  <shard>02</shard>
+  <replica>01</replica>
+
+Shard 02, Replica 02:
+  <shard>02</shard>
+  <replica>02</replica>
+
+Shard 03, Replica 01:
+  <shard>03</shard>
+  <replica>01</replica>
+
+Shard 03, Replica 02:
+  <shard>03</shard>
+  <replica>02</replica>
+
+PASSWORD GENERATION:
+──────────────────────────────────────────────────────────────────────────────
+
+SHA256 Hash (Recommended):
+  echo -n 'your_password_here' | sha256sum | cut -c1-64
+
+Example - "password123":
+  a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3
+
+DOCUMENTATION READING ORDER:
+──────────────────────────────────────────────────────────────────────────────
+
+1. START HERE (5 minutes):
+   → QUICK_START.md
+
+2. DEPLOYMENT GUIDE (20 minutes):
+   → README.md
+
+3. DETAILED REFERENCE (as needed):
+   → INDEX.md
+   → Individual XML files with inline comments
+
+4. TROUBLESHOOTING:
+   → README.md "Troubleshooting" section
+   → QUICK_START.md "Troubleshooting Quick Links"
+
+SUPPORT & LINKS:
+──────────────────────────────────────────────────────────────────────────────
+
+Official Documentation: https://clickhouse.com/docs/
+Configuration Reference: https://clickhouse.com/docs/operations/configuration-files/
+Replication Guide: https://clickhouse.com/docs/operations/replication/
+User Management: https://clickhouse.com/docs/operations/access-rights/
+GitHub Repository: https://github.com/ClickHouse/ClickHouse
+Community Slack: https://clickhouse.com/community/
+
+READY FOR DEPLOYMENT:
+──────────────────────────────────────────────────────────────────────────────
+
+✓ All XML files validated and error-free
+✓ Extensive comments for understanding each setting
+✓ Security best practices implemented
+✓ Resource limits configured conservatively
+✓ HA/DR built-in (3 shards × 2 replicas)
+✓ Monitoring hooks pre-configured
+✓ Backup/recovery guidance documented
+✓ Example SQL queries provided
+✓ Troubleshooting guide included
+
+Start with QUICK_START.md for a 5-minute overview!
+
+Generated: January 22, 2026
+Version: ClickHouse 22.x - 24.x Compatible
+Status: Production-Ready

@@ -1,0 +1,435 @@
+<?xml version="1.0"?>
+<yandex>
+    <!--
+    ClickHouse Users Configuration File
+    Manages user authentication, permissions, quotas, and resource limits
+
+    Password hashing:
+    - If password_sha256_hex is used, generate with: echo -n 'password' | sha256sum
+    - If password_double_sha1_hex is used, generate with: echo -n 'password' | sha1sum | xxd -r -p | sha1sum
+    - plaintext_password is NOT recommended for production
+    -->
+
+    <!--
+    ============================================
+    DEFAULT USER
+    ============================================
+    Used for basic client connections and inter-server communication
+    -->
+    <users>
+        <default>
+            <!-- Empty password for local development only -->
+            <!-- For production, set a strong password -->
+            <password></password>
+
+            <!-- Alternative: SHA256 hashed password -->
+            <!-- Generate: echo -n 'password' | sha256sum | cut -c1-64 -->
+            <!-- <password_sha256_hex>e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</password_sha256_hex> -->
+
+            <!-- Alternative: Double SHA1 hashed password (legacy) -->
+            <!-- <password_double_sha1_hex>356a192b7913b04c54574d18c28d46e6395428ab</password_double_sha1_hex> -->
+
+            <!-- Network restrictions -->
+            <networks>
+                <ip>::/0</ip>              <!-- Allow from anywhere (production: restrict this) -->
+            </networks>
+
+            <!-- Resource quotas -->
+            <quota>default</quota>
+
+            <!-- User profile (defines query limits and settings) -->
+            <profile>default</profile>
+
+            <!-- Permissions (database/table level access) -->
+            <access_management>0</access_management>
+
+            <!-- Allow DDL (CREATE, ALTER, DROP) -->
+            <allow_ddl>1</allow_ddl>
+
+            <!-- Allow changing settings -->
+            <allow_user_defined_functions>1</allow_user_defined_functions>
+
+            <!-- Readonly mode: 0 = full access, 1 = read-only, 2 = read-only except settings -->
+            <readonly>0</readonly>
+
+            <!-- Databases this user has access to (empty = all) -->
+            <!-- <databases>
+                <database>
+                    <db_name>.*</db_name>
+                </database>
+            </databases> -->
+        </default>
+
+        <!--
+        ============================================
+        ADMIN USER
+        ============================================
+        Full access with administrative privileges
+        -->
+        <admin>
+            <password_sha256_hex>8d969eef6ecad3c29a3a873fba8a4f7e88a9e89e6be9f9fa77d04ae0a8ac90a1</password_sha256_hex>
+            <!-- Password: "admin123" (NOT for production!) -->
+
+            <networks>
+                <ip>127.0.0.1</ip>        <!-- Localhost only -->
+                <ip>::1</ip>              <!-- IPv6 localhost -->
+                <!-- Add other trusted IPs here: <ip>10.0.0.0/8</ip> -->
+            </networks>
+
+            <quota>admin</quota>
+            <profile>admin</profile>
+
+            <!-- Administrative access -->
+            <access_management>1</access_management>
+            <allow_ddl>1</allow_ddl>
+            <allow_user_defined_functions>1</allow_user_defined_functions>
+            <readonly>0</readonly>
+        </admin>
+
+        <!--
+        ============================================
+        READONLY USER
+        ============================================
+        Read-only access for reports and dashboards
+        -->
+        <readonly>
+            <password_sha256_hex>a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3</password_sha256_hex>
+            <!-- Password: "readonly" (NOT for production!) -->
+
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+
+            <quota>readonly</quota>
+            <profile>readonly</profile>
+
+            <access_management>0</access_management>
+            <allow_ddl>0</allow_ddl>
+            <allow_user_defined_functions>0</allow_user_defined_functions>
+            <readonly>1</readonly>  <!-- Read-only mode enabled -->
+        </readonly>
+
+        <!--
+        ============================================
+        APPLICATION USER
+        ============================================
+        For application connections with specific quotas
+        -->
+        <app_user>
+            <password_sha256_hex>08f11c5602585dcdc59c33176cac0ff0a4a695b43e8d3bb37a36d929e00e4c3a</password_sha256_hex>
+            <!-- Password: "app_password" (NOT for production!) -->
+
+            <networks>
+                <!-- Allow from application servers -->
+                <ip>10.0.1.0/24</ip>      <!-- Application server subnet -->
+                <ip>10.0.2.0/24</ip>      <!-- Backup app server subnet -->
+            </networks>
+
+            <quota>app_quota</quota>
+            <profile>app_profile</profile>
+
+            <access_management>0</access_management>
+            <allow_ddl>0</allow_ddl>
+            <readonly>0</readonly>
+
+            <!-- Limit to specific databases -->
+            <!-- Uncomment if you want database restrictions:
+            <databases>
+                <database>
+                    <db_name>analytics</db_name>
+                </database>
+                <database>
+                    <db_name>logs</db_name>
+                </database>
+            </databases>
+            -->
+        </app_user>
+
+        <!--
+        ============================================
+        REPLICATION USER (Interserver Communication)
+        ============================================
+        Used for inter-replica communication
+        -->
+        <replicator>
+            <password_sha256_hex>e7d7c7d2e3f4f0a2c4d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a</password_sha256_hex>
+            <!-- Password: strong_replication_key (NOT for production!) -->
+
+            <networks>
+                <!-- Only allow from other cluster nodes -->
+                <ip>10.0.0.0/8</ip>       <!-- Internal network -->
+            </networks>
+
+            <quota>replication</quota>
+            <profile>replication_profile</profile>
+
+            <readonly>0</readonly>
+            <access_management>0</access_management>
+            <allow_ddl>1</allow_ddl>
+        </replicator>
+
+        <!--
+        ============================================
+        MONITORING USER
+        ============================================
+        For monitoring systems (Prometheus, etc.)
+        -->
+        <monitoring>
+            <password_sha256_hex>ca761b1f6c7e6e52fdc82feba0db07d0e6d45c4532c4d0e1e0a6b3f2d8c1a9f5</password_sha256_hex>
+            <!-- Password: "monitoring" (NOT for production!) -->
+
+            <networks>
+                <ip>10.0.3.0/24</ip>      <!-- Monitoring network -->
+            </networks>
+
+            <quota>monitoring_quota</quota>
+            <profile>monitoring_profile</profile>
+
+            <readonly>1</readonly>        <!-- Read-only for monitoring -->
+            <access_management>0</access_management>
+        </monitoring>
+    </users>
+
+    <!--
+    ============================================
+    QUOTAS
+    ============================================
+    Define resource limits per user or group
+    Intervals can be: SECOND, MINUTE, HOUR, DAY
+    -->
+    <quotas>
+        <!--
+        Default quota: permissive for development/testing
+        -->
+        <default>
+            <!-- Unlimited for interval_duration -->
+            <interval>
+                <duration>3600</duration>          <!-- 1 hour interval in seconds -->
+                <queries>0</queries>               <!-- 0 = unlimited queries -->
+                <errors>0</errors>                 <!-- 0 = unlimited errors allowed -->
+                <result_rows>0</result_rows>       <!-- 0 = unlimited rows returned -->
+                <read_rows>0</read_rows>           <!-- 0 = unlimited rows read -->
+                <execution_time>0</execution_time> <!-- 0 = unlimited execution time -->
+            </interval>
+        </default>
+
+        <!--
+        Admin quota: very relaxed
+        -->
+        <admin>
+            <interval>
+                <duration>3600</duration>
+                <queries>0</queries>
+                <errors>0</errors>
+                <result_rows>0</result_rows>
+                <read_rows>0</read_rows>
+                <execution_time>0</execution_time>
+            </interval>
+        </admin>
+
+        <!--
+        Readonly quota: stricter limits for safety
+        -->
+        <readonly>
+            <interval>
+                <duration>3600</duration>
+                <queries>10000</queries>             <!-- Max 10k queries per hour -->
+                <errors>100</errors>                <!-- Max 100 errors per hour -->
+                <result_rows>1000000000</result_rows> <!-- Max 1B rows returned per hour -->
+                <read_rows>10000000000</read_rows>  <!-- Max 10B rows read per hour -->
+                <execution_time>36000</execution_time> <!-- Max 10000 seconds total per hour -->
+            </interval>
+        </readonly>
+
+        <!--
+        Application quota: balanced limits
+        -->
+        <app_quota>
+            <interval>
+                <duration>60</duration>             <!-- Per minute -->
+                <queries>1000</queries>             <!-- Max 1k queries per minute -->
+                <errors>10</errors>                 <!-- Max 10 errors per minute -->
+                <result_rows>100000000</result_rows> <!-- Max 100M rows per minute -->
+                <read_rows>500000000</read_rows>   <!-- Max 500M rows read per minute -->
+                <execution_time>3600</execution_time> <!-- Max 3600 seconds per minute -->
+            </interval>
+
+            <!-- Also set daily limits -->
+            <interval>
+                <duration>86400</duration>          <!-- Per day (24 hours) -->
+                <queries>10000000</queries>        <!-- 10M queries per day -->
+                <errors>1000</errors>              <!-- 1k errors per day -->
+                <result_rows>10000000000</result_rows> <!-- 10B rows per day -->
+                <read_rows>100000000000</read_rows> <!-- 100B rows per day -->
+                <execution_time>86400</execution_time> <!-- 24 hours total per day -->
+            </interval>
+        </app_quota>
+
+        <!--
+        Replication quota: high limits for system operations
+        -->
+        <replication>
+            <interval>
+                <duration>3600</duration>
+                <queries>0</queries>
+                <errors>0</errors>
+                <result_rows>0</result_rows>
+                <read_rows>0</read_rows>
+                <execution_time>0</execution_time>
+            </interval>
+        </replication>
+
+        <!--
+        Monitoring quota: light queries only
+        -->
+        <monitoring_quota>
+            <interval>
+                <duration>60</duration>
+                <queries>100</queries>              <!-- Max 100 queries per minute -->
+                <errors>10</errors>
+                <result_rows>1000000</result_rows>  <!-- Max 1M rows -->
+                <read_rows>10000000</read_rows>     <!-- Max 10M rows -->
+                <execution_time>60</execution_time> <!-- Max 60 seconds per minute -->
+            </interval>
+        </monitoring_quota>
+    </quotas>
+
+    <!--
+    ============================================
+    PROFILES
+    ============================================
+    Sets default query settings and limits for users
+    -->
+    <profiles>
+        <!--
+        Default profile: balanced settings for general use
+        -->
+        <default>
+            <!-- Maximum query memory (10GB) -->
+            <max_memory_usage>10737418240</max_memory_usage>
+
+            <!-- Maximum query execution time (10 minutes) -->
+            <max_execution_time>600</max_execution_time>
+
+            <!-- Result rows limit (no limit) -->
+            <max_rows_to_read>0</max_rows_to_read>
+
+            <!-- Rows returned limit -->
+            <max_result_rows>0</max_result_rows>
+
+            <!-- Number of INSERT threads -->
+            <max_insert_threads>4</max_insert_threads>
+
+            <!-- Enable compression for network -->
+            <network_compression_method>lz4</network_compression_method>
+
+            <!-- Default compression for new tables -->
+            <preferred_block_size_bytes>1048576</preferred_block_size_bytes>
+
+            <!-- Timeout for INSERT SELECT queries -->
+            <insert_quorum_timeout>3000</insert_quorum_timeout>
+
+            <!-- Use query result cache -->
+            <use_query_cache>1</use_query_cache>
+
+            <!-- Enable join use nulls -->
+            <join_use_nulls>0</join_use_nulls>
+
+            <!-- Reuse blocks in operations -->
+            <reuse_blocks_for_aggregation>1</reuse_blocks_for_aggregation>
+        </default>
+
+        <!--
+        Admin profile: no restrictions
+        -->
+        <admin>
+            <max_memory_usage>0</max_memory_usage>
+            <max_execution_time>0</max_execution_time>
+            <max_rows_to_read>0</max_rows_to_read>
+            <max_result_rows>0</max_result_rows>
+            <max_insert_threads>0</max_insert_threads>
+            <network_compression_method>lz4</network_compression_method>
+        </admin>
+
+        <!--
+        Readonly profile: restricted for reports
+        -->
+        <readonly>
+            <!-- Lower memory limit for read-only queries -->
+            <max_memory_usage>2147483648</max_memory_usage>
+
+            <!-- 30 second timeout for queries -->
+            <max_execution_time>30</max_execution_time>
+
+            <!-- 100M rows max read -->
+            <max_rows_to_read>100000000</max_rows_to_read>
+
+            <!-- 50M rows max returned -->
+            <max_result_rows>50000000</max_result_rows>
+
+            <!-- No INSERT operations allowed -->
+            <max_insert_threads>0</max_insert_threads>
+
+            <!-- Enable compression -->
+            <network_compression_method>lz4</network_compression_method>
+        </readonly>
+
+        <!--
+        App profile: balanced for application use
+        -->
+        <app_profile>
+            <!-- 5GB memory limit -->
+            <max_memory_usage>5368709120</max_memory_usage>
+
+            <!-- 5 minute timeout -->
+            <max_execution_time>300</max_execution_time>
+
+            <!-- 500M rows read limit -->
+            <max_rows_to_read>500000000</max_rows_to_read>
+
+            <!-- 200M rows result limit -->
+            <max_result_rows>200000000</max_result_rows>
+
+            <!-- 4 INSERT threads -->
+            <max_insert_threads>4</max_insert_threads>
+
+            <!-- Compression enabled -->
+            <network_compression_method>lz4</network_compression_method>
+
+            <!-- Use query cache -->
+            <use_query_cache>1</use_query_cache>
+        </app_profile>
+
+        <!--
+        Replication profile: system operations
+        -->
+        <replication_profile>
+            <max_memory_usage>0</max_memory_usage>
+            <max_execution_time>0</max_execution_time>
+            <max_rows_to_read>0</max_rows_to_read>
+            <max_result_rows>0</max_result_rows>
+            <max_insert_threads>0</max_insert_threads>
+        </replication_profile>
+
+        <!--
+        Monitoring profile: lightweight queries
+        -->
+        <monitoring_profile>
+            <!-- 1GB memory limit -->
+            <max_memory_usage>1073741824</max_memory_usage>
+
+            <!-- 10 second timeout -->
+            <max_execution_time>10</max_execution_time>
+
+            <!-- 10M rows read limit -->
+            <max_rows_to_read>10000000</max_rows_to_read>
+
+            <!-- 5M rows result limit -->
+            <max_result_rows>5000000</max_result_rows>
+
+            <!-- Compression -->
+            <network_compression_method>lz4</network_compression_method>
+        </monitoring_profile>
+    </profiles>
+
+</yandex>

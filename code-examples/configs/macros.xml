@@ -1,0 +1,220 @@
+<?xml version="1.0"?>
+<yandex>
+    <!--
+    ClickHouse Macros Configuration
+
+    Macros are template variables that are expanded in table definitions
+    They are particularly important for replication and cluster setups
+
+    Format: {macro_name} in table definitions gets replaced with the value here
+
+    Usage Examples in CREATE TABLE statements:
+    - ReplicatedMergeTree('/clickhouse/tables/{shard}/{database}/{table}', '{replica}')
+    - Distributed('{cluster}', {database}, {table})
+
+    IMPORTANT: Each server in the cluster should have its own macros.xml
+    with unique values for 'shard' and 'replica' corresponding to its position
+    in the cluster topology
+    -->
+
+    <macros>
+        <!--
+        ============================================
+        SHARD DEFINITION (Horizontal Sharding)
+        ============================================
+        Shard identifies the data partition in a cluster.
+        Data is sharded (split) across different shards.
+        Each server belongs to exactly ONE shard.
+
+        Example cluster structure:
+        - Shard 01: clickhouse-shard-1-replica-1, clickhouse-shard-1-replica-2
+        - Shard 02: clickhouse-shard-2-replica-1, clickhouse-shard-2-replica-2
+        - Shard 03: clickhouse-shard-3-replica-1, clickhouse-shard-3-replica-2
+
+        This server is in shard 01
+        -->
+        <shard>01</shard>
+
+        <!--
+        ============================================
+        REPLICA DEFINITION (Vertical Replication)
+        ============================================
+        Replica identifies the copy within a shard.
+        All replicas in the same shard have identical data.
+        Replication happens automatically via ZooKeeper.
+
+        Within Shard 01:
+        - Replica 01: Primary (master)
+        - Replica 02: Secondary (slave, replicates from primary)
+
+        This server is replica 01 (primary) in shard 01
+        Note: Replica numbers must be unique within a shard
+        -->
+        <replica>01</replica>
+
+        <!--
+        ============================================
+        CLUSTER NAME
+        ============================================
+        Name of the cluster definition from config.xml remote_servers section.
+        Used for Distributed table engine and ON CLUSTER DDL operations.
+
+        This must match a cluster name defined in config.xml:
+        <remote_servers>
+            <production>
+                ...
+            </production>
+        </remote_servers>
+
+        The cluster defines which servers participate in distributed operations.
+        -->
+        <cluster>production</cluster>
+
+        <!--
+        ============================================
+        DATABASE NAME (Optional)
+        ============================================
+        Useful for separating concerns in ZooKeeper paths
+        Can help with multi-tenant setups
+        -->
+        <database>default</database>
+
+        <!--
+        ============================================
+        ENVIRONMENT/TIER IDENTIFICATION (Optional but Recommended)
+        ============================================
+        Useful for distinguishing production/staging/development
+        -->
+        <environment>production</environment>
+
+        <!--
+        Node identifier: hostname or unique server identifier
+        Useful for logging and debugging
+        -->
+        <node>clickhouse-shard-1-replica-1</node>
+
+        <!--
+        ============================================
+        ZOOKEEPER PATH PREFIX (Optional)
+        ============================================
+        Prefix for all ZooKeeper paths created by tables on this server
+        Helps organize the ZooKeeper namespace
+
+        Example ZooKeeper paths:
+        /clickhouse/tables/01/my_database/my_table/replicas/01
+        -->
+        <zk_path>/clickhouse</zk_path>
+    </macros>
+
+    <!--
+    ============================================
+    MACRO USAGE EXAMPLES
+    ============================================
+
+    Example 1: ReplicatedMergeTree with Macros
+
+    CREATE TABLE events ON CLUSTER {cluster}
+    (
+        event_id UInt64,
+        event_time DateTime,
+        event_type String
+    )
+    ENGINE = ReplicatedMergeTree(
+        '/clickhouse/tables/{shard}/{database}/{table}',
+        '{replica}'
+    )
+    ORDER BY (event_time, event_id)
+    PARTITION BY toYYYYMM(event_time);
+
+    On shard-1-replica-1: Expands to:
+    ReplicatedMergeTree('/clickhouse/tables/01/default/events', '01')
+
+    On shard-1-replica-2: Expands to:
+    ReplicatedMergeTree('/clickhouse/tables/01/default/events', '02')
+
+    Both replicas share the same ZK path (/clickhouse/tables/01/default/events)
+    but have different replica IDs (01 and 02), enabling replication.
+
+    ============================================
+
+    Example 2: Distributed Table with Macros
+
+    CREATE TABLE events_distributed ON CLUSTER {cluster}
+    (
+        event_id UInt64,
+        event_time DateTime,
+        event_type String
+    )
+    ENGINE = Distributed('{cluster}', '{database}', events);
+
+    On any server: Expands to:
+    ENGINE = Distributed('production', 'default', events)
+
+    This tells ClickHouse to:
+    - Use the 'production' cluster definition
+    - Query the 'events' table from the 'default' database on all nodes
+    - Combine results from all shards
+
+    ============================================
+
+    Example 3: ClickHouse Keeper Path Organization
+
+    ZK Path Pattern: /clickhouse/tables/{shard}/{database}/{table}/replicas/{replica}
+
+    This expands to:
+    /clickhouse/tables/01/default/events/replicas/01
+
+    The ZooKeeper hierarchy will look like:
+    /clickhouse
+    ├── tables
+    │   ├── 01
+    │   │   ├── default
+    │   │   │   ├── events
+    │   │   │   │   ├── replicas
+    │   │   │   │   │   ├── 01
+    │   │   │   │   │   └── 02
+    │   │   │   └── logs
+    │   │   │       └── events
+    │   │   ├── 02
+    │   │   └── 03
+    │   └── task_queue
+    │       └── ddl
+
+    ============================================
+
+    CLUSTER CONFIGURATION MAPPING:
+
+    If you have this in config.xml remote_servers:
+
+    <remote_servers>
+        <production>
+            <shard>
+                <replica>
+                    <host>ch-shard-1-replica-1</host>
+                </replica>
+                <replica>
+                    <host>ch-shard-1-replica-2</host>
+                </replica>
+            </shard>
+            <shard>
+                <replica>
+                    <host>ch-shard-2-replica-1</host>
+                </replica>
+                <replica>
+                    <host>ch-shard-2-replica-2</host>
+                </replica>
+            </shard>
+        </production>
+    </remote_servers>
+
+    Then your macros should be:
+
+    On ch-shard-1-replica-1: <shard>01</shard> <replica>01</replica>
+    On ch-shard-1-replica-2: <shard>01</shard> <replica>02</replica>
+    On ch-shard-2-replica-1: <shard>02</shard> <replica>01</replica>
+    On ch-shard-2-replica-2: <shard>02</shard> <replica>02</replica>
+
+    ============================================
+    -->
+
+</yandex>

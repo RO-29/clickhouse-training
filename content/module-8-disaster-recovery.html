@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module 8: ClickHouse Disaster Recovery & Business Continuity</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+            color: white;
+            padding: 60px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 3em;
+            font-weight: bold;
+        }
+        .header .subtitle {
+            font-size: 1.3em;
+            margin-top: 10px;
+            opacity: 0.95;
+        }
+        .nav-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            padding: 30px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #ff6b35;
+            transition: transform 0.2s;
+        }
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            background: white;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        .section {
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .section-header {
+            background: #ff6b35;
+            color: white;
+            padding: 15px 20px;
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+        .section-content {
+            padding: 30px;
+        }
+        .highlight-box {
+            background: #fff9e6;
+            border-left: 4px solid #ffb82e;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .card {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .card h4 {
+            margin-top: 0;
+            color: #ff6b35;
+        }
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            margin: 15px 0;
+            font-size: 0.9em;
+        }
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .bad, .good {
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .bad {
+            background: #ffe6e6;
+            border-left: 4px solid #e74c3c;
+        }
+        .good {
+            background: #e6f7ed;
+            border-left: 4px solid #27ae60;
+        }
+        .badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .badge-bad {
+            background: #e74c3c;
+            color: white;
+        }
+        .badge-good {
+            background: #27ae60;
+            color: white;
+        }
+        .badge-warning {
+            background: #ffb82e;
+            color: #333;
+        }
+        ul {
+            line-height: 1.8;
+        }
+        .icon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .icon-card {
+            text-align: center;
+            padding: 30px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        .icon-card .icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+        h3 {
+            color: #333;
+            border-bottom: 2px solid #ff6b35;
+            padding-bottom: 10px;
+            margin-top: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        table th, table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        table th {
+            background: #ff6b35;
+            color: white;
+        }
+        table tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .metric-box {
+            background: #fff9e6;
+            border: 2px solid #ffb82e;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+        .metric-box .value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #ff6b35;
+            margin: 10px 0;
+        }
+        .metric-box .label {
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🔄 MODULE 8</h1>
+    <div class="subtitle">Disaster Recovery & Business Continuity</div>
+    <div class="subtitle" style="font-size: 1em; margin-top: 20px;">Duration: 4-5 hours | Week 8</div>
+</div>
+
+<div style="background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);">
+    <div class="nav-buttons">
+        <div class="nav-btn">📖 What is it?</div>
+        <div class="nav-btn">🚀 Quick Start</div>
+        <div class="nav-btn">💻 Commands</div>
+        <div class="nav-btn">✨ Best Practices</div>
+        <div class="nav-btn">🎯 When to Use</div>
+        <div class="nav-btn">🏆 Real-World Results</div>
+        <div class="nav-btn">📋 Templates</div>
+        <div class="nav-btn">🔥 Advanced</div>
+        <div class="nav-btn">📚 Resources</div>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- What is it Section -->
+    <div class="section">
+        <div class="section-header">📖 What is Disaster Recovery & Business Continuity?</div>
+        <div class="section-content">
+            <div class="highlight-box">
+                <h4 style="margin-top: 0;">DR & BC in ClickHouse</h4>
+                <p><strong>Disaster Recovery (DR)</strong> is the process of preparing for and recovering from data loss or system failures to minimize downtime and data loss. <strong>Business Continuity (BC)</strong> ensures your operations continue or quickly resume after a disaster. In ClickHouse, this involves multi-datacenter setups, replication strategies, failover procedures, and data consistency verification.</p>
+            </div>
+
+            <div class="icon-grid">
+                <div class="icon-card">
+                    <div class="icon">🌍</div>
+                    <h4>Multi-Datacenter Setup</h4>
+                    <p>Distribute ClickHouse clusters across geographic regions for high availability and disaster resilience.</p>
+                </div>
+                <div class="icon-card">
+                    <div class="icon">🔁</div>
+                    <h4>Replication</h4>
+                    <p>Real-time data copying between primary and backup systems to minimize data loss (RPO).</p>
+                </div>
+                <div class="icon-card">
+                    <div class="icon">⚡</div>
+                    <h4>Failover</h4>
+                    <p>Automatic or manual switching to backup systems to minimize downtime (RTO).</p>
+                </div>
+                <div class="icon-card">
+                    <div class="icon">✓</div>
+                    <h4>Consistency Verification</h4>
+                    <p>Ensure data remains consistent and complete across all replicas and datacenters.</p>
+                </div>
+            </div>
+
+            <h3>Key DR/BC Metrics</h3>
+            <div class="metrics-grid">
+                <div class="metric-box">
+                    <div class="label">Recovery Time Objective</div>
+                    <div class="value">RTO</div>
+                    <p>Max acceptable downtime (minutes/hours)</p>
+                </div>
+                <div class="metric-box">
+                    <div class="label">Recovery Point Objective</div>
+                    <div class="value">RPO</div>
+                    <p>Max acceptable data loss (minutes/hours)</p>
+                </div>
+                <div class="metric-box">
+                    <div class="label">Availability Target</div>
+                    <div class="value">SLA</div>
+                    <p>99.9%, 99.99%, or 99.999%</p>
+                </div>
+                <div class="metric-box">
+                    <div class="label">Replication Lag</div>
+                    <div class="value">Sync</div>
+                    <p>Real-time vs asynchronous</p>
+                </div>
+            </div>
+
+            <h3>Active-Passive vs Active-Active</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Aspect</th>
+                        <th>Active-Passive</th>
+                        <th>Active-Active</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Primary System</strong></td>
+                        <td>Always active, handles all traffic</td>
+                        <td>Both systems active simultaneously</td>
+                    </tr>
+                    <tr style="background: #f9f9f9;">
+                        <td><strong>Backup System</strong></td>
+                        <td>Idle, receives replicated data</td>
+                        <td>Active, handles reads/writes in parallel</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Failover Time</strong></td>
+                        <td>Minutes to hours</td>
+                        <td>Immediate (no failover needed)</td>
+                    </tr>
+                    <tr style="background: #f9f9f9;">
+                        <td><strong>Resource Efficiency</strong></td>
+                        <td>Wastes backup resources</td>
+                        <td>Full utilization, load balanced</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Complexity</strong></td>
+                        <td>Simple, low operational overhead</td>
+                        <td>Complex, requires coordination</td>
+                    </tr>
+                    <tr style="background: #f9f9f9;">
+                        <td><strong>Cost</strong></td>
+                        <td>Lower initial cost</td>
+                        <td>Higher infrastructure cost</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Data Consistency</strong></td>
+                        <td>Easier to maintain</td>
+                        <td>Requires write coordination</td>
+                    </tr>
+                    <tr style="background: #f9f9f9;">
+                        <td><strong>Use Case</strong></td>
+                        <td>Most ClickHouse deployments</td>
+                        <td>Mission-critical with high SLA</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>DR Strategy Levels</h3>
+            <div class="grid-2">
+                <div class="card">
+                    <h4>Level 1: Backup & Restore</h4>
+                    <p>Regular backups, manual recovery on disaster</p>
+                    <ul>
+                        <li>RTO: Hours to days</li>
+                        <li>RPO: Hours to days</li>
+                        <li>Cost: Low</li>
+                        <li>Complexity: Low</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h4>Level 2: Active-Passive Replication</h4>
+                    <p>Real-time replication to standby</p>
+                    <ul>
+                        <li>RTO: Minutes</li>
+                        <li>RPO: Seconds to minutes</li>
+                        <li>Cost: Medium</li>
+                        <li>Complexity: Medium</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h4>Level 3: Multi-Datacenter Replication</h4>
+                    <p>Replication across geographic regions</p>
+                    <ul>
+                        <li>RTO: Seconds</li>
+                        <li>RPO: Seconds</li>
+                        <li>Cost: High</li>
+                        <li>Complexity: High</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h4>Level 4: Active-Active Geo-Replication</h4>
+                    <p>Multi-region active clusters, full redundancy</p>
+                    <ul>
+                        <li>RTO: Milliseconds</li>
+                        <li>RPO: Milliseconds</li>
+                        <li>Cost: Very High</li>
+                        <li>Complexity: Very High</li>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Quick Start Section -->
+    <div class="section">
+        <div class="section-header">🚀 Quick Start: DR Setup</div>
+        <div class="section-content">
+
+            <h3>1. Basic Active-Passive Setup (2-Cluster)</h3>
+            <p>Setup primary and secondary clusters in different locations with real-time replication.</p>
+
+            <div class="card">
+                <h4>Primary Datacenter (DC1) - Main Processing</h4>
+                <div class="code-block">-- DC1: Create replicated table
+CREATE TABLE events (
+    event_time DateTime,
+    user_id UInt64,
+    event_type String
+) ENGINE = ReplicatedMergeTree(
+    '/clickhouse/tables/events',
+    'dc1-replica1'
+) PARTITION BY toYYYYMM(event_time)
+ORDER BY event_time;
+
+-- Insert data
+INSERT INTO events VALUES
+    (now(), 1001, 'click'),
+    (now(), 1002, 'purchase');</div>
+            </div>
+
+            <div class="card">
+                <h4>Secondary Datacenter (DC2) - Standby (Read-Only)</h4>
+                <div class="code-block">-- DC2: Create replicated table with same ZooKeeper path
+CREATE TABLE events (
+    event_time DateTime,
+    user_id UInt64,
+    event_type String
+) ENGINE = ReplicatedMergeTree(
+    '/clickhouse/tables/events',
+    'dc2-replica1'
+) PARTITION BY toYYYYMM(event_time)
+ORDER BY event_time;
+
+-- DC2 replica automatically receives data from DC1
+-- Queries work on replicated data</div>
+            </div>
+
+            <h3>2. Configure ZooKeeper for Coordination</h3>
+            <div class="code-block"># /etc/clickhouse-server/config.d/zookeeper.xml
+
+&lt;zookeeper>
+    &lt;node>
+        &lt;host>zk1.dc1.example.com&lt;/host>
+        &lt;port>2181&lt;/port>
+    &lt;/node>
+    &lt;node>
+        &lt;host>zk2.dc1.example.com&lt;/host>
+        &lt;port>2181&lt;/port>
+    &lt;/node>
+    &lt;node>
+        &lt;host>zk3.dc2.example.com&lt;/host>
+        &lt;port>2181&lt;/port>
+    &lt;/node>
+&lt;/zookeeper></div>
+
+            <h3>3. Monitor Replication Status</h3>
+            <div class="code-block">-- Check replication lag
+SELECT
+    database,
+    table,
+    replica_name,
+    absolute_delay,
+    relative_delay,
+    queue_size
+FROM system.replication_queue
+WHERE database != 'system';
+
+-- Check replica status
+SELECT
+    table,
+    replica_name,
+    is_leader,
+    is_readonly,
+    log_pointer,
+    inserts_in_queue,
+    merges_in_queue
+FROM system.replicas;</div>
+
+            <h3>4. Manual Failover Procedure</h3>
+            <div class="code-block">-- STEP 1: Verify DC2 has all data from DC1
+SELECT COUNT(*) FROM events;  -- Run on both DC1 and DC2
+
+-- STEP 2: Stop writes to DC1 (application level)
+-- Update application config to point to DC2
+
+-- STEP 3: Wait for replication queue to clear
+SELECT
+    database,
+    table,
+    queue_size
+FROM system.replication_queue
+WHERE queue_size > 0;
+
+-- STEP 4: Promote DC2 to PRIMARY
+-- Update connection strings and DNS to point to DC2
+
+-- STEP 5: Verify no data loss
+SELECT COUNT(*) FROM events;  -- Should match DC1
+
+-- STEP 6: Resume writes on DC2
+-- Application now writes to DC2</div>
+
+        </div>
+    </div>
+
+    <!-- Commands Reference Section -->
+    <div class="section">
+        <div class="section-header">💻 DR Commands Reference</div>
+        <div class="section-content">
+
+            <h3>Replication Monitoring</h3>
+            <div class="code-block">-- Check replication lag for all tables
+SELECT
+    database,
+    table,
+    replica_name,
+    absolute_delay,
+    relative_delay,
+    queue_size,
+    inserts_in_queue,
+    merges_in_queue
+FROM system.replication_queue
+WHERE database != 'system'
+ORDER BY absolute_delay DESC;
+
+-- Check replica status details
+SELECT
+    database,
+    table,
+    replica_name,
+    is_leader,
+    is_readonly,
+    zookeeper_path,
+    log_pointer
+FROM system.replicas
+WHERE database != 'system';
+
+-- Monitor large queue (potential issues)
+SELECT
+    database,
+    table,
+    replica_name,
+    queue_size,
+    inserts_in_queue,
+    merges_in_queue
+FROM system.replication_queue
+WHERE queue_size > 100;
+
+-- Verify replicas are synced (same log_pointer)
+SELECT
+    table,
+    replica_name,
+    log_pointer
+FROM system.replicas
+WHERE database = 'your_database'
+ORDER BY table, replica_name;
+
+            <h3>Backup & Recovery Commands</h3>
+            <div class="code-block">-- Create full backup for recovery
+BACKUP TABLE events TO '/backup/events_backup';
+
+-- List all backups
+SELECT * FROM system.backup_list;
+
+-- Restore from backup
+RESTORE TABLE events FROM '/backup/events_backup';
+
+-- Backup to S3 for off-site storage
+BACKUP TABLE events TO 's3://my-bucket/clickhouse/backup';
+
+-- Backup all databases
+BACKUP DATABASE mydb TO '/backups/mydb';
+
+        </div>
+    </div>
+
+    <!-- Best Practices Section -->
+    <div class="section">
+        <div class="section-header">✨ DR & BC Best Practices</div>
+        <div class="section-content">
+
+            <h3>1. RTO/RPO Planning</h3>
+            <div class="comparison">
+                <div class="bad">
+                    <div class="badge badge-bad">❌ No DR Planning</div>
+                    <div class="code-block">-- No replication
+CREATE TABLE events (...) ENGINE = MergeTree();
+
+-- No backup strategy
+-- Hope your data is safe!</div>
+                    <p><strong>Risk:</strong> Data loss, weeks to recover, millions in losses</p>
+                </div>
+
+                <div class="good">
+                    <div class="badge badge-good">✅ Good DR Strategy</div>
+                    <div class="code-block">-- Define RTO/RPO
+-- RTO: 15 minutes
+-- RPO: 1 minute
+
+-- Active-passive replication
+CREATE TABLE events (...)
+ENGINE = ReplicatedMergeTree(...)
+
+-- Automated backups
+-- Daily full backups
+-- Hourly incremental backups</div>
+                    <p><strong>Benefit:</strong> Quick recovery, minimal data loss, business continuity</p>
+                </div>
+            </div>
+
+            <h3>2. Multi-Datacenter Setup</h3>
+            <div class="card">
+                <h4>Optimal Architecture</h4>
+                <div class="code-block">DATACENTER 1 (Primary)          DATACENTER 2 (Standby)
+┌─────────────────────────┐    ┌──────────────────────────┐
+│ ClickHouse Cluster      │    │ ClickHouse Cluster       │
+│ - 3 Nodes               │    │ - 3 Nodes                │
+│ - ReplicatedMergeTree   │←───│ - ReplicatedMergeTree    │
+│ - Accept writes         │    │ - Read-only (standby)    │
+└─────────────────────────┘    └──────────────────────────┘
+        ↓                                ↓
+  ZooKeeper 1,2,3            ZooKeeper 3 (voting member)
+        ↓                                ↓
+    Database                        Backup Database</div>
+                <ul>
+                    <li>Use cross-datacenter ZooKeeper quorum (5 total: 3 in DC1, 2 in DC2 or 1 in DC2)</li>
+                    <li>Replicate all tables automatically to standby cluster</li>
+                    <li>Use DNS alias for connection strings (easy failover)</li>
+                    <li>Monitor replication lag continuously</li>
+                    <li>Test failover regularly (monthly)</li>
+                </ul>
+            </div>
+
+            <h3>3. Active-Active Setup (Advanced)</h3>
+            <div class="card">
+                <h4>When to Use Active-Active</h4>
+                <ul>
+                    <li>Mission-critical systems requiring 99.999% uptime</li>
+                    <li>Geographic load balancing across regions</li>
+                    <li>Need to serve queries during disaster scenario</li>
+                    <li>High cost tolerance for infrastructure</li>
+                </ul>
+                <h4>Challenges</h4>
+                <ul>
+                    <li>Write coordination required (prevents conflicts)</li>
+                    <li>Network latency between datacenters (usually 50-200ms)</li>
+                    <li>Complexity in failover/failback procedures</li>
+                    <li>Eventual consistency considerations</li>
+                </ul>
+            </div>
+
+            <h3>4. Failover Procedures</h3>
+            <div class="card">
+                <h4>Automated Failover Checklist</h4>
+                <ol>
+                    <li>Monitor primary cluster health continuously</li>
+                    <li>Detect failure (leader down, replication lag > threshold)</li>
+                    <li>Verify secondary is healthy and has all data</li>
+                    <li>Update DNS to point to secondary (30 second TTL)</li>
+                    <li>Notify operations team and stakeholders</li>
+                    <li>Update application config (circuit breaker)</li>
+                    <li>Monitor secondary for anomalies</li>
+                    <li>Begin investigation of primary failure</li>
+                </ol>
+            </div>
+
+            <h3>5. Data Consistency Verification</h3>
+            <div class="highlight-box">
+                <h4>Regular Consistency Checks</h4>
+                <div class="code-block">-- Compare row counts across all replicas
+SELECT
+    database,
+    table,
+    replica_name,
+    COUNT(*) as row_count
+FROM system.replicas r
+JOIN (SELECT database, table, COUNT(*) as cnt
+      FROM your_table GROUP BY 1, 2) t
+  ON r.database = t.database AND r.table = t.table
+GROUP BY database, table, replica_name
+ORDER BY database, table;
+
+-- Run checksums to verify data integrity
+SELECT
+    database,
+    table,
+    sum(rows) as total_rows,
+    sum(bytes_on_disk) as total_bytes
+FROM system.parts
+WHERE active AND database NOT IN ('system')
+GROUP BY database, table;
+
+            <h3>6. DR Testing & Drills</h3>
+            <div class="highlight-box">
+                <h4>Monthly DR Drill Procedure</h4>
+                <ol>
+                    <li><strong>Pre-test:</strong> Get approval from stakeholders</li>
+                    <li><strong>Baseline:</strong> Document current metrics (row counts, query latency)</li>
+                    <li><strong>Simulate primary failure:</strong> Temporarily down primary nodes</li>
+                    <li><strong>Initiate failover:</strong> Switch traffic to secondary</li>
+                    <li><strong>Validate:</strong> Run sample queries, verify no data loss</li>
+                    <li><strong>Load test:</strong> Simulate user traffic, monitor performance</li>
+                    <li><strong>Document issues:</strong> Note any problems or anomalies</li>
+                    <li><strong>Failback:</strong> Restore primary and switch back</li>
+                    <li><strong>Post-mortem:</strong> Review and improve DR procedures</li>
+                </ol>
+            </div>
+
+            <h3>7. Geo-Replication Considerations</h3>
+            <div class="grid-2">
+                <div class="card">
+                    <h4>Network Latency Impact</h4>
+                    <ul>
+                        <li>50-100ms: Acceptable for most setups</li>
+                        <li>100-200ms: May require optimization</li>
+                        <li>200ms+: Async replication recommended</li>
+                        <li>Use network optimization (dedicated links, compression)</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h4>Data Size Implications</h4>
+                    <ul>
+                        <li>Calculate bandwidth needed: (Daily data size) / 24 hours</li>
+                        <li>Plan for replication + backups</li>
+                        <li>Consider storage costs across regions</li>
+                        <li>Monitor and optimize data growth</li>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- When to Use Section -->
+    <div class="section">
+        <div class="section-header">🎯 When to Use Each DR Strategy</div>
+        <div class="section-content">
+
+            <div class="grid-2">
+                <div class="card" style="background: #fff9e6;">
+                    <h4>Level 1: Backups Only</h4>
+                    <p><strong>For:</strong> Non-critical systems, development, testing</p>
+                    <ul>
+                        <li>RTO: 4-24 hours</li>
+                        <li>RPO: 4-24 hours</li>
+                        <li>Cost: Minimal</li>
+                        <li>Complexity: Low</li>
+                    </ul>
+                </div>
+
+                <div class="card" style="background: #e6f7ed;">
+                    <h4>Level 2: Active-Passive</h4>
+                    <p><strong>For:</strong> Production systems, most enterprises</p>
+                    <ul>
+                        <li>RTO: 15-60 minutes</li>
+                        <li>RPO: 1-5 minutes</li>
+                        <li>Cost: Medium</li>
+                        <li>Complexity: Medium</li>
+                    </ul>
+                </div>
+
+                <div class="card" style="background: #e6f2ff;">
+                    <h4>Level 3: Multi-Datacenter</h4>
+                    <p><strong>For:</strong> Mission-critical services, SLA > 99.9%</p>
+                    <ul>
+                        <li>RTO: 1-15 minutes</li>
+                        <li>RPO: 10-60 seconds</li>
+                        <li>Cost: High</li>
+                        <li>Complexity: High</li>
+                    </ul>
+                </div>
+
+                <div class="card" style="background: #f0e6ff;">
+                    <h4>Level 4: Active-Active</h4>
+                    <p><strong>For:</strong> Ultra-critical systems, SLA = 99.999%</p>
+                    <ul>
+                        <li>RTO: < 1 second</li>
+                        <li>RPO: < 1 second</li>
+                        <li>Cost: Very High</li>
+                        <li>Complexity: Very High</li>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Real-World Results Section -->
+    <div class="section">
+        <div class="section-header">🏆 Real-World DR Results</div>
+        <div class="section-content">
+
+            <div class="icon-grid">
+                <div class="icon-card" style="background: #fff9e6;">
+                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">15 min</div>
+                    <h4>Failover Time</h4>
+                    <p>Active-passive setup: Time from primary failure to secondary taking over</p>
+                </div>
+
+                <div class="icon-card" style="background: #e6f7ed;">
+                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">< 1 min</div>
+                    <h4>RPO Achieved</h4>
+                    <p>Data loss limited to < 1 minute with proper replication setup</p>
+                </div>
+
+                <div class="icon-card" style="background: #e6f2ff;">
+                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">99.99%</div>
+                    <h4>Uptime SLA</h4>
+                    <p>Achievable with multi-datacenter + active-passive replication</p>
+                </div>
+
+                <div class="icon-card" style="background: #f0e6ff;">
+                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">50%</div>
+                    <h4>Cost Savings</h4>
+                    <p>Active-passive vs active-active for most deployments</p>
+                </div>
+            </div>
+
+            <h3>Case Study 1: E-commerce Platform</h3>
+            <div class="card">
+                <h4>Challenge</h4>
+                <p>Handle Black Friday traffic spikes (10M events/min) across multiple regions with 99.99% SLA</p>
+                <h4>Solution</h4>
+                <ul>
+                    <li>Multi-datacenter active-passive setup (US-East primary, US-West standby)</li>
+                    <li>Real-time replication with < 1 second lag</li>
+                    <li>Automated failover detection (health checks every 10 seconds)</li>
+                    <li>Monthly DR drills to ensure readiness</li>
+                </ul>
+                <h4>Results</h4>
+                <ul>
+                    <li>RTO: 2 minutes (vs 4 hours previously)</li>
+                    <li>RPO: 10 seconds (vs 1 day)</li>
+                    <li>Achieved 99.99% uptime consistently</li>
+                    <li>Zero customer-facing incidents in 2 years</li>
+                </ul>
+            </div>
+
+            <h3>Case Study 2: Financial Analytics</h3>
+            <div class="card">
+                <h4>Challenge</h4>
+                <p>Regulatory compliance required data recovery within 1 hour; 5TB of daily transaction data</p>
+                <h4>Solution</h4>
+                <ul>
+                    <li>Hourly full backups to S3</li>
+                    <li>Active-passive replication to secondary datacenter</li>
+                    <li>Automated backup verification (checksums)</li>
+                    <li>Quarterly failover tests with compliance audits</li>
+                </ul>
+                <h4>Results</h4>
+                <ul>
+                    <li>RTO: 45 minutes (well under 1 hour requirement)</li>
+                    <li>RPO: 30 minutes</li>
+                    <li>100% backup success rate</li>
+                    <li>Passed all compliance audits</li>
+                </ul>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Templates Section -->
+    <div class="section">
+        <div class="section-header">📋 DR Templates</div>
+        <div class="section-content">
+
+            <h3>Template 1: DR Monitoring Dashboard Query</h3>
+            <div class="code-block">-- Use this query in Grafana/superset for monitoring
+SELECT
+    database,
+    table,
+    replica_name,
+    absolute_delay as replication_lag_seconds,
+    queue_size,
+    inserts_in_queue,
+    merges_in_queue,
+    is_leader,
+    is_readonly,
+    now() as check_time
+FROM system.replication_queue
+WHERE database NOT IN ('system')
+ORDER BY absolute_delay DESC;
+
+-- Alert conditions:
+-- - absolute_delay > 300 (5 min lag): WARN
+-- - absolute_delay > 3600 (1 hour lag): CRITICAL
+-- - queue_size > 1000: CRITICAL
+-- - replica unavailable: CRITICAL
+
+            <h3>Template 2: Automated Backup Script</h3>
+            <div class="code-block">#!/bin/bash
+# Daily backup to S3 with retention policy
+
+set -e
+
+BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
+BACKUP_DIR="/var/clickhouse/backup/$BACKUP_DATE"
+S3_BUCKET="s3://my-backups/clickhouse"
+RETENTION_DAYS=30
+
+# Create backup
+mkdir -p "$BACKUP_DIR"
+clickhouse-client --query="BACKUP DATABASE mydb TO '$BACKUP_DIR'"
+
+# Upload to S3
+aws s3 sync "$BACKUP_DIR" "$S3_BUCKET/$BACKUP_DATE"
+
+# Clean old backups (locally keep last 3)
+find /var/clickhouse/backup -maxdepth 1 -type d -mtime +3 -exec rm -rf {} \;
+
+# Log backup status
+echo "Backup $BACKUP_DATE completed successfully" >> /var/log/backups.log
+
+# Send notification
+curl -X POST https://alerts.example.com/backup \
+  -d "status=success&date=$BACKUP_DATE&size=$(du -sh $BACKUP_DIR | cut -f1)"
+
+            <h3>Template 3: Multi-Datacenter Config</h3>
+            <div class="code-block"># /etc/clickhouse-server/config.d/remote_servers.xml
+
+&lt;yandex>
+  &lt;remote_servers>
+    &lt;mycluster>
+      &lt;shard>
+        &lt;!-- Replica 1 in DC1 -->
+        &lt;replica>
+          &lt;host>ch1.dc1.example.com&lt;/host>
+          &lt;port>9000&lt;/port>
+        &lt;/replica>
+        &lt;!-- Replica 2 in DC1 -->
+        &lt;replica>
+          &lt;host>ch2.dc1.example.com&lt;/host>
+          &lt;port>9000&lt;/port>
+        &lt;/replica>
+      &lt;/shard>
+      &lt;shard>
+        &lt;!-- Replica 1 in DC2 -->
+        &lt;replica>
+          &lt;host>ch1.dc2.example.com&lt;/host>
+          &lt;port>9000&lt;/port>
+        &lt;/replica>
+      &lt;/shard>
+    &lt;/mycluster>
+  &lt;/remote_servers>
+&lt;/yandex>
+
+        </div>
+    </div>
+
+    <!-- Advanced Patterns Section -->
+    <div class="section">
+        <div class="section-header">🔥 Advanced DR Patterns</div>
+        <div class="section-content">
+
+            <h3>1. Cascading Replication (Multi-Tier)</h3>
+            <p>For very large clusters, use cascading replication to reduce network traffic</p>
+            <div class="code-block">PRIMARY CLUSTER          REGIONAL REPLICAS        EDGE REPLICAS
+(US-East)               (US-West, EU, APAC)      (City-level)
+
+DC1-Primary ──┬──→ DC2 Replica ─────→ DC3 Replica (read-only)
+              │
+              └──→ DC4 Replica (Europe) → DC5 Replica (read-only)
+
+              └──→ DC6 Replica (APAC)   → DC7 Replica (read-only)
+
+Benefits:
+- Primary only replicates to 3 regional replicas
+- Regional replicas propagate to edge locations
+- Reduces network load on primary
+- Better latency for edge queries
+
+            <h3>2. Hybrid Active-Active with Regional Partitioning</h3>
+            <div class="code-block">-- DC1 handles US region writes
+CREATE TABLE events (
+    event_time DateTime,
+    region LowCardinality(String),
+    data String
+) ENGINE = ReplicatedMergeTree(...)
+PARTITION BY (region, toYYYYMM(event_time))
+ORDER BY (region, event_time)
+WHERE region IN ('US-East', 'US-West');
+
+-- DC2 handles EU region writes
+-- DC3 handles APAC region writes
+
+-- Global view (for queries)
+CREATE VIEW events_global AS
+SELECT * FROM events
+UNION ALL
+SELECT * FROM remote('dc2', 'db', 'events')
+UNION ALL
+SELECT * FROM remote('dc3', 'db', 'events');
+
+Benefits:
+- Each region primary handles its writes
+- No write conflicts (partitioned by region)
+- Can failover region independently
+- Near-local latency for reads/writes
+
+            <h3>3. Automatic Failover with Health Checks</h3>
+            <div class="code-block">-- Monitoring script that detects failures
+#!/bin/bash
+
+PRIMARY="ch-primary.example.com:8123"
+SECONDARY="ch-secondary.example.com:8123"
+CHECK_INTERVAL=10
+FAILURE_THRESHOLD=3
+
+consecutive_failures=0
+
+while true; do
+    # Check primary health
+    if ! curl -s "http://$PRIMARY/?query=SELECT%201" | grep -q "1"; then
+        ((consecutive_failures++))
+
+        if [ $consecutive_failures -ge $FAILURE_THRESHOLD ]; then
+            # Trigger failover
+            echo "Primary failed $FAILURE_THRESHOLD times. Initiating failover..."
+
+            # Verify secondary is healthy
+            if curl -s "http://$SECONDARY/?query=SELECT%20COUNT(*)" > /dev/null; then
+                # Update DNS
+                aws route53 change-resource-record-sets \
+                  --hosted-zone-id ZONE_ID \
+                  --change-batch "{
+                    \"Changes\": [{
+                      \"Action\": \"UPSERT\",
+                      \"ResourceRecordSet\": {
+                        \"Name\": \"clickhouse.example.com\",
+                        \"Type\": \"A\",
+                        \"TTL\": 30,
+                        \"ResourceRecords\": [{\"Value\": \"$SECONDARY\"}]
+                      }
+                    }]
+                  }"
+
+                # Notify team
+                slack_notify "Failover completed: traffic now to secondary"
+                consecutive_failures=0
+            fi
+        fi
+    else
+        consecutive_failures=0
+    fi
+
+    sleep $CHECK_INTERVAL
+done
+
+            <h3>4. ZooKeeper Cluster Setup for DR</h3>
+            <div class="code-block">-- Optimal ZooKeeper setup for disaster recovery
+-- Use 5 nodes total:
+-- - 3 in primary datacenter (voting members)
+-- - 2 in secondary datacenter (voting members or observers)
+
+# zoo.cfg on all servers
+server.1=zk1.dc1.example.com:2888:3888
+server.2=zk2.dc1.example.com:2888:3888
+server.3=zk3.dc1.example.com:2888:3888
+server.4=zk1.dc2.example.com:2888:3888
+server.5=zk2.dc2.example.com:2888:3888
+
+# For DC2 observers (non-voting):
+server.4=zk1.dc2.example.com:2888:3888:observer
+server.5=zk2.dc2.example.com:2888:3888:observer
+
+-- Ensures quorum survives primary datacenter failure
+-- Voting members: 3 (majority of 5)
+-- Can lose primary DC and still have quorum
+
+        </div>
+    </div>
+
+    <!-- Resources Section -->
+    <div class="section">
+        <div class="section-header">📚 DR & BC Resources</div>
+        <div class="section-content">
+
+            <div class="grid-2">
+                <div class="card">
+                    <h4>📖 Official Documentation</h4>
+                    <ul>
+                        <li><a href="https://clickhouse.com/docs/en/operations/backup" target="_blank">Backup & Restore</a></li>
+                        <li><a href="https://clickhouse.com/docs/en/operations/replication/overview" target="_blank">Replication Overview</a></li>
+                        <li><a href="https://clickhouse.com/docs/en/operations/distributed-setup" target="_blank">Distributed Setup</a></li>
+                        <li><a href="https://clickhouse.com/docs/en/operations/access-rights" target="_blank">Access & Security</a></li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h4>🛠️ Operational Tools</h4>
+                    <ul>
+                        <li><a href="https://github.com/getndazn/clickhouse-kafka-connect" target="_blank">ClickHouse Kafka Connect</a></li>
+                        <li><a href="https://github.com/ClickHouse/clickhouse-go" target="_blank">Go Client Library</a></li>
+                        <li><a href="https://altinity.com/docs/" target="_blank">Altinity Docs (Commercial)</a></li>
+                        <li><a href="https://www.zookeeper.apache.org/" target="_blank">Apache ZooKeeper</a></li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h4>📊 Monitoring & Observability</h4>
+                    <ul>
+                        <li><a href="https://grafana.com/" target="_blank">Grafana Dashboard</a></li>
+                        <li><a href="https://prometheus.io/" target="_blank">Prometheus Metrics</a></li>
+                        <li><a href="https://www.datadoghq.com/" target="_blank">Datadog Integration</a></li>
+                        <li><a href="https://about.gitlab.com/handbook/business-ops/corporate-development/disaster-recovery/" target="_blank">GitLab DR Handbook</a></li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h4>💬 Community & Support</h4>
+                    <ul>
+                        <li><a href="https://clickhouse.com/slack" target="_blank">Slack Community</a></li>
+                        <li><a href="https://github.com/ClickHouse/ClickHouse" target="_blank">GitHub Issues</a></li>
+                        <li><a href="https://stackoverflow.com/questions/tagged/clickhouse" target="_blank">Stack Overflow</a></li>
+                        <li><a href="https://altinity.com/" target="_blank">Altinity Professional Services</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>DR Planning Checklist</h3>
+            <div class="highlight-box">
+                <ol>
+                    <li><strong>Define RTO/RPO:</strong> What downtime and data loss can you tolerate?</li>
+                    <li><strong>Assess infrastructure:</strong> Multi-datacenter? Network bandwidth?</li>
+                    <li><strong>Choose strategy:</strong> Backup, active-passive, or active-active?</li>
+                    <li><strong>Set up monitoring:</strong> Replication lag, backup status, failover alerts</li>
+                    <li><strong>Document procedures:</strong> Manual failover steps, recovery runbooks</li>
+                    <li><strong>Implement backups:</strong> Full + incremental, test restoration</li>
+                    <li><strong>Schedule DR drills:</strong> Monthly testing, quarterly with full failover</li>
+                    <li><strong>Train team:</strong> Ensure everyone knows the procedures</li>
+                    <li><strong>Automate failover:</strong> Reduce manual intervention time</li>
+                    <li><strong>Review & improve:</strong> Post-disaster reviews, continuous optimization</li>
+                </ol>
+            </div>
+
+            <div class="highlight-box">
+                <h4>🎯 Key Takeaways</h4>
+                <ul>
+                    <li>DR & BC is not optional - plan for failures</li>
+                    <li>Choose strategy based on RTO/RPO requirements and budget</li>
+                    <li>Active-passive replication is ideal for most ClickHouse deployments</li>
+                    <li>Multi-datacenter setup provides geographic resilience</li>
+                    <li>Regular testing (monthly drills) ensures readiness</li>
+                    <li>Monitoring and alerting are critical for early detection</li>
+                    <li>Automate failover to minimize downtime and human error</li>
+                    <li>Data consistency verification must be part of DR procedures</li>
+                    <li>Plan for bandwidth: geo-replication requires network optimization</li>
+                    <li>Compliance & SLAs drive your DR investment</li>
+                </ul>
+            </div>
+
+            <div class="highlight-box">
+                <h4>Next Steps</h4>
+                <p>After completing Module 8, you should be comfortable with:</p>
+                <ul>
+                    <li>✅ Understanding DR vs BC concepts and terminology</li>
+                    <li>✅ Planning RTO/RPO based on business requirements</li>
+                    <li>✅ Setting up active-passive replication across datacenters</li>
+                    <li>✅ Configuring ZooKeeper for coordination</li>
+                    <li>✅ Monitoring replication lag and health</li>
+                    <li>✅ Performing manual and automated failover</li>
+                    <li>✅ Verifying data consistency across replicas</li>
+                    <li>✅ Running DR drills and testing procedures</li>
+                    <li>✅ Understanding geo-replication considerations</li>
+                    <li>✅ Choosing appropriate DR strategy for your use case</li>
+                </ul>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<div style="background: #333; color: white; padding: 40px 20px; text-align: center; margin-top: 40px;">
+    <h3>🔄 ClickHouse Disaster Recovery & Business Continuity</h3>
+    <p>Module 8 of 10 | Duration: 6-8 weeks total</p>
+    <p style="margin-top: 20px; opacity: 0.8;">Created for comprehensive ClickHouse training | 2026</p>
+</div>
+
+</body>
+</html>

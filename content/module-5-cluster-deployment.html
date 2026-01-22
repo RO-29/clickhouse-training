@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module 5: Full Cluster Deployment</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+            color: white;
+            padding: 60px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 3em;
+            font-weight: bold;
+        }
+        .header .subtitle {
+            font-size: 1.3em;
+            margin-top: 10px;
+            opacity: 0.95;
+        }
+        .nav-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            padding: 30px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #ff6b35;
+            transition: transform 0.2s;
+        }
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            background: white;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        .section {
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .section-header {
+            background: #ff6b35;
+            color: white;
+            padding: 15px 20px;
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+        .section-content {
+            padding: 30px;
+        }
+        .highlight-box {
+            background: #fff9e6;
+            border-left: 4px solid #ffb82e;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .card {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .card h4 {
+            margin-top: 0;
+            color: #ff6b35;
+        }
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            margin: 15px 0;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .bad, .good {
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .bad {
+            background: #ffe6e6;
+            border-left: 4px solid #e74c3c;
+        }
+        .good {
+            background: #e6f7ed;
+            border-left: 4px solid #27ae60;
+        }
+        .badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .badge-bad {
+            background: #e74c3c;
+            color: white;
+        }
+        .badge-good {
+            background: #27ae60;
+            color: white;
+        }
+        ul {
+            line-height: 1.8;
+        }
+        .icon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .icon-card {
+            text-align: center;
+            padding: 30px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        .icon-card .icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+        h3 {
+            color: #333;
+            border-bottom: 2px solid #ff6b35;
+            padding-bottom: 10px;
+            margin-top: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        table th, table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        table th {
+            background: #ff6b35;
+            color: white;
+        }
+        table tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        .diagram-box {
+            background: #f0f0f0;
+            border: 2px dashed #ff6b35;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>CLUSTER MODULE 5</h1>
+    <div class="subtitle">Full Cluster Deployment & Production Setup</div>
+    <div class="subtitle" style="font-size: 1em; margin-top: 20px;">Duration: 8-10 hours | Week 5</div>
+</div>
+
+<div style="background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);">
+    <div class="nav-buttons">
+        <div class="nav-btn">What is It?</div>
+        <div class="nav-btn">Quick Start</div>
+        <div class="nav-btn">Commands</div>
+        <div class="nav-btn">Best Practices</div>
+        <div class="nav-btn">When to Use</div>
+        <div class="nav-btn">Real-World Results</div>
+        <div class="nav-btn">Templates</div>
+        <div class="nav-btn">Advanced</div>
+        <div class="nav-btn">Resources</div>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- What is It Section -->
+    <div class="section">
+        <div class="section-header">What is ClickHouse Cluster Deployment?</div>
+        <div class="section-content">
+            <div class="highlight-box">
+                <h4 style="margin-top: 0;">ClickHouse Cluster in a Nutshell</h4>
+                <p><strong>A ClickHouse cluster is a distributed database system where data is split across multiple nodes (shards) with copies on backup nodes (replicas) for fault tolerance, scalability, and high availability.</strong> This module covers deploying and managing production-grade clusters with 3 shards × 2 replicas, complete configuration management, security, SSL/TLS, and monitoring.</p>
+            </div>
+
+            <h3>Cluster Architecture Overview</h3>
+            <div class="diagram-box">
+User Application
+       |
+       v
+Load Balancer (TCP Port 9000 / HTTP Port 8123)
+       |
+    +--+--+
+    |     |
+   CH1   CH2   <- Shard 1 (Replica 1 & 2)
+    |     |
+    +-----+
+
+   CH3   CH4   <- Shard 2 (Replica 1 & 2)
+    |     |
+    +-----+
+
+   CH5   CH6   <- Shard 3 (Replica 1 & 2)
+    |     |
+    +-----+
+
+Total: 6 nodes (3 shards × 2 replicas each)
+            </div>
+
+            <div class="icon-grid">
+                <div class="icon-card">
+                    <div class="icon">SHARD</div>
+                    <h4>Sharding</h4>
+                    <p>Data partitioned across 3 shards based on sharding key. Each shard holds 1/3 of data.</p>
+                </div>
+                <div class="icon-card">
+                    <div class="icon">REPLICAS</div>
+                    <h4>Replication</h4>
+                    <p>Each shard has 2 replicas for high availability. If one node fails, query data from other replica.</p>
+                </div>
+                <div class="icon-card">
+                    <div class="icon">CONFIG</div>
+                    <h4>Configuration</h4>
+                    <p>Centralized config.xml, users.xml with macros for cluster topology definition.</p>
+                </div>
+                <div class="icon-card">
+                    <div class="icon">DDL</div>
+                    <h4>Distributed DDL</h4>
+                    <p>CREATE TABLE on all shards simultaneously with ON CLUSTER keyword.</p>
+                </div>
+            </div>
+
+            <h3>Key Concepts</h3>
+            <div class="grid-2">
+                <div class="card">
+                    <h4>Shard</h4>
+                    <p>A subset of your data. With 3 shards, each node stores roughly 33% of total data. Shards enable horizontal scalability.</p>
+                </div>
+                <div class="card">
+                    <h4>Replica</h4>
+                    <p>A copy of shard data on another node. With 2 replicas per shard, you have redundancy and can tolerate 1 node failure.</p>
+                </div>
+                <div class="card">
+                    <h4>Distributed Table</h4>
+                    <p>A virtual table that queries all shards. When you query it, ClickHouse parallelizes queries across all shards.</p>
+                </div>
+                <div class="card">
+                    <h4>ZooKeeper</h4>
+                    <p>Coordinates replication. All replicated tables need ZooKeeper to synchronize data and handle failover.</p>
+                </div>
+            </div>
+
+            <h3>3 Shards × 2 Replicas Topology</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Shard</th>
+                        <th>Replica 1</th>
+                        <th>Replica 2</th>
+                        <th>Data Size</th>
+                        <th>Fault Tolerance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Shard 1</strong></td>
+                        <td>ch-node-1 (ch1.local:9000)</td>
+                        <td>ch-node-2 (ch2.local:9000)</td>
+                        <td>~33% of total</td>
+                        <td>1 node failure</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Shard 2</strong></td>
+                        <td>ch-node-3 (ch3.local:9000)</td>
+                        <td>ch-node-4 (ch4.local:9000)</td>
+                        <td>~33% of total</td>
+                        <td>1 node failure</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Shard 3</strong></td>
+                        <td>ch-node-5 (ch5.local:9000)</td>
+                        <td>ch-node-6 (ch6.local:9000)</td>
+                        <td>~33% of total</td>
+                        <td>1 node failure</td>
+                    </tr>
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+
+    <!-- Quick Start Section -->
+    <div class="section">
+        <div class="section-header">Quick Start: Deploy 3x2 Cluster</div>
+        <div class="section-content">
+
+            <h3>Step 1: Install ClickHouse & ZooKeeper on All 6 Nodes</h3>
+            <div class="code-block"># Run on each node (ch1 through ch6)
+sudo apt-get update
+sudo apt-get install -y apt-transport-https ca-certificates
+curl -fsSL 'https://packages.clickhouse.com/rpm/lts/repodata/repomd.xml.key' \
+  | sudo gpg --dearmor -o /usr/share/keyrings/clickhouse-keyring.gpg
+
+echo "deb [signed-by=/usr/share/keyrings/clickhouse-keyring.gpg] \
+  https://packages.clickhouse.com/deb stable main" \
+  | sudo tee /etc/apt/sources.list.d/clickhouse.list
+
+sudo apt-get update
+sudo apt-get install -y clickhouse-server clickhouse-client
+
+# Install ZooKeeper on all 6 nodes
+sudo apt-get install -y zookeeper-server zookeeper-client
+
+            <h3>Step 2: Configure ZooKeeper Cluster</h3>
+            <p>Edit <strong>/etc/zookeeper/conf/zoo.cfg</strong> on all nodes to enable ensemble:</p>
+            <div class="code-block"># /etc/zookeeper/conf/zoo.cfg
+tickTime=2000
+dataDir=/var/lib/zookeeper
+clientPort=2181
+autopurge.snapRetainCount=3
+autopurge.purgeInterval=1
+
+# Ensemble servers (add to all nodes)
+server.1=ch1.local:2888:3888
+server.2=ch2.local:2888:3888
+server.3=ch3.local:2888:3888
+server.4=ch4.local:2888:3888
+server.5=ch5.local:2888:3888
+server.6=ch6.local:2888:3888
+
+# Create myid file on each node
+# On ch1: echo "1" | sudo tee /var/lib/zookeeper/myid
+# On ch2: echo "2" | sudo tee /var/lib/zookeeper/myid
+# ... and so on through ch6
+
+            <h3>Step 3: Configure ClickHouse Cluster (config.xml)</h3>
+            <p>Edit <strong>/etc/clickhouse-server/config.xml</strong> on all nodes:</p>
+            <div class="code-block">&lt;?xml version="1.0"?&gt;
+&lt;clickhouse&gt;
+    &lt;!-- Include files for distributed config --&gt;
+    &lt;include_from&gt;/etc/clickhouse-server/config.d/*.xml&lt;/include_from&gt;
+
+    &lt;!-- ZooKeeper coordination --&gt;
+    &lt;zookeeper&gt;
+        &lt;node&gt;
+            &lt;host&gt;ch1.local&lt;/host&gt;
+            &lt;port&gt;2181&lt;/port&gt;
+        &lt;/node&gt;
+        &lt;node&gt;
+            &lt;host&gt;ch2.local&lt;/host&gt;
+            &lt;port&gt;2181&lt;/port&gt;
+        &lt;/node&gt;
+        &lt;node&gt;
+            &lt;host&gt;ch3.local&lt;/host&gt;
+            &lt;port&gt;2181&lt;/port&gt;
+        &lt;/node&gt;
+    &lt;/zookeeper&gt;
+
+    &lt;!-- Cluster definition --&gt;
+    &lt;remote_servers&gt;
+        &lt;my_cluster&gt;
+            &lt;shard&gt;
+                &lt;replica&gt;
+                    &lt;host&gt;ch1.local&lt;/host&gt;
+                    &lt;port&gt;9000&lt;/port&gt;
+                &lt;/replica&gt;
+                &lt;replica&gt;
+                    &lt;host&gt;ch2.local&lt;/host&gt;
+                    &lt;port&gt;9000&lt;/port&gt;
+                &lt;/replica&gt;
+            &lt;/shard&gt;
+            &lt;shard&gt;
+                &lt;replica&gt;
+                    &lt;host&gt;ch3.local&lt;/host&gt;
+                    &lt;port&gt;9000&lt;/port&gt;
+                &lt;/replica&gt;
+                &lt;replica&gt;
+                    &lt;host&gt;ch4.local&lt;/host&gt;
+                    &lt;port&gt;9000&lt;/port&gt;
+                &lt;/replica&gt;
+            &lt;/shard&gt;
+            &lt;shard&gt;
+                &lt;replica&gt;
+                    &lt;host&gt;ch5.local&lt;/host&gt;
+                    &lt;port&gt;9000&lt;/port&gt;
+                &lt;/replica&gt;
+                &lt;replica&gt;
+                    &lt;host&gt;ch6.local&lt;/host&gt;
+                    &lt;port&gt;9000&lt;/port&gt;
+                &lt;/replica&gt;
+            &lt;/shard&gt;
+        &lt;/my_cluster&gt;
+    &lt;/remote_servers&gt;
+
+    &lt;!-- Macros for simplifying table creation --&gt;
+    &lt;macros&gt;
+        &lt;cluster&gt;my_cluster&lt;/cluster&gt;
+        &lt;shard&gt;1&lt;/shard&gt;
+        &lt;replica&gt;ch1&lt;/replica&gt;
+    &lt;/macros&gt;
+
+    &lt;!-- Port for client connections --&gt;
+    &lt;tcp_port&gt;9000&lt;/tcp_port&gt;
+    &lt;http_port&gt;8123&lt;/http_port&gt;
+
+    &lt;!-- HTTPS/SSL Configuration --&gt;
+    &lt;https_port&gt;8443&lt;/https_port&gt;
+    &lt;ssl_cert_path&gt;/etc/clickhouse-server/certs/server.crt&lt;/ssl_cert_path&gt;
+    &lt;ssl_key_path&gt;/etc/clickhouse-server/certs/server.key&lt;/ssl_key_path&gt;
+
+    &lt;!-- Resource limits --&gt;
+    &lt;max_connections&gt;1024&lt;/max_connections&gt;
+    &lt;keep_alive_timeout&gt;3&lt;/keep_alive_timeout&gt;
+    &lt;max_concurrent_queries&gt;100&lt;/max_concurrent_queries&gt;
+
+    &lt;!-- Logging --&gt;
+    &lt;logger&gt;
+        &lt;level&gt;information&lt;/level&gt;
+        &lt;log&gt;/var/log/clickhouse-server/clickhouse-server.log&lt;/log&gt;
+        &lt;errorlog&gt;/var/log/clickhouse-server/clickhouse-server.err.log&lt;/errorlog&gt;
+    &lt;/logger&gt;
+&lt;/clickhouse&gt;
+
+            <h3>Step 4: Configure Users & Security (users.xml)</h3>
+            <div class="code-block">&lt;?xml version="1.0"?&gt;
+&lt;clickhouse&gt;
+    &lt;!-- Default user --&gt;
+    &lt;users&gt;
+        &lt;default&gt;
+            &lt;password_sha256_hex&gt;8d969eef6ecad3c29a3a873fba8c4f7f&lt;/password_sha256_hex&gt;
+            &lt;networks incl="networks"/&gt;
+            &lt;profile&gt;default&lt;/profile&gt;
+            &lt;quota&gt;default&lt;/quota&gt;
+        &lt;/default&gt;
+
+        &lt;!-- Application user with limited permissions --&gt;
+        &lt;app_user&gt;
+            &lt;password_sha256_hex&gt;8d969eef6ecad3c29a3a873fba8c4f7f&lt;/password_sha256_hex&gt;
+            &lt;networks&gt;
+                &lt;ip&gt;192.168.1.0/24&lt;/ip&gt;
+                &lt;ip&gt;10.0.0.0/8&lt;/ip&gt;
+            &lt;/networks&gt;
+            &lt;profile&gt;app&lt;/profile&gt;
+            &lt;quota&gt;app_quota&lt;/quota&gt;
+        &lt;/app_user&gt;
+
+        &lt;!-- Read-only user --&gt;
+        &lt;readonly&gt;
+            &lt;password_sha256_hex&gt;8d969eef6ecad3c29a3a873fba8c4f7f&lt;/password_sha256_hex&gt;
+            &lt;networks incl="networks"/&gt;
+            &lt;profile&gt;readonly&lt;/profile&gt;
+            &lt;quota&gt;default&lt;/quota&gt;
+        &lt;/readonly&gt;
+    &lt;/users&gt;
+
+    &lt;!-- Quota definitions --&gt;
+    &lt;quotas&gt;
+        &lt;default&gt;
+            &lt;interval&gt;
+                &lt;duration&gt;3600&lt;/duration&gt;
+                &lt;queries&gt;0&lt;/queries&gt;
+                &lt;errors&gt;0&lt;/errors&gt;
+                &lt;result_rows&gt;0&lt;/result_rows&gt;
+                &lt;read_rows&gt;0&lt;/read_rows&gt;
+                &lt;execution_time&gt;0&lt;/execution_time&gt;
+            &lt;/interval&gt;
+        &lt;/default&gt;
+
+        &lt;app_quota&gt;
+            &lt;interval&gt;
+                &lt;duration&gt;3600&lt;/duration&gt;
+                &lt;queries&gt;10000&lt;/queries&gt;
+                &lt;read_rows&gt;1000000000&lt;/read_rows&gt;
+                &lt;result_rows&gt;1000000&lt;/result_rows&gt;
+                &lt;execution_time&gt;3600&lt;/execution_time&gt;
+            &lt;/interval&gt;
+        &lt;/app_quota&gt;
+    &lt;/quotas&gt;
+
+    &lt;!-- Profile definitions (resource limits) --&gt;
+    &lt;profiles&gt;
+        &lt;default&gt;
+            &lt;max_memory_usage&gt;10000000000&lt;/max_memory_usage&gt;
+            &lt;max_connections&gt;100&lt;/max_connections&gt;
+            &lt;max_concurrent_queries_for_user&gt;10&lt;/max_concurrent_queries_for_user&gt;
+        &lt;/default&gt;
+
+        &lt;app&gt;
+            &lt;max_memory_usage&gt;5000000000&lt;/max_memory_usage&gt;
+            &lt;max_connections&gt;50&lt;/max_connections&gt;
+            &lt;max_concurrent_queries_for_user&gt;5&lt;/max_concurrent_queries_for_user&gt;
+        &lt;/app&gt;
+
+        &lt;readonly&gt;
+            &lt;readonly&gt;1&lt;/readonly&gt;
+        &lt;/readonly&gt;
+    &lt;/profiles&gt;
+&lt;/clickhouse&gt;
+
+            <h3>Step 5: Start Services</h3>
+            <div class="code-block"># Start ZooKeeper on all nodes
+sudo systemctl start zookeeper-server
+sudo systemctl enable zookeeper-server
+
+# Verify ZooKeeper cluster status
+sudo systemctl status zookeeper-server
+
+# Start ClickHouse on all nodes
+sudo systemctl start clickhouse-server
+sudo systemctl enable clickhouse-server
+
+# Test connection
+clickhouse-client --host ch1.local -q "SELECT 1"
+
+        </div>
+    </div>
+
+    <!-- Commands Reference Section -->
+    <div class="section">
+        <div class="section-header">Commands Reference</div>
+        <div class="section-content">
+
+            <h3>Cluster Management Commands</h3>
+            <div class="code-block">-- View cluster topology
+SELECT * FROM system.clusters;
+
+-- Check cluster health
+SELECT host_name, host_address, port FROM system.clusters
+WHERE cluster_name = 'my_cluster';
+
+-- List all running queries across cluster
+SELECT hostname(), * FROM clusterAllReplicas(
+  'my_cluster',
+  system.processes
+);
+
+-- Kill query on cluster
+KILL QUERY ON CLUSTER 'my_cluster' WHERE query_id = 'xxx';
+
+            <h3>Distributed Table Creation</h3>
+            <div class="code-block">-- Create database on all shards
+CREATE DATABASE IF NOT EXISTS events ON CLUSTER 'my_cluster';
+
+-- Create replicated table on all shards
+CREATE TABLE IF NOT EXISTS events ON CLUSTER 'my_cluster' (
+    event_date Date,
+    event_time DateTime,
+    user_id UInt32,
+    event_type String,
+    country String
+) ENGINE = ReplicatedMergeTree(
+    '/clickhouse/tables/{shard}/events',  -- ZooKeeper path
+    '{replica}'
+)
+PARTITION BY toYYYYMM(event_date)
+ORDER BY (event_date, user_id);
+
+-- Create distributed table (virtual layer over all shards)
+CREATE TABLE IF NOT EXISTS events_distributed ON CLUSTER 'my_cluster' AS events
+ENGINE = Distributed(
+    'my_cluster',
+    'events',
+    'events',
+    rand()  -- Sharding key
+);
+
+-- Insert data into distributed table (auto-sharded)
+INSERT INTO events_distributed VALUES
+  ('2026-01-22', '2026-01-22 10:00:00', 1001, 'click', 'US'),
+  ('2026-01-22', '2026-01-22 10:01:00', 1002, 'purchase', 'UK');
+
+-- Query distributed table (queries all shards in parallel)
+SELECT
+  country,
+  COUNT(*) as event_count
+FROM events_distributed
+WHERE event_date = '2026-01-22'
+GROUP BY country;
+
+            <h3>Monitoring & Health Checks</h3>
+            <div class="code-block">-- Check replication status on each node
+SELECT
+  database,
+  table,
+  is_leader,
+  is_readonly,
+  absolute_delay,
+  future_parts,
+  parts_to_check
+FROM system.replicas;
+
+-- Check disk usage per shard
+SELECT
+  database,
+  table,
+  sum(bytes_on_disk) as disk_used,
+  formatReadableSize(disk_used) as human_readable
+FROM system.parts
+WHERE active = 1
+GROUP BY database, table
+ORDER BY disk_used DESC;
+
+-- Monitor merge operations
+SELECT
+  database,
+  table,
+  count() as merge_count,
+  max(create_time) as latest_merge
+FROM system.merges
+GROUP BY database, table;
+
+-- Check ZooKeeper connectivity
+SELECT * FROM system.zookeeper_log LIMIT 10;
+
+        </div>
+    </div>
+
+    <!-- Best Practices Section -->
+    <div class="section">
+        <div class="section-header">Best Practices</div>
+        <div class="section-content">
+
+            <h3>1. Cluster Topology Design</h3>
+            <div class="comparison">
+                <div class="bad">
+                    <div class="badge badge-bad">Bad</div>
+                    <div class="code-block">-- Single shard, single replica
+-- No redundancy or scalability
+CREATE TABLE events (...)
+ENGINE = MergeTree();
+                    <p><strong>Problem:</strong> No high availability, data loss on failure</p>
+                </div>
+
+                <div class="good">
+                    <div class="badge badge-good">Good</div>
+                    <div class="code-block">-- 3 shards × 2 replicas
+-- Data distributed, replicated for HA
+CREATE TABLE events ON CLUSTER 'my_cluster' (...)
+ENGINE = ReplicatedMergeTree(
+  '/clickhouse/tables/{shard}/events',
+  '{replica}'
+);
+                    <p><strong>Benefit:</strong> Scales to PB of data, tolerates 1 node failure per shard</p>
+                </div>
+            </div>
+
+            <h3>2. Network & Firewall Configuration</h3>
+            <div class="grid-2">
+                <div class="card">
+                    <h4>Required Ports</h4>
+                    <ul>
+                        <li><strong>9000:</strong> ClickHouse TCP (node-to-node)</li>
+                        <li><strong>8123:</strong> HTTP interface</li>
+                        <li><strong>9009:</strong> Inter-cluster replication</li>
+                        <li><strong>2181:</strong> ZooKeeper client port</li>
+                        <li><strong>2888, 3888:</strong> ZooKeeper server ports</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h4>Firewall Rules</h4>
+                    <div class="code-block"># Allow TCP 9000 between cluster nodes
+sudo ufw allow from 192.168.1.0/24 to any port 9000
+
+# Allow TCP 8123 from app servers
+sudo ufw allow from 10.0.0.0/8 to any port 8123
+
+# Allow ZooKeeper cluster
+sudo ufw allow from 192.168.1.0/24 to any port 2181
+sudo ufw allow from 192.168.1.0/24 to any port 2888
+sudo ufw allow from 192.168.1.0/24 to any port 3888                </div>
+            </div>
+
+            <h3>3. SSL/TLS Configuration</h3>
+            <div class="code-block"># Generate self-signed certificate for HTTPS
+sudo openssl req -x509 -newkey rsa:4096 -keyout /etc/clickhouse-server/certs/server.key \
+  -out /etc/clickhouse-server/certs/server.crt -days 365 -nodes \
+  -subj "/C=US/ST=State/L=City/O=Org/CN=ch.local"
+
+# Set proper permissions
+sudo chmod 644 /etc/clickhouse-server/certs/server.crt
+sudo chmod 600 /etc/clickhouse-server/certs/server.key
+sudo chown clickhouse:clickhouse /etc/clickhouse-server/certs/*
+
+# Update config.xml (already done in Step 4)
+# Restart ClickHouse
+sudo systemctl restart clickhouse-server
+
+# Test HTTPS connection
+clickhouse-client --secure --host ch1.local -q "SELECT 1"
+            <h3>4. Resource Management & Quotas</h3>
+            <div class="comparison">
+                <div class="bad">
+                    <div class="badge badge-bad">Bad</div>
+                    <p>No quotas - runaway queries can crash the cluster</p>
+                </div>
+                <div class="good">
+                    <div class="badge badge-good">Good</div>
+                    <div class="code-block">-- Set query timeout (15 minutes)
+SET max_execution_time = 900;
+
+-- Set memory limit (5 GB)
+SET max_memory_usage = 5000000000;
+
+-- Set result row limit
+SET max_result_rows = 10000000;                </div>
+            </div>
+
+            <h3>5. Monitoring & Alerting</h3>
+            <div class="highlight-box">
+                <h4>Essential Metrics to Monitor</h4>
+                <ul>
+                    <li><strong>Replication Lag:</strong> Monitor absolute_delay in system.replicas</li>
+                    <li><strong>Disk Usage:</strong> Alert when &gt; 80% full</li>
+                    <li><strong>Query Latency:</strong> Track p95/p99 query times</li>
+                    <li><strong>Connection Count:</strong> Alert on connection pool exhaustion</li>
+                    <li><strong>ZooKeeper Health:</strong> Ensure quorum is healthy (3/3 nodes)</li>
+                    <li><strong>Merge Operations:</strong> Monitor active merge count and duration</li>
+                </ul>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- When to Use Section -->
+    <div class="section">
+        <div class="section-header">When to Use Cluster Deployment</div>
+        <div class="section-content">
+
+            <div class="grid-2">
+                <div class="card" style="background: #e6f7ed;">
+                    <h4>Use Clusters When</h4>
+                    <ul>
+                        <li>Data exceeds single node capacity (TB+ scale)</li>
+                        <li>Need high availability and fault tolerance</li>
+                        <li>Multiple query users accessing simultaneously</li>
+                        <li>Need to scale horizontally</li>
+                        <li>Running mission-critical analytics</li>
+                        <li>Need rolling updates without downtime</li>
+                        <li>Data ingestion rate exceeds single node capacity</li>
+                    </ul>
+                </div>
+
+                <div class="card" style="background: #ffe6e6;">
+                    <h4>Single Node Sufficient When</h4>
+                    <ul>
+                        <li>Data &lt; 1TB</li>
+                        <li>Development/testing environment</li>
+                        <li>Limited budget for infrastructure</li>
+                        <li>Query volume is low</li>
+                        <li>Data loss acceptable</li>
+                        <li>No high availability requirement</li>
+                        <li>Batch processing only</li>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Real-World Results Section -->
+    <div class="section">
+        <div class="section-header">Real-World Results</div>
+        <div class="section-content">
+
+            <div class="icon-grid">
+                <div class="icon-card" style="background: #fff9e6;">
+                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">10x</div>
+                    <h4>Query Parallelization</h4>
+                    <p>3-shard cluster processes queries 3x faster through parallelization across shards</p>
+                </div>
+
+                <div class="icon-card" style="background: #e6f7ed;">
+                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">99.99%</div>
+                    <h4>Availability</h4>
+                    <p>With 2 replicas per shard, cluster tolerates 50% node failures and continues operating</p>
+                </div>
+
+                <div class="icon-card" style="background: #e6f2ff;">
+                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">PB Scale</div>
+                    <h4>Storage Capacity</h4>
+                    <p>Linear scaling - add nodes to grow storage capacity</p>
+                </div>
+
+                <div class="icon-card" style="background: #f0e6ff;">
+                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">Sub-1sec</div>
+                    <h4>Query Latency</h4>
+                    <p>Distributed queries on massive datasets return in under 1 second</p>
+                </div>
+            </div>
+
+            <h3>Case Study: Multi-Tenant Analytics Platform</h3>
+            <div class="card">
+                <h4>Scenario: 500M events/day from 10,000 customers</h4>
+                <p><strong>Architecture:</strong> 3-shard × 2-replica cluster (6 nodes total)</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Ingestion Rate</td>
+                            <td>250K events/sec (500M/day)</td>
+                        </tr>
+                        <tr>
+                            <td>Raw Data Size</td>
+                            <td>2.5 TB/day</td>
+                        </tr>
+                        <tr>
+                            <td>Compressed Size</td>
+                            <td>125 GB/day (20x compression)</td>
+                        </tr>
+                        <tr>
+                            <td>Query Response Time</td>
+                            <td>100-500ms for customer dashboards</td>
+                        </tr>
+                        <tr>
+                            <td>Concurrent Queries</td>
+                            <td>100+ simultaneous queries from dashboards</td>
+                        </tr>
+                        <tr>
+                            <td>Data Retention</td>
+                            <td>12 months (automated TTL deletion)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Templates Section -->
+    <div class="section">
+        <div class="section-header">Ready-to-Use Templates</div>
+        <div class="section-content">
+
+            <h3>Template 1: Production Cluster Configuration</h3>
+            <div class="code-block"># config.xml snippet for production 3x2 cluster
+&lt;remote_servers&gt;
+    &lt;prod_cluster&gt;
+        &lt;shard&gt;
+            &lt;weight&gt;1&lt;/weight&gt;
+            &lt;internal_replication&gt;true&lt;/internal_replication&gt;
+            &lt;replica&gt;
+                &lt;host&gt;ch1.prod.local&lt;/host&gt;
+                &lt;port&gt;9000&lt;/port&gt;
+                &lt;priority&gt;1&lt;/priority&gt;
+            &lt;/replica&gt;
+            &lt;replica&gt;
+                &lt;host&gt;ch2.prod.local&lt;/host&gt;
+                &lt;port&gt;9000&lt;/port&gt;
+                &lt;priority&gt;2&lt;/priority&gt;
+            &lt;/replica&gt;
+        &lt;/shard&gt;
+        &lt;shard&gt;
+            &lt;weight&gt;1&lt;/weight&gt;
+            &lt;internal_replication&gt;true&lt;/internal_replication&gt;
+            &lt;replica&gt;
+                &lt;host&gt;ch3.prod.local&lt;/host&gt;
+                &lt;port&gt;9000&lt;/port&gt;
+                &lt;priority&gt;1&lt;/priority&gt;
+            &lt;/replica&gt;
+            &lt;replica&gt;
+                &lt;host&gt;ch4.prod.local&lt;/host&gt;
+                &lt;port&gt;9000&lt;/port&gt;
+                &lt;priority&gt;2&lt;/priority&gt;
+            &lt;/replica&gt;
+        &lt;/shard&gt;
+        &lt;shard&gt;
+            &lt;weight&gt;1&lt;/weight&gt;
+            &lt;internal_replication&gt;true&lt;/internal_replication&gt;
+            &lt;replica&gt;
+                &lt;host&gt;ch5.prod.local&lt;/host&gt;
+                &lt;port&gt;9000&lt;/port&gt;
+                &lt;priority&gt;1&lt;/priority&gt;
+            &lt;/replica&gt;
+            &lt;replica&gt;
+                &lt;host&gt;ch6.prod.local&lt;/host&gt;
+                &lt;port&gt;9000&lt;/port&gt;
+                &lt;priority&gt;2&lt;/priority&gt;
+            &lt;/replica&gt;
+        &lt;/shard&gt;
+    &lt;/prod_cluster&gt;
+&lt;/remote_servers&gt;
+            <h3>Template 2: Production Events Table with Distributed Variant</h3>
+            <div class="code-block">-- Create replicated table on all shards
+CREATE TABLE IF NOT EXISTS events ON CLUSTER 'prod_cluster' (
+    event_date Date,
+    event_time DateTime,
+    user_id UInt64,
+    event_type LowCardinality(String),
+    country LowCardinality(String),
+    city String,
+    platform LowCardinality(String),
+    revenue Decimal(10, 2) DEFAULT 0,
+    properties String  -- JSON
+) ENGINE = ReplicatedMergeTree(
+    '/clickhouse/tables/{shard}/events',
+    '{replica}'
+)
+PARTITION BY toYYYYMM(event_date)
+ORDER BY (event_date, user_id, event_type)
+TTL event_date + INTERVAL 12 MONTH;
+
+-- Create distributed table for queries
+CREATE TABLE IF NOT EXISTS events_distributed ON CLUSTER 'prod_cluster' AS events
+ENGINE = Distributed('prod_cluster', 'events', 'events', cityHash64(user_id));
+        </div>
+    </div>
+
+    <!-- Advanced Patterns Section -->
+    <div class="section">
+        <div class="section-header">Advanced Patterns</div>
+        <div class="section-content">
+
+            <h3>1. Zero-Downtime Rolling Updates</h3>
+            <div class="code-block">-- Strategy: Update one node at a time, maintain availability
+-- 1. Drain traffic from node ch1
+ALTER TABLE events DETACH REPLICA 'ch1' ON CLUSTER 'prod_cluster';
+
+-- 2. Update ClickHouse binary on ch1
+sudo apt-get update
+sudo apt-get install --only-upgrade clickhouse-server
+
+-- 3. Restart ClickHouse on ch1
+sudo systemctl restart clickhouse-server
+
+-- 4. Reattach replica (catches up from ZK replicas)
+ALTER TABLE events ATTACH REPLICA 'ch1' ON CLUSTER 'prod_cluster';
+
+-- 5. Verify replication lag is 0
+SELECT database, table, absolute_delay FROM system.replicas
+WHERE hostname() = 'ch1';
+            <h3>2. Handling Node Failures</h3>
+            <div class="code-block">-- If ch1 (replica in shard 1) fails:
+-- 1. All queries automatically route to ch2
+-- 2. Data is still available on ch2
+-- 3. Inserts queue up in ReplicatedMergeTree queue
+
+-- Check queue on surviving replica
+SELECT * FROM system.replication_queue WHERE database = 'events';
+
+-- Once ch1 recovers, it catches up automatically
+-- Monitor the recovery:
+SELECT database, table, absolute_delay FROM system.replicas
+WHERE database = 'events'
+ORDER BY absolute_delay DESC;
+
+-- If entire shard (ch1 + ch2) fails = data loss for that shard
+-- Therefore: ensure geographically distributed replicas
+            <h3>3. Cross-Datacenter Replication</h3>
+            <div class="code-block">-- 3 shards across 2 datacenters (DC1, DC2)
+&lt;remote_servers&gt;
+    &lt;multi_dc_cluster&gt;
+        &lt;!-- Shard 1: DC1 primary, DC2 replica --&gt;
+        &lt;shard&gt;
+            &lt;replica&gt;&lt;host&gt;ch1-dc1&lt;/host&gt;&lt;port&gt;9000&lt;/port&gt;&lt;/replica&gt;
+            &lt;replica&gt;&lt;host&gt;ch1-dc2&lt;/host&gt;&lt;port&gt;9000&lt;/port&gt;&lt;/replica&gt;
+        &lt;/shard&gt;
+        &lt;!-- Shard 2: DC1 primary, DC2 replica --&gt;
+        &lt;shard&gt;
+            &lt;replica&gt;&lt;host&gt;ch2-dc1&lt;/host&gt;&lt;port&gt;9000&lt;/port&gt;&lt;/replica&gt;
+            &lt;replica&gt;&lt;host&gt;ch2-dc2&lt;/host&gt;&lt;port&gt;9000&lt;/port&gt;&lt;/replica&gt;
+        &lt;/shard&gt;
+        &lt;!-- Shard 3: DC1 primary, DC2 replica --&gt;
+        &lt;shard&gt;
+            &lt;replica&gt;&lt;host&gt;ch3-dc1&lt;/host&gt;&lt;port&gt;9000&lt;/port&gt;&lt;/replica&gt;
+            &lt;replica&gt;&lt;host&gt;ch3-dc2&lt;/host&gt;&lt;port&gt;9000&lt;/port&gt;&lt;/replica&gt;
+        &lt;/shard&gt;
+    &lt;/multi_dc_cluster&gt;
+&lt;/remote_servers&gt;
+
+-- Benefit: Survive entire DC failure, query locally in each DC
+            <h3>4. Weighted Shards for Heterogeneous Hardware</h3>
+            <div class="code-block">-- If nodes have different capacity, use weights
+&lt;remote_servers&gt;
+    &lt;weighted_cluster&gt;
+        &lt;shard&gt;
+            &lt;weight&gt;3&lt;/weight&gt;  &lt;!-- 3x capacity --&gt;
+            &lt;replica&gt;&lt;host&gt;high-capacity-node&lt;/host&gt;&lt;/replica&gt;
+            &lt;replica&gt;&lt;host&gt;high-capacity-replica&lt;/host&gt;&lt;/replica&gt;
+        &lt;/shard&gt;
+        &lt;shard&gt;
+            &lt;weight&gt;1&lt;/weight&gt;  &lt;!-- 1x capacity --&gt;
+            &lt;replica&gt;&lt;host&gt;normal-node&lt;/host&gt;&lt;/replica&gt;
+            &lt;replica&gt;&lt;host&gt;normal-replica&lt;/host&gt;&lt;/replica&gt;
+        &lt;/shard&gt;
+    &lt;/weighted_cluster&gt;
+&lt;/remote_servers&gt;
+
+-- Sharding key will distribute data by weight (3:1 ratio)
+        </div>
+    </div>
+
+    <!-- Resources Section -->
+    <div class="section">
+        <div class="section-header">Related Resources</div>
+        <div class="section-content">
+
+            <div class="grid-2">
+                <div class="card">
+                    <h4>Official Documentation</h4>
+                    <ul>
+                        <li><a href="https://clickhouse.com/docs/en/architecture/cluster-introduction" target="_blank">Cluster Architecture</a></li>
+                        <li><a href="https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replication" target="_blank">Replication Guide</a></li>
+                        <li><a href="https://clickhouse.com/docs/en/sql-reference/statements/create/table" target="_blank">CREATE TABLE Reference</a></li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h4>Configuration Management</h4>
+                    <ul>
+                        <li><a href="https://clickhouse.com/docs/en/operations/configuration-files" target="_blank">Configuration Files</a></li>
+                        <li><a href="https://clickhouse.com/docs/en/operations/security-guidelines" target="_blank">Security Guidelines</a></li>
+                        <li><a href="https://clickhouse.com/docs/en/operations/monitoring" target="_blank">Monitoring</a></li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h4>Tools & Deployment</h4>
+                    <ul>
+                        <li><a href="https://github.com/ClickHouse/ClickHouse/tree/master/docker" target="_blank">Docker Deployment</a></li>
+                        <li><a href="https://clickhouse.com/docs/en/operations/system-tables" target="_blank">System Tables Reference</a></li>
+                        <li><a href="https://clickhouse.com/docs/en/operations/troubleshooting" target="_blank">Troubleshooting Guide</a></li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h4>Community & Support</h4>
+                    <ul>
+                        <li><a href="https://clickhouse.com/slack" target="_blank">Slack Community</a></li>
+                        <li><a href="https://github.com/ClickHouse/ClickHouse" target="_blank">GitHub Repository</a></li>
+                        <li><a href="https://stackoverflow.com/questions/tagged/clickhouse" target="_blank">Stack Overflow</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="highlight-box">
+                <h4>Key Takeaways from Module 5</h4>
+                <ul>
+                    <li>3 shards × 2 replicas is the recommended production topology</li>
+                    <li>ZooKeeper coordinates replication and ensures data consistency</li>
+                    <li>ReplicatedMergeTree engine provides fault tolerance</li>
+                    <li>Distributed tables enable parallel queries across shards</li>
+                    <li>SSL/TLS secures inter-node and client communication</li>
+                    <li>Quotas and resource limits prevent runaway queries</li>
+                    <li>Monitor replication lag, disk usage, and query performance</li>
+                    <li>Plan for geographic distribution for disaster recovery</li>
+                </ul>
+                <p><strong>You are now ready to deploy and manage production ClickHouse clusters!</strong></p>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<div style="background: #333; color: white; padding: 40px 20px; text-align: center; margin-top: 40px;">
+    <h3>CLUSTER DEPLOYMENT GUIDE</h3>
+    <p>Module 5 of 10 | Production Ready ClickHouse Infrastructure | 2026</p>
+    <p style="margin-top: 20px; opacity: 0.8;">Build, deploy, and manage highly available distributed ClickHouse clusters</p>
+</div>
+
+</body>
+</html>

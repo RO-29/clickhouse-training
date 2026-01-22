@@ -1,0 +1,21 @@
+# GitHub Pages Configuration
+title: ClickHouse Knowledge Transfer
+description: Complete Training Series for ClickHouse - From Fundamentals to Production
+theme: null
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+
+# Include files
+include:
+  - content
+  - notion-guides
+  - code-examples
+
+# Exclude files from build
+exclude:
+  - .claude
+  - .gitignore
+  - README.md
+  - PROJECT_SUMMARY.md

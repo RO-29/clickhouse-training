@@ -1,0 +1,134 @@
+# AlertManager Configuration for ClickHouse Monitoring Stack
+# Purpose: Alert routing, grouping, and notification management
+
+global:
+  resolve_timeout: 5m
+  slack_api_url: ''  # Add your Slack webhook URL here for notifications
+
+# Default receiver
+route:
+  receiver: 'default'
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+
+  # Routes for specific alert types
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical'
+      group_wait: 0s
+      repeat_interval: 5m
+
+    # Warning alerts - batch notifications
+    - match:
+        severity: warning
+      receiver: 'warning'
+      group_wait: 30s
+      repeat_interval: 1h
+
+    # ClickHouse specific alerts
+    - match:
+        alertname: ClickHouseDown
+      receiver: 'clickhouse-critical'
+      group_wait: 0s
+      repeat_interval: 10m
+
+    # System resource alerts
+    - match_re:
+        alertname: 'High(Memory|CPU|Disk)Usage'
+      receiver: 'system-alerts'
+      group_wait: 30s
+      repeat_interval: 2h
+
+# Inhibition rules - prevent duplicate alerts
+inhibit_rules:
+  # Inhibit warning alerts if critical alert fires
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'dev', 'instance']
+
+  # Inhibit recovery notifications
+  - source_match:
+      alertname: 'ClickHouseDown'
+    target_match:
+      alertname: 'ClickHouseRestarts'
+    equal: ['instance']
+
+# Receivers define how notifications are sent
+receivers:
+  # Default receiver - no action (silently received)
+  - name: 'default'
+    # Can add handlers here if needed
+
+  # Critical alerts receiver
+  - name: 'critical'
+    email_configs:
+      - to: 'admin@example.com'
+        from: 'alertmanager@example.com'
+        smarthost: 'smtp.example.com:587'
+        auth_username: 'alertmanager@example.com'
+        auth_password: 'password'
+        headers:
+          Subject: 'CRITICAL: ClickHouse Alert'
+        html: |
+          <h2>{{ .GroupLabels.alertname }}</h2>
+          <p>{{ .GroupLabels.instance }}</p>
+          {{ range .Alerts }}
+            <hr>
+            <h3>{{ .Labels.alertname }}</h3>
+            <p>{{ .Annotations.summary }}</p>
+            <p>{{ .Annotations.description }}</p>
+          {{ end }}
+
+    slack_configs:
+      - api_url: ''  # Add Slack webhook URL
+        channel: '#alerts-critical'
+        title: 'ClickHouse CRITICAL Alert'
+        text: '{{ range .Alerts }}{{ .Annotations.summary }}\n{{ .Annotations.description }}\n{{ end }}'
+        color: 'danger'
+
+    pagerduty_configs:
+      - service_key: ''  # Add PagerDuty service key if using
+
+  # Warning alerts receiver
+  - name: 'warning'
+    email_configs:
+      - to: 'ops@example.com'
+        from: 'alertmanager@example.com'
+        smarthost: 'smtp.example.com:587'
+        auth_username: 'alertmanager@example.com'
+        auth_password: 'password'
+        headers:
+          Subject: 'WARNING: ClickHouse Alert'
+
+  # ClickHouse specific critical alerts
+  - name: 'clickhouse-critical'
+    email_configs:
+      - to: 'clickhouse-team@example.com'
+        from: 'alertmanager@example.com'
+        smarthost: 'smtp.example.com:587'
+        auth_username: 'alertmanager@example.com'
+        auth_password: 'password'
+    slack_configs:
+      - api_url: ''  # Add Slack webhook URL
+        channel: '#clickhouse-alerts'
+        title: 'ClickHouse Down'
+        text: 'Instance {{ .GroupLabels.instance }} is down!'
+
+  # System alerts receiver
+  - name: 'system-alerts'
+    email_configs:
+      - to: 'sysadmin@example.com'
+        from: 'alertmanager@example.com'
+        smarthost: 'smtp.example.com:587'
+        auth_username: 'alertmanager@example.com'
+        auth_password: 'password'
+
+# Templates for alert formatting
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'

@@ -1,0 +1,393 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                    MODULE 5: FULL CLUSTER DEPLOYMENT                         ║
+║                       Production-Ready Training Guide                         ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+FILE INFORMATION
+================================================================================
+Location: /Users/megharaizada/Desktop/Rohit Important/clickhouse-ks/
+          module-5-cluster-deployment.html
+
+File Size: 41 KB (1,109 lines of HTML)
+Format: Self-contained HTML5 with embedded CSS
+Styling: Orange gradient theme matching Module 1 (#ff6b35 - #f7931e)
+Browser: Opens in any modern web browser (Chrome, Firefox, Safari, Edge)
+
+CONTENT STRUCTURE
+================================================================================
+
+1. WHAT IS CLICKHOUSE CLUSTER DEPLOYMENT?
+   Covers:
+   - Definition and purpose of ClickHouse clusters
+   - 3 Shards × 2 Replicas topology explanation
+   - Key concepts (Shard, Replica, Distributed Table, ZooKeeper)
+   - Architecture diagram with visual representation
+   - Comparison of topologies
+
+2. QUICK START: DEPLOY 3X2 CLUSTER
+   5-Step Production Deployment:
+   
+   Step 1: Installation on All 6 Nodes
+           - ClickHouse package installation
+           - ZooKeeper ensemble setup
+           - System packages and repositories
+   
+   Step 2: ZooKeeper Cluster Configuration
+           - zoo.cfg configuration
+           - myid file creation for each node
+           - Ensemble peer discovery
+   
+   Step 3: ClickHouse Cluster Configuration (config.xml)
+           - ZooKeeper connectivity settings
+           - Remote servers definition (3 shards × 2 replicas)
+           - Cluster topology with all 6 nodes
+           - Macros for template variables
+           - Port configuration (9000, 8123, 8443)
+           - SSL/TLS certificate paths
+           - Resource limits
+           - Logging configuration
+   
+   Step 4: Users & Security Configuration (users.xml)
+           - default user with full permissions
+           - app_user with limited permissions
+           - readonly user for read-only access
+           - Network access restrictions by IP range
+           - Quota definitions (10K queries/hour)
+           - Profile-based resource limits
+           - Memory limits per user (5-10 GB)
+           - Concurrent query controls
+   
+   Step 5: Start Services
+           - ZooKeeper startup and enablement
+           - ClickHouse server startup
+           - Connection verification commands
+
+3. COMMANDS REFERENCE
+   Production SQL Commands:
+   
+   a) Cluster Management (10 queries)
+      - View cluster topology
+      - Check cluster health
+      - List running queries across cluster
+      - Kill queries on cluster
+      - Monitor replication status
+      - Check disk usage per shard
+      - Track merge operations
+      - ZooKeeper connectivity checks
+   
+   b) Distributed Table Creation (8 SQL statements)
+      - CREATE DATABASE ON CLUSTER
+      - CREATE REPLICATED TABLE ON CLUSTER
+      - CREATE DISTRIBUTED TABLE
+      - INSERT into distributed tables
+      - Query distributed tables
+   
+   c) Monitoring & Health Checks (6 monitoring queries)
+      - Replication lag monitoring
+      - Disk usage tracking
+      - Merge operation monitoring
+      - Queue status checking
+      - Performance metrics
+
+4. BEST PRACTICES (5 MAJOR AREAS)
+   
+   1. Cluster Topology Design
+      Bad: Single shard, single replica (no HA, no scalability)
+      Good: 3 shards × 2 replicas (distributed, fault-tolerant)
+      Benefit: 3x parallelization, tolerates 50% node failures
+   
+   2. Network & Firewall Configuration
+      Required Ports:
+      - 9000: ClickHouse TCP (node-to-node)
+      - 8123: HTTP interface
+      - 9009: Inter-cluster replication
+      - 2181: ZooKeeper client port
+      - 2888, 3888: ZooKeeper server coordination
+      
+      UFW Rules: Complete firewall configuration examples
+   
+   3. SSL/TLS Configuration
+      - OpenSSL certificate generation
+      - File permission setup
+      - HTTPS port configuration
+      - Secure client connections
+      - Inter-node encryption
+   
+   4. Resource Management & Quotas
+      - Query timeouts (900 seconds)
+      - Memory limits (5 GB per user)
+      - Result row limits
+      - Quota definitions in users.xml
+      - Profile-based allocation
+   
+   5. Monitoring & Alerting
+      Essential Metrics:
+      - Replication lag tracking
+      - Disk usage alerts (80% threshold)
+      - Query latency (p95/p99)
+      - Connection pool status
+      - ZooKeeper quorum health
+      - Merge operation metrics
+
+5. WHEN TO USE CLUSTER DEPLOYMENT
+   
+   Use Clusters When:
+   - Data exceeds 1 TB capacity
+   - Need high availability and fault tolerance
+   - Multiple concurrent query users
+   - Mission-critical analytics
+   - Rolling updates required
+   - High ingestion rates
+   
+   Single Node Sufficient When:
+   - Development/testing environments
+   - Data < 1 TB
+   - Limited budget
+   - Low query volume
+   - Data loss acceptable
+
+6. REAL-WORLD RESULTS & CASE STUDIES
+   
+   Performance Metrics:
+   - 10x query parallelization across 3 shards
+   - 99.99% availability with 2 replicas per shard
+   - Petabyte-scale storage capacity (linear scaling)
+   - Sub-1 second query latency on massive datasets
+   
+   Multi-Tenant Analytics Platform Case Study:
+   - 500M events/day from 10,000 customers
+   - 3-shard × 2-replica cluster (6 nodes)
+   - 250K events/sec ingestion rate
+   - 2.5 TB/day raw data
+   - 125 GB/day compressed (20x compression)
+   - 100-500ms query response time
+   - 100+ concurrent queries
+   - 12-month data retention with TTL
+
+7. PRODUCTION TEMPLATES (2 READY-TO-USE)
+   
+   Template 1: Complete Cluster Configuration
+   - Full XML configuration for config.xml
+   - 3 shards with 2 replicas each
+   - Internal replication enabled
+   - Priority-based replica selection
+   - Weight distribution
+   - Ready to copy-paste
+   
+   Template 2: Production Events Table
+   - Replicated MergeTree table
+   - Distributed variant for queries
+   - Partition by month
+   - Order key optimization
+   - TTL auto-deletion (12 months)
+   - Complete schema with data types
+   - Example inserts
+
+8. ADVANCED PATTERNS (4 EXPERT TECHNIQUES)
+   
+   1. Zero-Downtime Rolling Updates
+      - Detach replica from replication
+      - Update ClickHouse binary
+      - Restart node
+      - Reattach replica (auto-catch-up)
+      - Verify replication lag
+   
+   2. Node Failure Handling
+      - Automatic query routing to surviving replica
+      - Replication queue management
+      - Recovery procedures
+      - Data durability guarantees
+   
+   3. Cross-Datacenter Replication
+      - 3 shards across 2 DCs
+      - Primary/replica distribution
+      - Survive entire DC failure
+      - Local query optimization per DC
+   
+   4. Weighted Shards for Heterogeneous Hardware
+      - Different capacity nodes
+      - Weight-based data distribution
+      - 3:1 ratio example
+      - Mixed hardware clusters
+
+9. RESOURCES & LINKS
+   
+   Official Documentation (12+ links)
+   - Cluster architecture guide
+   - Replication configuration
+   - CREATE TABLE reference
+   - Configuration files documentation
+   - Security guidelines
+   - Monitoring documentation
+   - Troubleshooting guides
+   
+   Tools & Deployment
+   - Docker deployment
+   - System tables reference
+   - Official blog
+   
+   Community
+   - Slack community
+   - GitHub repository
+   - Stack Overflow tagged questions
+
+KEY FEATURES OF THIS MODULE
+================================================================================
+
+Educational Design:
+✓ Progressive learning from basic to advanced
+✓ Clear explanations for each concept
+✓ Comparison cards (Bad vs Good practices)
+✓ Real-world examples and case studies
+✓ Copy-paste ready configurations
+
+Technical Content:
+✓ Complete step-by-step deployment guide
+✓ 20+ production SQL commands
+✓ 2 ready-to-use configuration templates
+✓ All XML configuration examples
+✓ Security configurations with roles and quotas
+✓ Firewall and network setup
+✓ SSL/TLS configuration
+✓ Monitoring queries and procedures
+
+Visual Design:
+✓ Orange gradient header (#ff6b35 - #f7931e)
+✓ Icon cards for visual learning
+✓ Comparison cards (2-column layout)
+✓ Code blocks with dark background
+✓ Professional typography
+✓ Responsive mobile design
+✓ Print-friendly layout
+✓ Navigation buttons
+
+DEPLOYMENT CHECKLIST
+================================================================================
+
+Pre-Deployment:
+□ Plan hardware (6 nodes minimum)
+□ Allocate static IPs
+□ Configure DNS entries
+□ Plan firewall rules
+□ Prepare SSL certificates
+
+Deployment Phase:
+□ Step 1: Install ClickHouse & ZooKeeper on all 6 nodes
+□ Step 2: Configure ZooKeeper ensemble
+□ Step 3: Configure ClickHouse config.xml
+□ Step 4: Configure security (users.xml)
+□ Step 5: Start services and verify
+
+Post-Deployment:
+□ Verify cluster topology
+□ Create test tables
+□ Test replication
+□ Set up monitoring
+□ Configure alerts
+□ Document your setup
+□ Train operations team
+
+MONITORING CHECKPOINTS
+================================================================================
+
+Daily Checks:
+- Replication lag: SELECT * FROM system.replicas
+- Disk usage: Query system.parts for size trends
+- Query performance: Monitor p95/p99 latency
+- Error logs: Check for replication issues
+
+Weekly Reviews:
+- Cluster health report
+- Capacity planning analysis
+- Backup verification
+- Security audit
+
+Monthly Tasks:
+- Performance tuning review
+- Hardware capacity assessment
+- Update patches and security
+- Disaster recovery drill
+
+TROUBLESHOOTING GUIDE
+================================================================================
+
+If replication lag increases:
+1. Check ZooKeeper connectivity
+2. Verify network between replicas
+3. Monitor merge operations
+4. Check disk I/O on affected nodes
+5. Review query load
+
+If node becomes unavailable:
+1. Data routes to other replica automatically
+2. Check node health and logs
+3. Restart node when ready
+4. Replication catches up automatically
+5. Monitor absolute_delay
+
+If ZooKeeper quorum lost:
+1. Check all ZK nodes are running
+2. Verify network connectivity
+3. Check disk space on ZK nodes
+4. Review ZK configuration
+5. Restart ZK ensemble
+
+CUSTOMIZATION GUIDE
+================================================================================
+
+To change topology from 3×2 to 2×3:
+1. Update <remote_servers> in config.xml
+2. Define 2 shards with 3 replicas each
+3. Update ZooKeeper settings if needed
+4. Recreate tables with new topology
+
+To add a 4th shard:
+1. Add new shard definition in config.xml
+2. Deploy ClickHouse on 2 new nodes
+3. Restart cluster nodes
+4. Rebalance data using ATTACH TABLE
+
+To change replication factor:
+1. Modify remote_servers configuration
+2. Create new tables with new factor
+3. Migrate data incrementally
+4. Drop old tables
+
+NEXT STEPS AFTER MODULE 5
+================================================================================
+
+After completing this module, you should be able to:
+✓ Design production cluster topologies
+✓ Deploy 3-shard × 2-replica clusters
+✓ Configure replication and sharding
+✓ Implement security with users/roles/quotas
+✓ Set up monitoring and alerting
+✓ Handle node failures and recovery
+✓ Plan for disaster recovery
+✓ Optimize query performance at scale
+
+Ready to move to Module 6: Advanced Analytics & Optimization!
+
+SUPPORT & TROUBLESHOOTING
+================================================================================
+
+If issues arise, refer to:
+1. Official ClickHouse documentation (clickhouse.com/docs)
+2. GitHub discussions (github.com/ClickHouse/ClickHouse/discussions)
+3. Stack Overflow (search: [clickhouse])
+4. Slack community (clickhouse.com/slack)
+
+Common Issues & Solutions:
+- Replication lag: Check ZK health and network
+- Query timeouts: Adjust max_execution_time
+- OOM errors: Reduce max_memory_usage
+- Slow inserts: Batch larger record sets
+- High latency: Add more shards or optimize ORDER BY
+
+================================================================================
+Created: 2026-01-22
+Version: 1.0
+Module: 5 / 10
+Duration: 8-10 hours of training content
+Status: Production Ready
+================================================================================

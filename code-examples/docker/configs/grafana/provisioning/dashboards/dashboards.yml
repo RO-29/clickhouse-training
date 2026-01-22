@@ -1,0 +1,15 @@
+# Grafana Dashboard Provisioning Configuration
+# Purpose: Automatically load dashboards from the dashboards directory
+
+apiVersion: 1
+
+providers:
+  - name: 'ClickHouse Dashboards'
+    orgId: 1
+    folder: 'ClickHouse'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUIUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
