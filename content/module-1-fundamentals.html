@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="scroll-behavior: smooth;">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -222,23 +222,22 @@
 
 <div style="background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);">
     <div class="nav-buttons">
-        <div class="nav-btn">📖 What is ClickHouse?</div>
-        <div class="nav-btn">🚀 Quick Start</div>
-        <div class="nav-btn">💻 Commands</div>
-        <div class="nav-btn">✨ Best Practices</div>
-        <div class="nav-btn">🎯 When to Use</div>
-        <div class="nav-btn">🏆 Real-World Results</div>
-        <div class="nav-btn">📋 Templates</div>
-        <div class="nav-btn">🔥 Advanced</div>
-        <div class="nav-btn">📚 Resources</div>
+        <a href="#what-is" class="nav-btn">📖 What is ClickHouse?</a>
+        <a href="#quick-start" class="nav-btn">🚀 Quick Start</a>
+        <a href="#commands" class="nav-btn">💻 Commands</a>
+        <a href="#best-practices" class="nav-btn">✨ Best Practices</a>
+        <a href="#when-to-use" class="nav-btn">🎯 When to Use</a>
+        <a href="#real-world" class="nav-btn">🏆 Real-World Results</a>
+        <a href="#templates" class="nav-btn">📋 Templates</a>
+        <a href="#advanced" class="nav-btn">🔥 Advanced</a>
+        <a href="#resources" class="nav-btn">📚 Resources</a>
     </div>
 </div>
 
 <div class="container">
 
     <!-- What is ClickHouse Section -->
-    <div class="section">
-        <div class="section-header">📖 What is ClickHouse?</div>
+    <div class="section" id="what-is"><div class="section-header">📖 What is ClickHouse?</div>
         <div class="section-content">
             <div class="highlight-box">
                 <h4 style="margin-top: 0;">ClickHouse in a Nutshell</h4>
@@ -437,8 +436,7 @@
     </div>
 
     <!-- Quick Start Section -->
-    <div class="section">
-        <div class="section-header">🚀 Quick Start</div>
+    <div class="section" id="quick-start"><div class="section-header">🚀 Quick Start</div>
         <div class="section-content">
 
             <h3>1. Installation (Single Node)</h3>
@@ -678,8 +676,7 @@ KILL QUERY WHERE query_id = 'xxx-xxx-xxx';</div>
     </div>
 
     <!-- Best Practices Section -->
-    <div class="section">
-        <div class="section-header">✨ Best Practices</div>
+    <div class="section" id="best-practices"><div class="section-header">✨ Best Practices</div>
         <div class="section-content">
 
             <h3>1. Data Modeling</h3>
@@ -876,8 +873,7 @@ ORDER BY (country, timestamp, user_id);  -- Low to high cardinality!</div>
     </div>
 
     <!-- Real-World Results Section -->
-    <div class="section">
-        <div class="section-header">🏆 Real-World Results</div>
+    <div class="section" id="real-world"><div class="section-header">🏆 Real-World Results</div>
         <div class="section-content">
 
             <div class="icon-grid">
@@ -1264,8 +1260,7 @@ SELECT COUNT(*) FROM events_distributed;
     </div>
 
     <!-- Resources Section -->
-    <div class="section">
-        <div class="section-header">📚 Related Resources</div>
+    <div class="section" id="resources"><div class="section-header">📚 Related Resources</div>
         <div class="section-content">
 
             <div class="grid-2">
