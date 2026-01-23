@@ -83,10 +83,10 @@ Your training platform is **100% ready** and includes:
 ```bash
 cd "/Users/megharaizada/Desktop/Rohit Important/clickhouse-ks"
 
-# Install Python dependencies
-pip3 install -r requirements.txt
+# Install Python dependencies (use python3 -m pip to avoid environment mismatch)
+python3 -m pip install -r requirements.txt
 
-# Create .env file
+# Create .env file (if not already created)
 cp .env.example .env
 
 # Edit .env and add your credentials

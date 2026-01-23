@@ -71,11 +71,11 @@ Follow these instructions to get your Notion API key for **jain.rohit.2929@gmail
 ```bash
 cd "/Users/megharaizada/Desktop/Rohit Important/clickhouse-ks"
 
-# Install Python dependencies
-pip3 install -r requirements.txt
+# Install Python dependencies (use python3 -m pip to avoid environment mismatch)
+python3 -m pip install -r requirements.txt
 
 # Or install individually
-pip3 install requests python-dotenv
+python3 -m pip install requests python-dotenv
 ```
 
 ---
