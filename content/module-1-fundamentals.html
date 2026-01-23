@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" style="scroll-behavior: smooth;">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -222,22 +222,22 @@
 
 <div style="background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);">
     <div class="nav-buttons">
-        <a href="#what-is" class="nav-btn">📖 What is ClickHouse?</a>
-        <a href="#quick-start" class="nav-btn">🚀 Quick Start</a>
-        <a href="#commands" class="nav-btn">💻 Commands</a>
-        <a href="#best-practices" class="nav-btn">✨ Best Practices</a>
-        <a href="#when-to-use" class="nav-btn">🎯 When to Use</a>
-        <a href="#real-world" class="nav-btn">🏆 Real-World Results</a>
-        <a href="#templates" class="nav-btn">📋 Templates</a>
-        <a href="#advanced" class="nav-btn">🔥 Advanced</a>
-        <a href="#resources" class="nav-btn">📚 Resources</a>
+        <div class="nav-btn">📖 What is ClickHouse?</div>
+        <div class="nav-btn">🚀 Quick Start</div>
+        <div class="nav-btn">💻 Commands</div>
+        <div class="nav-btn">✨ Best Practices</div>
+        <div class="nav-btn">🎯 When to Use</div>
+        <div class="nav-btn">🏆 Real-World Results</div>
+        <div class="nav-btn">📋 Templates</div>
+        <div class="nav-btn">🔥 Advanced</div>
+        <div class="nav-btn">📚 Resources</div>
     </div>
 </div>
 
 <div class="container">
 
     <!-- What is ClickHouse Section -->
-    <div class="section" id="what-is">
+    <div class="section">
         <div class="section-header">📖 What is ClickHouse?</div>
         <div class="section-content">
             <div class="highlight-box">
@@ -437,7 +437,7 @@
     </div>
 
     <!-- Quick Start Section -->
-    <div class="section" id="quick-start">
+    <div class="section">
         <div class="section-header">🚀 Quick Start</div>
         <div class="section-content">
 
@@ -537,7 +537,7 @@ SELECT table, engine FROM system.tables WHERE database = 'system' LIMIT 5;</div>
     </div>
 
     <!-- Commands Reference Section -->
-    <div class="section" id="commands">
+    <div class="section">
         <div class="section-header">💻 Commands Reference</div>
         <div class="section-content">
 
@@ -678,7 +678,7 @@ KILL QUERY WHERE query_id = 'xxx-xxx-xxx';</div>
     </div>
 
     <!-- Best Practices Section -->
-    <div class="section" id="best-practices">
+    <div class="section">
         <div class="section-header">✨ Best Practices</div>
         <div class="section-content">
 
@@ -835,7 +835,7 @@ ORDER BY (country, timestamp, user_id);  -- Low to high cardinality!</div>
     </div>
 
     <!-- When to Use Section -->
-    <div class="section" id="when-to-use">
+    <div class="section">
         <div class="section-header">🎯 When to Use ClickHouse</div>
         <div class="section-content">
 
@@ -876,7 +876,7 @@ ORDER BY (country, timestamp, user_id);  -- Low to high cardinality!</div>
     </div>
 
     <!-- Real-World Results Section -->
-    <div class="section" id="real-world">
+    <div class="section">
         <div class="section-header">🏆 Real-World Results</div>
         <div class="section-content">
 
@@ -948,7 +948,7 @@ ORDER BY (country, timestamp, user_id);  -- Low to high cardinality!</div>
     </div>
 
     <!-- Templates Section -->
-    <div class="section" id="templates">
+    <div class="section">
         <div class="section-header">📋 Ready-to-Use Templates</div>
         <div class="section-content">
 
@@ -1162,7 +1162,7 @@ LIMIT 20;</div>
     </div>
 
     <!-- Advanced Section -->
-    <div class="section" id="advanced">
+    <div class="section">
         <div class="section-header">🔥 Advanced Patterns</div>
         <div class="section-content">
 
@@ -1264,20 +1264,18 @@ SELECT COUNT(*) FROM events_distributed;
     </div>
 
     <!-- Resources Section -->
-    <div class="section" id="resources">
+    <div class="section">
         <div class="section-header">📚 Related Resources</div>
         <div class="section-content">
 
-            
-            <!-- Notion Integration -->
-            <div style="background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%); padding: 25px; border-radius: 12px; margin-bottom: 30px; text-align: center;">
-                <h3 style="margin: 0 0 15px 0; color: white; font-size: 1.4em;">📘 Track Your Progress in Notion</h3>
-                <p style="color: white; margin: 0 0 20px 0; opacity: 0.95;">Access this module in your Notion workspace for note-taking, progress tracking, and collaboration.</p>
-                <a href="https://www.notion.so/Module-1-Fundamentals-Architecture-2f1bb896952b81ec93c6f0cb4dc31acf" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: white; color: #ff6b35; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 1.1em; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">Open in Notion →</a>
-            </div>
-
             <div class="grid-2">
-            <div class="card">
+                <div class="card">
+                    <h4>📘 View in Notion</h4>
+                    <p style="margin: 10px 0;">Access this module in your Notion workspace for note-taking and tracking your progress.</p>
+                    <a href="https://www.notion.so/Module-1-Fundamentals-Architecture-2f1bb896952b81ec93c6f0cb4dc31acf" target="_blank" rel="noopener noreferrer" style="color: #ff6b35; font-weight: 600; text-decoration: none;">Open in Notion →</a>
+                </div>
+
+                <div class="card">
                     <h4>📖 Official Documentation</h4>
                     <ul>
                         <li><a href="https://clickhouse.com/docs" target="_blank">ClickHouse Docs</a></li>
