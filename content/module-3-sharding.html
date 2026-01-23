@@ -696,7 +696,9 @@ WHERE cluster = 'my_cluster';</div>
         </div>
     </div>
 
-    <!-- Best Practices Section -->
+    
+    </div>
+<!-- Best Practices Section -->
     <div class="section" id="best-practices"><div class="section-header">✨ Best Practices</div>
         <div class="section-content">
 
@@ -810,7 +812,9 @@ GROUP BY database, table, shard_num, replica_num
 ORDER BY database, table, shard_num;
 
         </div>
+    
     </div>
+</div>
 
     <!-- When to Use Section -->
     <div class="section" id="when-to-use-sharding"><div class="section-header">🎯 When to Use Sharding</div>
@@ -1011,7 +1015,13 @@ SELECT
 FROM shard_statistics
 GROUP BY table;
 
-        </div>
+       
+    </div>
+
+    </div>
+
+    </div>
+ </div>
     </div>
 
     <!-- Advanced Patterns Section -->
@@ -1117,7 +1127,15 @@ SELECT
     read_rows
 FROM clusterAllReplicas('my_cluster', system.query_log)
 WHERE type = 'QueryFinish' AND query_duration_ms > 5000
-ORDER BY query_duration_ms DESC;
+ORDER
+    </div>
+
+    </div>
+
+    </div>
+
+    </div>
+ BY query_duration_ms DESC;
 
         </div>
     </div>
