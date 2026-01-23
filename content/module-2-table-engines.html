@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 <html lang="en" style="scroll-behavior: smooth;">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Module 2: Table Engines &amp; Data Modeling</title>
-
-<style type="text/css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module 2: Table Engines & Data Modeling</title>
+    <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
             margin: 0;
@@ -102,8 +101,6 @@
             overflow-x: auto;
             font-family: 'Courier New', monospace;
             margin: 15px 0;
-            font-size: 0.95em;
-            line-height: 1.5;
         }
         .comparison {
             display: grid;
@@ -207,749 +204,998 @@
                 min-width: 100%;
             }
         }
-        .engine-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-        }
-        .engine-table thead tr {
-            background: #ff6b35;
-            color: white;
-        }
-        .engine-table th {
-            padding: 12px;
-            text-align: left;
-            font-weight: bold;
-        }
-        .engine-table td {
-            padding: 12px;
-            border-bottom: 1px solid #ddd;
-        }
-        .engine-table tbody tr:nth-child(odd) {
-            background: #f9f9f9;
-        }
-        .grid-3 {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-            margin: 20px 0;
-        }
-        @media (max-width: 768px) {
-            .grid-3 {
-                grid-template-columns: 1fr;
-            }
-            .grid-2 {
-                grid-template-columns: 1fr;
-            }
-            .comparison {
-                grid-template-columns: 1fr;
-            }
-        }
-</style>
+    </style>
 </head>
 <body>
-<div class="module-nav"><a href="module-1-fundamentals.html" class="nav-btn-module">&#226;&#8224; Previous: Module 1 - Fundamentals</a> <a href="../index.html" class="nav-btn-module nav-home">&#240;&#376;&nbsp; Home</a> <a href="module-3-sharding.html" class="nav-btn-module">Next: Module 3 - Sharding &#226;&#8224;&#8217;</a></div>
+
+<div class="module-nav">
+    <a href="module-1-fundamentals.html" class="nav-btn-module">← Previous: Module 1 - Fundamentals</a>
+    <a href="../index.html" class="nav-btn-module nav-home">🏠 Home</a>
+    <a href="module-3-sharding.html" class="nav-btn-module">Next: Module 3 - Sharding →</a>
+</div>
+
 <div class="header">
-<h1>TABLE ENGINES &amp; DATA MODELING</h1>
-<div class="subtitle">Module 2: Deep Dive into MergeTree Family and Schema Design</div>
-<div class="subtitle" style="font-size: 1em; margin-top: 20px;">Duration: 6-8 hours | Week 2</div>
+    <h1>📊 MODULE 2</h1>
+    <div class="subtitle">Table Engines & Data Modeling</div>
+    <div class="subtitle" style="font-size: 1em; margin-top: 20px;">Duration: 4-6 hours | Week 1-2</div>
 </div>
+
 <div style="background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);">
-<div class="nav-buttons">
-<div class="nav-btn">&#240;&#376;&#8220;&#8211; What is It?</div>
-<div class="nav-btn">&#240;&#376;&#353;&#8364; Quick Start</div>
-<div class="nav-btn">&#240;&#376;&#8217;&#187; Commands</div>
-<div class="nav-btn">&#226;&#339;&#168; Best Practices</div>
-<div class="nav-btn">&#240;&#376;&#381;&#175; When to Use</div>
-<div class="nav-btn">&#240;&#376;&#8224; Real-World Results</div>
-<div class="nav-btn">&#240;&#376;&#8220;&#8249; Templates</div>
-<div class="nav-btn">&#240;&#376;&#8221;&#165; Advanced</div>
-<div class="nav-btn">&#240;&#376;&#8220;&#353; Resources</div>
-</div>
-</div>
-<div class="container"><!-- What is It Section -->
-<div class="section" id="24037682208211-what-is-it"><div class="section-header">&#240;&#376;&#8220;&#8211; What is It?</div>
-<div class="section-content">
-<div class="highlight-box">
-<h4 style="margin-top: 0;">Table Engines &amp; Data Modeling in ClickHouse</h4>
-<p><strong>Table Engines</strong> are the core architecture components that determine how ClickHouse stores, processes, and retrieves data. Choosing the right engine is critical for performance and query optimization.</p>
-<p><strong>Data Modeling</strong> encompasses primary keys, sorting keys, partitioning strategies, data types, and codecs - all working together to create an optimal schema for your analytical workloads.</p>
-</div>
-<h3>Why Table Engines Matter</h3>
-<div class="icon-grid">
-<div class="icon-card">
-<div class="icon">&#226;&#353;&#161;</div>
-<h4>Performance</h4>
-<p>Right engine + schema = 10-100x faster queries</p>
-</div>
-<div class="icon-card">
-<div class="icon">&#240;&#376;&#8217;&#190;</div>
-<h4>Storage Efficiency</h4>
-<p>Compression, codecs, and data types optimize disk usage</p>
-</div>
-<div class="icon-card">
-<div class="icon">&#240;&#376;&#8221;&#167;</div>
-<h4>Specialized Use Cases</h4>
-<p>Different engines for updates, aggregations, and deduplication</p>
-</div>
-<div class="icon-card">
-<div class="icon">&#240;&#376;&#381;&#175;</div>
-<h4>Query Optimization</h4>
-<p>Primary keys, sorting, and partitioning guide query execution</p>
-</div>
-</div>
-<h3>The MergeTree Family</h3>
-<table class="engine-table">
-<thead>
-<tr>
-<th>Engine</th>
-<th>Purpose</th>
-<th>Best For</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>MergeTree</strong></td>
-<td>Base engine for most use cases</td>
-<td>General-purpose analytics, time-series, events</td>
-</tr>
-<tr>
-<td><strong>ReplacingMergeTree</strong></td>
-<td>Handles updates by replacing old versions</td>
-<td>User profiles, state snapshots, dimension tables</td>
-</tr>
-<tr>
-<td><strong>SummingMergeTree</strong></td>
-<td>Pre-aggregates numeric columns during merges</td>
-<td>Counters, metrics, pre-aggregated data</td>
-</tr>
-<tr>
-<td><strong>AggregatingMergeTree</strong></td>
-<td>Stores aggregation function states</td>
-<td>Complex aggregations, materialized views</td>
-</tr>
-<tr>
-<td><strong>CollapsingMergeTree</strong></td>
-<td>Cancels out old rows with new ones</td>
-<td>Status changes, events with cancellation</td>
-</tr>
-<tr>
-<td><strong>VersionedCollapsingMergeTree</strong></td>
-<td>Enhanced collapsing with version support</td>
-<td>Complex state management, version tracking</td>
-</tr>
-</tbody>
-</table>
-<h3>MergeTree Engine Internals</h3>
-<div style="background: #f9f9f9; padding: 30px; border-radius: 8px; margin: 20px 0;">
-<div style="max-width: 1000px; margin: 0 auto;">
-<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 25px;"><!-- Partition 202601 -->
-<div style="background: #fff; padding: 20px; border-radius: 8px; border: 3px solid #1976d2;">
-<div style="background: #1976d2; color: white; padding: 10px; margin: -20px -20px 15px -20px; border-radius: 5px 5px 0 0; font-weight: bold; text-align: center;">Partition: 202601</div>
-<div style="display: flex; flex-direction: column; gap: 12px;">
-<div style="background: #e3f2fd; padding: 12px; border-radius: 4px; border-left: 4px solid #1976d2;">
-<div style="font-weight: bold; color: #0d47a1; margin-bottom: 5px;">Part 1</div>
-<div style="font-size: 0.85em; color: #333;">Rows: 10,000</div>
-<div style="font-size: 0.85em; color: #555;">Primary Index: Sparse</div>
-<div style="font-size: 0.85em; color: #555;">Data Blocks: Compressed</div>
-</div>
-<div style="background: #e3f2fd; padding: 12px; border-radius: 4px; border-left: 4px solid #1976d2;">
-<div style="font-weight: bold; color: #0d47a1; margin-bottom: 5px;">Part 2</div>
-<div style="font-size: 0.85em; color: #333;">Rows: 15,000</div>
-<div style="font-size: 0.85em; color: #555;">Primary Index: Sparse</div>
-<div style="font-size: 0.85em; color: #555;">Data Blocks: Compressed</div>
-</div>
-</div>
-</div>
-<!-- Partition 202602 -->
-<div style="background: #fff; padding: 20px; border-radius: 8px; border: 3px solid #f57c00;">
-<div style="background: #f57c00; color: white; padding: 10px; margin: -20px -20px 15px -20px; border-radius: 5px 5px 0 0; font-weight: bold; text-align: center;">Partition: 202602</div>
-<div style="display: flex; flex-direction: column; gap: 12px;">
-<div style="background: #fff3e0; padding: 12px; border-radius: 4px; border-left: 4px solid #f57c00;">
-<div style="font-weight: bold; color: #e65100; margin-bottom: 5px;">Part 1</div>
-<div style="font-size: 0.85em; color: #333;">Rows: 8,000</div>
-<div style="font-size: 0.85em; color: #555;">Primary Index: Sparse</div>
-<div style="font-size: 0.85em; color: #555;">Data Blocks: Compressed</div>
-</div>
-<div style="background: #fff3e0; padding: 12px; border-radius: 4px; border-left: 4px solid #f57c00;">
-<div style="font-weight: bold; color: #e65100; margin-bottom: 5px;">Part 2</div>
-<div style="font-size: 0.85em; color: #333;">Rows: 12,000</div>
-<div style="font-size: 0.85em; color: #555;">Primary Index: Sparse</div>
-<div style="font-size: 0.85em; color: #555;">Data Blocks: Compressed</div>
-</div>
-</div>
-</div>
-</div>
-<!-- Part Internals -->
-<div style="background: #f3e5f5; padding: 20px; border-radius: 8px; border: 2px solid #7b1fa2;">
-<div style="font-weight: bold; color: #6a1b9a; margin-bottom: 15px; font-size: 1.1em;">Inside Each Part:</div>
-<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
-<div style="background: white; padding: 15px; border-radius: 4px; text-align: center;">
-<div style="font-weight: bold; color: #7b1fa2; margin-bottom: 8px;">Primary Index</div>
-<div style="font-size: 0.85em; color: #555;">Sparse index for quick lookups</div>
-</div>
-<div style="background: white; padding: 15px; border-radius: 4px; text-align: center;">
-<div style="font-weight: bold; color: #7b1fa2; margin-bottom: 8px;">Column Files</div>
-<div style="font-size: 0.85em; color: #555;">Separate .bin file per column</div>
-</div>
-<div style="background: white; padding: 15px; border-radius: 4px; text-align: center;">
-<div style="font-weight: bold; color: #7b1fa2; margin-bottom: 8px;">Data Blocks</div>
-<div style="font-size: 0.85em; color: #555;">Compressed with codecs</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<h3>Partitioning Strategy Visualization</h3>
-<div style="background: #f9f9f9; padding: 30px; border-radius: 8px; margin: 20px 0;">
-<div style="max-width: 900px; margin: 0 auto;">
-<div style="text-align: center; margin-bottom: 20px;">
-<div style="display: inline-block; background: #e3f2fd; padding: 15px 30px; border-radius: 6px; border: 2px solid #1976d2;"><strong style="color: #0d47a1;">Table: events</strong></div>
-</div>
-<div style="text-align: center; font-size: 24px; color: #666; margin: 10px 0;">&#226;&#8224;&#8220; PARTITION BY toYYYYMM(event_date) &#226;&#8224;&#8220;</div>
-<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 20px;">
-<div style="background: #e8f5e9; padding: 15px; border-radius: 6px; border: 2px solid #388e3c; text-align: center;">
-<div style="font-weight: bold; color: #2e7d32; margin-bottom: 5px;">202601</div>
-<div style="font-size: 0.85em; color: #555;">Jan 2026</div>
-<div style="font-size: 0.85em; color: #555; margin-top: 5px;">Size: 2.3 GB</div>
-</div>
-<div style="background: #fff3e0; padding: 15px; border-radius: 6px; border: 2px solid #f57c00; text-align: center;">
-<div style="font-weight: bold; color: #e65100; margin-bottom: 5px;">202602</div>
-<div style="font-size: 0.85em; color: #555;">Feb 2026</div>
-<div style="font-size: 0.85em; color: #555; margin-top: 5px;">Size: 2.1 GB</div>
-</div>
-<div style="background: #f3e5f5; padding: 15px; border-radius: 6px; border: 2px solid #7b1fa2; text-align: center;">
-<div style="font-weight: bold; color: #6a1b9a; margin-bottom: 5px;">202603</div>
-<div style="font-size: 0.85em; color: #555;">Mar 2026</div>
-<div style="font-size: 0.85em; color: #555; margin-top: 5px;">Size: 2.5 GB</div>
-</div>
-<div style="background: #fce4ec; padding: 15px; border-radius: 6px; border: 2px solid #c2185b; text-align: center;">
-<div style="font-weight: bold; color: #ad1457; margin-bottom: 5px;">202604</div>
-<div style="font-size: 0.85em; color: #555;">Apr 2026</div>
-<div style="font-size: 0.85em; color: #555; margin-top: 5px;">Size: 2.2 GB</div>
-</div>
-</div>
-<div style="background: #fff9e6; padding: 20px; border-radius: 6px; border-left: 4px solid #ffb82e; margin-top: 25px;">
-<div style="font-weight: bold; color: #333; margin-bottom: 10px;">Benefits:</div>
-<ul style="margin: 0; padding-left: 20px; color: #555;">
-<li>Drop old partitions in seconds: ALTER TABLE events DROP PARTITION 202601;</li>
-<li>Queries filter partitions first: WHERE event_date &gt;= '2026-03-01' (only scans 202603+)</li>
-<li>Parallel processing across partitions</li>
-<li>Easier data management and TTL policies</li>
-</ul>
-</div>
-</div>
-</div>
-<h3>Key Concepts</h3>
-<div class="grid-2">
-<div class="card">
-<h4>Primary Key vs Sorting Key</h4>
-<p><strong>Primary Key:</strong> Used for filtering (WHERE clauses). Defines which columns are used for pruning partitions and blocks.</p>
-<p><strong>Sorting Key:</strong> Determines physical order of data. Can be different from primary key.</p>
-<p><strong>Rule of Thumb:</strong> Primary key is usually the first 1-3 columns of sorting key.</p>
-</div>
-<div class="card">
-<h4>Partitioning Strategy</h4>
-<p><strong>Partition:</strong> Logical grouping of data (by date, month, region, etc.)</p>
-<p><strong>Benefits:</strong> Faster deletes, parallel processing, manageable data movement</p>
-<p><strong>Common:</strong> Partition by date/month for time-series data</p>
-</div>
-</div>
-<div class="grid-2">
-<div class="card">
-<h4>Data Types Impact</h4>
-<p>Choosing right types affects compression and speed:</p>
-<ul style="margin: 10px 0; padding-left: 20px;">
-<li><strong>UInt8/16/32/64:</strong> Best compression for integers</li>
-<li><strong>Decimal:</strong> For financial data (fixed precision)</li>
-<li><strong>LowCardinality:</strong> 10-100x compression for enums</li>
-<li><strong>String:</strong> Avoid if possible, use enums instead</li>
-</ul>
-</div>
-<div class="card">
-<h4>Codecs for Compression</h4>
-<p>Specialized compression algorithms:</p>
-<ul style="margin: 10px 0; padding-left: 20px;">
-<li><strong>DoubleDelta:</strong> Timestamps, monotonic sequences</li>
-<li><strong>Gorilla:</strong> Floating-point numbers, metrics</li>
-<li><strong>Delta:</strong> Integer deltas (increments)</li>
-<li><strong>ZSTD:</strong> General-purpose, configurable</li>
-</ul>
-</div>
-</div>
-</div>
-</div>
-<!-- Quick Start Section -->
-<div class="section" id="2403763538364-quick-start"><div class="section-header">&#240;&#376;&#353;&#8364; Quick Start</div>
-<div class="section-content">
-<h3>1. Create Your First Optimized Table</h3>
-<div class="code-block">-- Connect to ClickHouse clickhouse-client USE analytics; -- Create an optimized events table CREATE TABLE events ( event_date Date, event_time DateTime, user_id UInt64, event_type LowCardinality(String), country LowCardinality(String), revenue Decimal(10, 2) ) ENGINE = MergeTree() PARTITION BY toYYYYMM(event_date) ORDER BY (event_date, user_id, event_time); -- Insert sample data INSERT INTO events VALUES ('2026-01-22', '2026-01-22 10:00:00', 101, 'purchase', 'US', 99.99), ('2026-01-22', '2026-01-22 10:05:00', 102, 'click', 'UK', 0.00), ('2026-01-22', '2026-01-22 10:10:00', 103, 'purchase', 'CA', 149.50); -- Verify the data SELECT * FROM events; SELECT COUNT(*) FROM events;
-<h3>2. Understanding ReplacingMergeTree</h3>
-<div style="background: #f9f9f9; padding: 30px; border-radius: 8px; margin: 20px 0;">
-<h4 style="color: #333; text-align: center; margin-bottom: 20px;">ReplacingMergeTree Deduplication Flow</h4>
-<div style="max-width: 900px; margin: 0 auto;">
-<div style="display: flex; flex-direction: column; gap: 20px;"><!-- Step 1: Insert -->
-<div style="background: #e3f2fd; padding: 20px; border-radius: 6px; border: 2px solid #1976d2;">
-<div style="font-weight: bold; color: #0d47a1; margin-bottom: 10px;">Step 1: Insert Initial Version</div>
-<div style="background: white; padding: 12px; border-radius: 4px; font-family: monospace; font-size: 0.9em; color: #333;">user_id: 1, name: "Alice", email: "alice@ex.com", version: 1</div>
-</div>
-<div style="text-align: center; font-size: 20px; color: #666;">&#226;&#8224;&#8220;</div>
-<!-- Step 2: Update -->
-<div style="background: #fff3e0; padding: 20px; border-radius: 6px; border: 2px solid #f57c00;">
-<div style="font-weight: bold; color: #e65100; margin-bottom: 10px;">Step 2: "Update" (Insert New Version)</div>
-<div style="background: white; padding: 12px; border-radius: 4px; font-family: monospace; font-size: 0.9em; color: #333;">user_id: 1, name: "Alice Smith", email: "alice@ex.com", version: 2</div>
-</div>
-<div style="text-align: center; font-size: 20px; color: #666;">&#226;&#8224;&#8220; Background Merge &#226;&#8224;&#8220;</div>
-<!-- Step 3: Merge -->
-<div style="background: #e8f5e9; padding: 20px; border-radius: 6px; border: 2px solid #388e3c;">
-<div style="font-weight: bold; color: #2e7d32; margin-bottom: 10px;">Step 3: Deduplication During Merge</div>
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-<div style="background: #ffebee; padding: 12px; border-radius: 4px; text-decoration: line-through; opacity: 0.6;">
-<div style="color: #c62828; font-weight: bold; margin-bottom: 5px;">&#226;&#338; Old Version (Removed)</div>
-<div style="font-size: 0.85em; color: #555;">version: 1</div>
-</div>
-<div style="background: #c8e6c9; padding: 12px; border-radius: 4px;">
-<div style="color: #2e7d32; font-weight: bold; margin-bottom: 5px;">&#226;&#339;&#8230; Latest Version (Kept)</div>
-<div style="font-size: 0.85em; color: #555;">version: 2</div>
-</div>
-</div>
-</div>
-<div style="text-align: center; font-size: 20px; color: #666;">&#226;&#8224;&#8220;</div>
-<!-- Step 4: Query -->
-<div style="background: #f3e5f5; padding: 20px; border-radius: 6px; border: 2px solid #7b1fa2;">
-<div style="font-weight: bold; color: #6a1b9a; margin-bottom: 10px;">Step 4: Query Result</div>
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-<div style="background: white; padding: 12px; border-radius: 4px;">
-<div style="font-weight: bold; color: #333; margin-bottom: 5px;">WITH FINAL:</div>
-<div style="font-size: 0.85em; color: #2e7d32;">Returns only latest: "Alice Smith"</div>
-</div>
-<div style="background: white; padding: 12px; border-radius: 4px;">
-<div style="font-weight: bold; color: #333; margin-bottom: 5px;">WITHOUT FINAL:</div>
-<div style="font-size: 0.85em; color: #d32f2f;">May return duplicates (if not merged yet)</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="code-block">-- For data that can be updated/replaced CREATE TABLE users ( user_id UInt64, name String, email String, status LowCardinality(String), updated_at DateTime, version UInt32 -- Version field required for tracking updates ) ENGINE = ReplacingMergeTree(version) -- version field tells engine which is newest PARTITION BY toYYYYMM(updated_at) ORDER BY (user_id, updated_at); -- Insert initial version INSERT INTO users VALUES (1, 'Alice', 'alice@example.com', 'active', '2026-01-22 10:00:00', 1); -- "Update" - insert new version with higher version number INSERT INTO users VALUES (1, 'Alice Smith', 'alice@example.com', 'active', '2026-01-22 11:00:00', 2); -- Query - will automatically use latest version during merge SELECT * FROM users FINAL WHERE user_id = 1; -- Note: Without FINAL, you might see duplicate versions SELECT * FROM users WHERE user_id = 1;
-<h3>3. Understanding SummingMergeTree</h3>
-<div style="background: #f9f9f9; padding: 30px; border-radius: 8px; margin: 20px 0;">
-<h4 style="color: #333; text-align: center; margin-bottom: 20px;">SummingMergeTree Aggregation Flow</h4>
-<div style="max-width: 900px; margin: 0 auto;">
-<div style="display: flex; flex-direction: column; gap: 20px;"><!-- Step 1: Initial Inserts -->
-<div>
-<div style="font-weight: bold; color: #333; margin-bottom: 10px;">Step 1: Insert Multiple Records (Same Key)</div>
-<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-<div style="background: #e3f2fd; padding: 15px; border-radius: 4px; border: 2px solid #1976d2;">
-<div style="font-weight: bold; color: #0d47a1; margin-bottom: 5px;">Record 1</div>
-<div style="font-size: 0.85em; color: #333;">date: 2026-01-22</div>
-<div style="font-size: 0.85em; color: #333;">host: server1</div>
-<div style="font-size: 0.85em; color: #388e3c; font-weight: bold;">requests: 10000</div>
-<div style="font-size: 0.85em; color: #388e3c; font-weight: bold;">errors: 50</div>
-</div>
-<div style="background: #e3f2fd; padding: 15px; border-radius: 4px; border: 2px solid #1976d2;">
-<div style="font-weight: bold; color: #0d47a1; margin-bottom: 5px;">Record 2</div>
-<div style="font-size: 0.85em; color: #333;">date: 2026-01-22</div>
-<div style="font-size: 0.85em; color: #333;">host: server1</div>
-<div style="font-size: 0.85em; color: #388e3c; font-weight: bold;">requests: 5000</div>
-<div style="font-size: 0.85em; color: #388e3c; font-weight: bold;">errors: 10</div>
-</div>
-<div style="background: #e3f2fd; padding: 15px; border-radius: 4px; border: 2px solid #1976d2;">
-<div style="font-weight: bold; color: #0d47a1; margin-bottom: 5px;">Record 3</div>
-<div style="font-size: 0.85em; color: #333;">date: 2026-01-22</div>
-<div style="font-size: 0.85em; color: #333;">host: server1</div>
-<div style="font-size: 0.85em; color: #388e3c; font-weight: bold;">requests: 3000</div>
-<div style="font-size: 0.85em; color: #388e3c; font-weight: bold;">errors: 5</div>
-</div>
-</div>
-</div>
-<div style="text-align: center; font-size: 20px; color: #666;">&#226;&#8224;&#8220; Background Merge with Summing &#226;&#8224;&#8220;</div>
-<!-- Step 2: Auto-Aggregation -->
-<div style="background: #fff3e0; padding: 20px; border-radius: 6px; border: 2px solid #f57c00;">
-<div style="font-weight: bold; color: #e65100; margin-bottom: 10px;">Step 2: Automatic Aggregation (Same ORDER BY Keys)</div>
-<div style="background: white; padding: 15px; border-radius: 4px;">
-<div style="display: flex; justify-content: space-around; align-items: center;">
-<div style="text-align: center;">
-<div style="font-size: 0.85em; color: #555; margin-bottom: 5px;">requests</div>
-<div style="font-size: 1.2em; color: #333;">10000 + 5000 + 3000</div>
-<div style="font-size: 1.5em; font-weight: bold; color: #388e3c; margin-top: 5px;">= 18000</div>
-</div>
-<div style="font-size: 2em; color: #ccc;">|</div>
-<div style="text-align: center;">
-<div style="font-size: 0.85em; color: #555; margin-bottom: 5px;">errors</div>
-<div style="font-size: 1.2em; color: #333;">50 + 10 + 5</div>
-<div style="font-size: 1.5em; font-weight: bold; color: #388e3c; margin-top: 5px;">= 65</div>
-</div>
-</div>
-</div>
-</div>
-<div style="text-align: center; font-size: 20px; color: #666;">&#226;&#8224;&#8220;</div>
-<!-- Step 3: Final Result -->
-<div style="background: #e8f5e9; padding: 20px; border-radius: 6px; border: 2px solid #388e3c;">
-<div style="font-weight: bold; color: #2e7d32; margin-bottom: 10px;">Step 3: Single Aggregated Record</div>
-<div style="background: white; padding: 15px; border-radius: 4px; text-align: center;">
-<div style="font-weight: bold; color: #333; margin-bottom: 10px;">Final Merged Record:</div>
-<div style="font-size: 0.9em; color: #555; margin: 5px 0;">date: 2026-01-22, host: server1</div>
-<div style="display: flex; justify-content: center; gap: 40px; margin-top: 10px;">
-<div style="background: #c8e6c9; padding: 10px 20px; border-radius: 4px;">
-<div style="font-size: 0.85em; color: #555;">requests</div>
-<div style="font-size: 1.3em; font-weight: bold; color: #2e7d32;">18000</div>
-</div>
-<div style="background: #c8e6c9; padding: 10px 20px; border-radius: 4px;">
-<div style="font-size: 0.85em; color: #555;">errors</div>
-<div style="font-size: 1.3em; font-weight: bold; color: #2e7d32;">65</div>
-</div>
-</div>
-</div>
-</div>
-<!-- Benefits -->
-<div style="background: #fff9e6; padding: 15px; border-radius: 6px; border-left: 4px solid #ffb82e;">
-<div style="font-weight: bold; color: #333; margin-bottom: 8px;">&#226;&#339;&#168; Benefits:</div>
-<ul style="margin: 0; padding-left: 20px; color: #555; font-size: 0.9em;">
-<li>Automatic pre-aggregation during merges</li>
-<li>Storage savings: 3 rows &#226;&#8224;&#8217; 1 row (66% reduction)</li>
-<li>Faster queries: already aggregated data</li>
-<li>Perfect for metrics, counters, and rollup tables</li>
-</ul>
-</div>
-</div>
-</div>
-</div>
-<div class="code-block">-- For pre-aggregated metrics and counters CREATE TABLE metrics_daily ( metric_date Date, metric_name LowCardinality(String), host LowCardinality(String), cpu_count UInt32, memory_gb UInt64, request_count UInt64, error_count UInt64, total_latency_ms UInt64 ) ENGINE = SummingMergeTree() PARTITION BY toYYYYMM(metric_date) ORDER BY (metric_name, host, metric_date); -- Insert daily summaries INSERT INTO metrics_daily VALUES ('2026-01-22', 'app.metrics', 'server1', 8, 16, 10000, 50, 50000), ('2026-01-22', 'app.metrics', 'server1', 0, 0, 5000, 10, 25000); -- Same day, will sum -- Query - numeric columns are automatically summed during merge SELECT metric_date, host, SUM(request_count), SUM(error_count) FROM metrics_daily GROUP BY metric_date, host;</div>
-</div>
-<!-- Commands Reference Section -->
-<div class="section" id="2403768217187-commands-reference"><div class="section-header">&#240;&#376;&#8217;&#187; Commands Reference</div>
-<div class="section-content">
-<h3>Engine-Specific Commands</h3>
-<h4>MergeTree (Basic)</h4>
-<div class="code-block">CREATE TABLE logs ( timestamp DateTime, level LowCardinality(String), message String ) ENGINE = MergeTree() PARTITION BY toYYYYMM(timestamp) ORDER BY (level, timestamp); -- No special operations, standard INSERT/SELECT
-<h4>ReplacingMergeTree (Updates)</h4>
-<div class="code-block">CREATE TABLE dimension ( id UInt64, name String, version UInt32 ) ENGINE = ReplacingMergeTree(version) ORDER BY id; -- Required: version field, insert with increasing versions INSERT INTO dimension VALUES (1, 'Value A', 1); INSERT INTO dimension VALUES (1, 'Value B', 2); -- Use FINAL to get latest SELECT * FROM dimension FINAL; -- Drop duplicate versions OPTIMIZE TABLE dimension FINAL;
-<h4>SummingMergeTree (Aggregations)</h4>
-<div class="code-block">CREATE TABLE rollups ( date Date, category String, count UInt64, sum UInt64, avg_value Float64 -- Will NOT be summed ) ENGINE = SummingMergeTree() PARTITION BY toYYYYMM(date) ORDER BY (date, category); -- Numeric columns auto-sum, others stay as-is INSERT INTO rollups VALUES ('2026-01-22', 'cat1', 10, 100, 5.5); INSERT INTO rollups VALUES ('2026-01-22', 'cat1', 5, 50, 3.3); -- Will show summed count and sum SELECT date, category, sum(count), sum(sum) FROM rollups GROUP BY date, category;
-<h3>Partitioning and TTL Commands</h3>
-<div class="code-block">-- Table with TTL for auto-deletion CREATE TABLE analytics ( event_date Date, event_time DateTime, data String ) ENGINE = MergeTree() PARTITION BY toYYYYMM(event_date) ORDER BY event_date TTL event_date + INTERVAL 30 DAY; -- Auto-delete after 30 days -- Check active partitions SELECT partition, name FROM system.parts WHERE table = 'analytics' AND database = 'default' AND active; -- Drop specific partition ALTER TABLE analytics DROP PARTITION '202601'; -- Detach partition (soft delete, can be reattached) ALTER TABLE analytics DETACH PARTITION '202601'; -- Reattach partition ALTER TABLE analytics ATTACH PARTITION '202601'; -- Force merge/TTL cleanup OPTIMIZE TABLE analytics FINAL;
-<h3>Primary Key and Sorting Key Commands</h3>
-<div class="code-block">-- Explicit primary key (different from sort key) CREATE TABLE data ( year UInt16, month UInt8, day UInt8, user_id UInt64, value Float64 ) ENGINE = MergeTree() PARTITION BY (year, month) PRIMARY KEY (year, month, day) -- For filtering/pruning ORDER BY (year, month, day, user_id); -- Physical sort -- Query optimization using primary key SELECT * FROM data WHERE year = 2026 AND month = 1; -- Uses primary key -- Check table schema DESCRIBE TABLE data; -- Check primary key structure SHOW CREATE TABLE data;
-<h3>Data Types and Codecs</h3>
-<div class="code-block">-- Table with optimized data types and codecs CREATE TABLE metrics ( timestamp DateTime CODEC(DoubleDelta, ZSTD), metric_name LowCardinality(String), value Float64 CODEC(Gorilla, ZSTD), counter UInt64 CODEC(Delta, ZSTD), status LowCardinality(String), message String CODEC(ZSTD(3)) ) ENGINE = MergeTree() PARTITION BY toYYYYMM(timestamp) ORDER BY (metric_name, timestamp); -- Check actual compression stats SELECT table, column, formatReadableSize(sum(data_compressed_bytes)) as compressed, formatReadableSize(sum(data_uncompressed_bytes)) as uncompressed, round(sum(data_uncompressed_bytes) / sum(data_compressed_bytes), 2) as ratio FROM system.parts_columns WHERE table = 'metrics' AND database = 'default' GROUP BY table, column ORDER BY ratio DESC;</div>
-</div>
-<!-- Best Practices Section -->
-<div class="section" id="226339168-best-practices"><div class="section-header">&#226;&#339;&#168; Best Practices</div>
-<div class="section-content">
-<h3>1. Choosing the Right Engine</h3>
-<div class="comparison">
-<div class="card">
-<h4>Use MergeTree When:</h4>
-<ul>
-<li>Append-only workloads</li>
-<li>Time-series or event data</li>
-<li>No updates needed</li>
-<li>Standard analytics queries</li>
-</ul>
-</div>
-<div class="card">
-<h4>Use ReplacingMergeTree When:</h4>
-<ul>
-<li>Dimension tables with updates</li>
-<li>User profiles or settings</li>
-<li>State snapshots</li>
-<li>Deduplication needed</li>
-</ul>
-</div>
-</div>
-<div class="comparison">
-<div class="card">
-<h4>Use SummingMergeTree When:</h4>
-<ul>
-<li>Pre-aggregated data</li>
-<li>Counters and metrics</li>
-<li>Daily/hourly rollups</li>
-<li>Numeric columns to sum</li>
-</ul>
-</div>
-<div class="card">
-<h4>Use AggregatingMergeTree When:</h4>
-<ul>
-<li>Complex aggregation states</li>
-<li>Materialized views</li>
-<li>Advanced analytics</li>
-<li>State-based aggregations</li>
-</ul>
-</div>
-</div>
-<h3>2. Optimal Partitioning Strategy</h3>
-<div class="comparison">
-<div class="bad">
-<div class="badge badge-bad">&#226;&#338; Too Many Partitions</div>
-<div class="code-block">-- Daily partitions = 365 per year CREATE TABLE events ( timestamp DateTime, data String ) ENGINE = MergeTree() PARTITION BY toDate(timestamp) -- Creates 365+ partitions! ORDER BY timestamp;
-<p><strong>Problem:</strong> 365+ partitions/year, metadata overhead</p>
-</div>
-<div class="good">
-<div class="badge badge-good">&#226;&#339;&#8230; Optimal Partitions</div>
-<div class="code-block">-- Monthly partitions = 12 per year CREATE TABLE events ( timestamp DateTime, data String ) ENGINE = MergeTree() PARTITION BY toYYYYMM(timestamp) ORDER BY timestamp;
-<p><strong>Benefit:</strong> Only 12 partitions/year, easy data cleanup</p>
-</div>
-</div>
-<h3>3. Primary Key Design</h3>
-<div class="comparison">
-<div class="bad">
-<div class="badge badge-bad">&#226;&#338; High Cardinality First</div>
-<div class="code-block">-- UUID first = poor compression CREATE TABLE events ( event_id UUID, user_id UInt64, country String, timestamp DateTime ) ENGINE = MergeTree() ORDER BY (event_id, timestamp);
-<p><strong>Problem:</strong> Poor compression, inefficient pruning</p>
-</div>
-<div class="good">
-<div class="badge badge-good">&#226;&#339;&#8230; Low Cardinality First</div>
-<div class="code-block">-- Low cardinality first = better compression CREATE TABLE events ( event_id UUID, user_id UInt64, country String, timestamp DateTime ) ENGINE = MergeTree() ORDER BY (country, timestamp, user_id, event_id);
-<p><strong>Benefit:</strong> 10-100x better compression, faster queries</p>
-</div>
-</div>
-<h3>4. Data Type Selection</h3>
-<div class="highlight-box">
-<h4>Use Right Data Types for Compression</h4>
-<ul>
-<li><strong>UInt8/16/32/64:</strong> Use smallest type that fits your range</li>
-<li><strong>LowCardinality(String):</strong> 10-100x compression for enums (&lt; 10k values)</li>
-<li><strong>Decimal(P, S):</strong> Financial data - use instead of Float</li>
-<li><strong>Date/DateTime:</strong> Always use date types, not strings</li>
-<li><strong>Enum:</strong> Better than String for fixed values</li>
-<li><strong>Avoid String:</strong> String columns are not compressed well</li>
-</ul>
-</div>
-<h3>5. TTL Policies for Data Lifecycle</h3>
-<div class="grid-2">
-<div class="card">
-<h4>TTL for Rows (Auto-delete)</h4>
-<div class="code-block">CREATE TABLE logs ( timestamp DateTime, message String ) ENGINE = MergeTree() PARTITION BY toYYYYMM(timestamp) ORDER BY timestamp TTL timestamp + INTERVAL 90 DAY;
-<p>Automatically deletes rows after 90 days</p>
-</div>
-<div class="card">
-<h4>TTL for Column (Move to S3)</h4>
-<div class="code-block">CREATE TABLE metrics ( timestamp DateTime, value Float64 ) ENGINE = MergeTree() PARTITION BY toYYYYMM(timestamp) ORDER BY timestamp TTL timestamp + INTERVAL 7 DAY TO DISK 'hot_ssd', timestamp + INTERVAL 30 DAY TO DISK 'cold_ssd';
-<p>Moves old data to cheaper storage</p>
-</div>
-</div>
-</div>
-</div>
-<!-- When to Use Section -->
-<div class="section" id="240376381175-when-to-use-each-engine"><div class="section-header">&#240;&#376;&#381;&#175; When to Use Each Engine</div>
-<div class="section-content">
-<h3>Decision Matrix</h3>
-<table class="engine-table">
-<thead>
-<tr>
-<th>Scenario</th>
-<th>Recommended Engine</th>
-<th>Example Use Case</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Append-only events, metrics, logs</td>
-<td><strong>MergeTree</strong></td>
-<td>Website events, server metrics, application logs</td>
-</tr>
-<tr>
-<td>Dimension tables, user profiles, config</td>
-<td><strong>ReplacingMergeTree</strong></td>
-<td>User settings, product catalog, pricing</td>
-</tr>
-<tr>
-<td>Pre-aggregated metrics, counters, rollups</td>
-<td><strong>SummingMergeTree</strong></td>
-<td>Daily stats, hourly rollups, aggregated counters</td>
-</tr>
-<tr>
-<td>Complex aggregation state, cardinality tracking</td>
-<td><strong>AggregatingMergeTree</strong></td>
-<td>HyperLogLog for unique counts, complex statistics</td>
-</tr>
-<tr>
-<td>State transitions, event cancellation</td>
-<td><strong>CollapsingMergeTree</strong></td>
-<td>Order status changes, billing events</td>
-</tr>
-</tbody>
-</table>
-<div class="highlight-box">
-<h4>Real-World Example: E-commerce Analytics</h4>
-<ul>
-<li><strong>Raw Events Table:</strong> MergeTree - store all clicks, views, purchases</li>
-<li><strong>Product Dimensions:</strong> ReplacingMergeTree - product info changes over time</li>
-<li><strong>Daily Rollups:</strong> SummingMergeTree - pre-aggregate daily stats by category</li>
-<li><strong>Session Tracking:</strong> CollapsingMergeTree - track open/close sessions</li>
-</ul>
-</div>
-</div>
-</div>
-<!-- Real-World Results Section -->
-<div class="section" id="2403768224-real-world-results"><div class="section-header">&#240;&#376;&#8224; Real-World Results</div>
-<div class="section-content">
-<div class="icon-grid">
-<div class="icon-card" style="background: #fff9e6;">
-<div style="font-size: 2em; font-weight: bold; color: #ff6b35;">50-100x</div>
-<h4>Compression Ratio</h4>
-<p>Optimal schema design with codecs and data types</p>
-</div>
-<div class="icon-card" style="background: #e6f7ed;">
-<div style="font-size: 2em; font-weight: bold; color: #ff6b35;">10-1000x</div>
-<h4>Query Speedup</h4>
-<p>Right primary key = massive performance improvement</p>
-</div>
-<div class="icon-card" style="background: #e6f2ff;">
-<div style="font-size: 2em; font-weight: bold; color: #ff6b35;">70%</div>
-<h4>Cost Reduction</h4>
-<p>Less storage needed due to compression</p>
-</div>
-<div class="icon-card" style="background: #f0e6ff;">
-<div style="font-size: 2em; font-weight: bold; color: #ff6b35;">99.99%</div>
-<h4>Query Success</h4>
-<p>Proper schema design reduces timeouts</p>
-</div>
-</div>
-<div class="card">
-<h4>Case Study: SaaS Analytics Platform</h4>
-<p><strong>Challenge:</strong> 500 million events/day, slow queries on dashboard</p>
-<p><strong>Before Optimization:</strong></p>
-<ul>
-<li>Storage: 100GB/day raw data</li>
-<li>Query time: 5-10 seconds for dashboards</li>
-<li>Using generic MergeTree, all columns with String type</li>
-</ul>
-<p><strong>Schema Changes:</strong></p>
-<ul>
-<li>Used LowCardinality for country, event_type, user_type</li>
-<li>Added DoubleDelta codec for timestamps</li>
-<li>Optimized primary key: (event_type, event_date, user_id)</li>
-<li>Monthly partitioning instead of daily</li>
-</ul>
-<p><strong>Results:</strong></p>
-<ul>
-<li>Storage: 100GB &#226;&#8224;&#8217; 2GB (50x compression!)</li>
-<li>Query time: 5-10s &#226;&#8224;&#8217; 200-500ms (20-50x faster)</li>
-<li>Infrastructure cost: $50k/month &#226;&#8224;&#8217; $5k/month (10x reduction)</li>
-</ul>
-</div>
-</div>
-</div>
-<!-- Templates Section -->
-<div class="section" id="24037682208249-ready-to-use-templates"><div class="section-header">&#240;&#376;&#8220;&#8249; Ready-to-Use Templates</div>
-<div class="section-content">
-<h3>Template 1: Optimized Events Table</h3>
-<div class="code-block">CREATE TABLE events ( event_date Date, event_time DateTime CODEC(DoubleDelta, ZSTD), user_id UInt64, event_type LowCardinality(String), country LowCardinality(String), platform LowCardinality(String), revenue Decimal(10, 2), session_id String ) ENGINE = MergeTree() PARTITION BY toYYYYMM(event_date) PRIMARY KEY (event_type, event_date, user_id) ORDER BY (event_type, event_date, user_id, event_time) TTL event_date + INTERVAL 2 YEAR;
-<h3>Template 2: Dimension Table with Updates</h3>
-<div class="code-block">CREATE TABLE users_dimension ( user_id UInt64, email String, name String, country LowCardinality(String), subscription_level LowCardinality(String), updated_at DateTime, version UInt32 ) ENGINE = ReplacingMergeTree(version) PARTITION BY toYYYYMM(updated_at) PRIMARY KEY (user_id) ORDER BY (user_id, updated_at); -- Insert new user INSERT INTO users_dimension VALUES (1, 'alice@ex.com', 'Alice', 'US', 'premium', now(), 1); -- Update = new row with higher version INSERT INTO users_dimension VALUES (1, 'alice@ex.com', 'Alice Smith', 'US', 'premium', now(), 2); -- Query with FINAL to get latest SELECT * FROM users_dimension FINAL WHERE user_id = 1;
-<h3>Template 3: Pre-Aggregated Metrics</h3>
-<div class="code-block">CREATE TABLE metrics_hourly ( hour DateTime, metric_name LowCardinality(String), host LowCardinality(String), region LowCardinality(String), request_count UInt64, error_count UInt64, total_latency_ms UInt64, avg_latency_ms Float64, p95_latency_ms Float64 ) ENGINE = SummingMergeTree() PARTITION BY toYYYYMM(hour) PRIMARY KEY (metric_name, host) ORDER BY (metric_name, host, hour) TTL hour + INTERVAL 90 DAY;
-<h3>Template 4: Logs Table with Optimal Compression</h3>
-<div class="code-block">CREATE TABLE logs ( timestamp DateTime CODEC(DoubleDelta, ZSTD), timestamp_ms DateTime64(3) CODEC(DoubleDelta, ZSTD), level LowCardinality(String), logger_name LowCardinality(String), service LowCardinality(String), host LowCardinality(String), message String CODEC(ZSTD(3)), exception String CODEC(ZSTD(3)), trace_id String, user_id UInt64 DEFAULT 0 ) ENGINE = MergeTree() PARTITION BY toYYYYMM(timestamp) PRIMARY KEY (level, service) ORDER BY (level, service, timestamp) TTL timestamp + INTERVAL 90 DAY;</div>
-</div>
-<!-- Advanced Patterns Section -->
-<div class="section" id="2403768221165-advanced-patterns"><div class="section-header">&#240;&#376;&#8221;&#165; Advanced Patterns</div>
-<div class="section-content">
-<h3>1. Materialized View with Aggregation</h3>
-<div class="code-block">-- Source events table CREATE TABLE raw_events ( event_date Date, event_time DateTime, user_id UInt64, event_type String, revenue Decimal(10, 2) ) ENGINE = MergeTree() PARTITION BY toYYYYMM(event_date) ORDER BY (event_date, user_id); -- Pre-aggregated view CREATE MATERIALIZED VIEW events_daily_mv ENGINE = SummingMergeTree() PARTITION BY toYYYYMM(day) ORDER BY (day, event_type, user_id) AS SELECT toDate(event_time) as day, event_type, user_id, COUNT(*) as event_count, SUM(revenue) as total_revenue FROM raw_events GROUP BY day, event_type, user_id; -- Queries on MV are instant SELECT day, event_type, sum(event_count), sum(total_revenue) FROM events_daily_mv WHERE day &gt;= today() - 7 GROUP BY day, event_type;
-<h3>2. Multi-Level Partitioning</h3>
-<div class="code-block">-- Partition by multiple columns CREATE TABLE analytics_detailed ( event_year UInt16, event_month UInt8, event_day UInt8, event_time DateTime, user_id UInt64, metric_value Float64 ) ENGINE = MergeTree() PARTITION BY (event_year, event_month) PRIMARY KEY (event_year, event_month, event_day) ORDER BY (event_year, event_month, event_day, event_time); -- Easy deletion of specific month/year ALTER TABLE analytics_detailed DROP PARTITION (2026, 1);
-<h3>3. Schema Evolution with ALTER</h3>
-<div class="code-block">-- Original table CREATE TABLE products ( product_id UInt64, name String, price Decimal(10, 2) ) ENGINE = MergeTree() ORDER BY product_id; -- Add new column ALTER TABLE products ADD COLUMN category String DEFAULT 'general'; -- Modify column type (careful!) ALTER TABLE products MODIFY COLUMN name String CODEC(ZSTD); -- Add column with TTL ALTER TABLE products ADD COLUMN created_at DateTime DEFAULT now() TTL created_at + INTERVAL 3 YEAR; -- Drop column ALTER TABLE products DROP COLUMN created_at;
-<h3>4. Using Sampling for Approximate Results</h3>
-<div class="code-block">-- Add sampling key to table CREATE TABLE analytics ( event_time DateTime, user_id UInt64, event_type String, value Float64 ) ENGINE = MergeTree() ORDER BY event_time SAMPLE BY intHash32(user_id); -- Fast approximate queries (10x faster) SELECT event_type, COUNT(*) * 10 as estimated_count, AVG(value) as avg_value FROM analytics SAMPLE 0.1 WHERE event_time &gt;= today() - 30 GROUP BY event_type; -- Accurate queries (slower but complete) SELECT event_type, COUNT(*) as exact_count, AVG(value) as avg_value FROM analytics WHERE event_time &gt;= today() - 30 GROUP BY event_type;
-<h3>5. Primary Key vs Sorting Key Deep Dive</h3>
-<div class="code-block">-- Different primary and sort keys CREATE TABLE events ( year UInt16, month UInt8, day UInt8, user_id UInt64, event_id UUID, value Float64 ) ENGINE = MergeTree() PARTITION BY (year, month) PRIMARY KEY (year, month, day) -- Used for pruning ORDER BY (year, month, day, user_id, event_id); -- Physical order -- This query will use primary key (fast) SELECT * FROM events WHERE year = 2026 AND month = 1 AND day = 22; -- This query will scan all blocks (slower, but still optimized) SELECT * FROM events WHERE user_id = 12345; -- Best practice: Primary key should match your most common filters -- Sorting key can be longer for better compression</div>
-</div>
-<!-- Resources Section -->
-<div class="section" id="2403768220353-resources-amp-references"><div class="section-header">&#240;&#376;&#8220;&#353; Resources &amp; References</div>
-<div class="section-content">
-<div class="grid-2">
+    <div class="nav-buttons">
+        <div class="nav-btn">📖 What is It?</div>
+        <div class="nav-btn">🚀 Quick Start</div>
+        <div class="nav-btn">💻 Commands</div>
+        <div class="nav-btn">✨ Best Practices</div>
+        <div class="nav-btn">🎯 When to Use</div>
+        <div class="nav-btn">🏆 Real-World Results</div>
+        <div class="nav-btn">📋 Templates</div>
+        <div class="nav-btn">🔥 Advanced</div>
+        <div class="nav-btn">📚 Resources</div>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- What is It Section -->
+    <div class="section" id="what-is-it">
+        <div class="section-header">📖 What is It?</div>
+        <div class="section-content">
+            <div class="highlight-box">
+                <h4 style="margin-top: 0;">Table Engines & Data Modeling in ClickHouse</h4>
+                <p><strong>Table Engines</strong> are the core architecture components that determine how ClickHouse stores, processes, and retrieves data. Choosing the right engine is critical for performance and query optimization.</p>
+                <p><strong>Data Modeling</strong> encompasses primary keys, sorting keys, partitioning strategies, data types, and codecs - all working together to create an optimal schema for your analytical workloads.</p>
+            </div>
+
+            <h3>Why Table Engines Matter</h3>
+            <div class="icon-grid">
+                <div class="icon-card">
+                    <div class="icon">⚡</div>
+                    <h4>Performance</h4>
+                    <p>Right engine + schema = 10-100x faster queries</p>
+                </div>
+                <div class="icon-card">
+                    <div class="icon">💾</div>
+                    <h4>Storage Efficiency</h4>
+                    <p>Compression, codecs, and data types optimize disk usage</p>
+                </div>
+                <div class="icon-card">
+                    <div class="icon">🎧</div>
+                    <h4>Specialized Use Cases</h4>
+                    <p>Different engines for updates, aggregations, and deduplication</p>
+                </div>
+                <div class="icon-card">
+                    <div class="icon">🎯</div>
+                    <h4>Query Optimization</h4>
+                    <p>Primary keys, sorting, and partitioning guide query execution</p>
+                </div>
+            </div>
+
+            <h3>The MergeTree Family</h3>
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                <thead>
+                    <tr style="background: #ff6b35; color: white;">
+                        <th style="padding: 12px; text-align: left;">Engine</th>
+                        <th style="padding: 12px; text-align: left;">Purpose</th>
+                        <th style="padding: 12px; text-align: left;">Best For</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="background: #f9f9f9;">
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>MergeTree</strong></td>
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Base engine for most use cases</td>
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">General-purpose analytics, time-series, events</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>ReplacingMergeTree</strong></td>
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Handles updates by replacing old versions</td>
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">User profiles, state snapshots, dimension tables</td>
+                    </tr>
+                    <tr style="background: #f9f9f9;">
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>SummingMergeTree</strong></td>
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Pre-aggregates numeric columns during merges</td>
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Counters, metrics, pre-aggregated data</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>AggregatingMergeTree</strong></td>
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Stores aggregation function states</td>
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Complex aggregations, materialized views</td>
+                    </tr>
+                    <tr style="background: #f9f9f9;">
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>CollapsingMergeTree</strong></td>
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Cancels out old rows with new ones</td>
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Status changes, events with cancellation</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px;"><strong>VersionedCollapsingMergeTree</strong></td>
+                        <td style="padding: 12px;">Enhanced collapsing with version support</td>
+                        <td style="padding: 12px;">Complex state management, version tracking</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>MergeTree Engine Internals</h3>
+            <div style="background: #f9f9f9; padding: 30px; border-radius: 8px; margin: 20px 0;">
+                <div style="max-width: 1000px; margin: 0 auto;">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 25px;">
+                        <!-- Partition 202601 -->
+                        <div style="background: #fff; padding: 20px; border-radius: 8px; border: 3px solid #1976d2;">
+                            <div style="background: #1976d2; color: white; padding: 10px; margin: -20px -20px 15px -20px; border-radius: 5px 5px 0 0; font-weight: bold; text-align: center;">Partition: 202601</div>
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                <div style="background: #e3f2fd; padding: 12px; border-radius: 4px; border-left: 4px solid #1976d2;">
+                                    <div style="font-weight: bold; color: #0d47a1; margin-bottom: 5px;">Part 1</div>
+                                    <div style="font-size: 0.85em; color: #333;">Rows: 10,000</div>
+                                    <div style="font-size: 0.85em; color: #555;">Primary Index: Sparse</div>
+                                    <div style="font-size: 0.85em; color: #555;">Data Blocks: Compressed</div>
+                                </div>
+                                <div style="background: #e3f2fd; padding: 12px; border-radius: 4px; border-left: 4px solid #1976d2;">
+                                    <div style="font-weight: bold; color: #0d47a1; margin-bottom: 5px;">Part 2</div>
+                                    <div style="font-size: 0.85em; color: #333;">Rows: 15,000</div>
+                                    <div style="font-size: 0.85em; color: #555;">Primary Index: Sparse</div>
+                                    <div style="font-size: 0.85em; color: #555;">Data Blocks: Compressed</div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Partition 202602 -->
+                        <div style="background: #fff; padding: 20px; border-radius: 8px; border: 3px solid #f57c00;">
+                            <div style="background: #f57c00; color: white; padding: 10px; margin: -20px -20px 15px -20px; border-radius: 5px 5px 0 0; font-weight: bold; text-align: center;">Partition: 202602</div>
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                <div style="background: #fff3e0; padding: 12px; border-radius: 4px; border-left: 4px solid #f57c00;">
+                                    <div style="font-weight: bold; color: #e65100; margin-bottom: 5px;">Part 1</div>
+                                    <div style="font-size: 0.85em; color: #333;">Rows: 8,000</div>
+                                    <div style="font-size: 0.85em; color: #555;">Primary Index: Sparse</div>
+                                    <div style="font-size: 0.85em; color: #555;">Data Blocks: Compressed</div>
+                                </div>
+                                <div style="background: #fff3e0; padding: 12px; border-radius: 4px; border-left: 4px solid #f57c00;">
+                                    <div style="font-weight: bold; color: #e65100; margin-bottom: 5px;">Part 2</div>
+                                    <div style="font-size: 0.85em; color: #333;">Rows: 12,000</div>
+                                    <div style="font-size: 0.85em; color: #555;">Primary Index: Sparse</div>
+                                    <div style="font-size: 0.85em; color: #555;">Data Blocks: Compressed</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Part Internals -->
+                    <div style="background: #f3e5f5; padding: 20px; border-radius: 8px; border: 2px solid #7b1fa2;">
+                        <div style="font-weight: bold; color: #6a1b9a; margin-bottom: 15px; font-size: 1.1em;">Inside Each Part:</div>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+                            <div style="background: white; padding: 15px; border-radius: 4px; text-align: center;">
+                                <div style="font-weight: bold; color: #7b1fa2; margin-bottom: 8px;">Primary Index</div>
+                                <div style="font-size: 0.85em; color: #555;">Sparse index for quick lookups</div>
+                            </div>
+                            <div style="background: white; padding: 15px; border-radius: 4px; text-align: center;">
+                                <div style="font-weight: bold; color: #7b1fa2; margin-bottom: 8px;">Column Files</div>
+                                <div style="font-size: 0.85em; color: #555;">Separate .bin file per column</div>
+                            </div>
+                            <div style="background: white; padding: 15px; border-radius: 4px; text-align: center;">
+                                <div style="font-weight: bold; color: #7b1fa2; margin-bottom: 8px;">Data Blocks</div>
+                                <div style="font-size: 0.85em; color: #555;">Compressed with codecs</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Key Concepts</h3>
+            <div class="grid-2">
+                <div class="card">
+                    <h4>Primary Key vs Sorting Key</h4>
+                    <p><strong>Primary Key:</strong> Used for filtering (WHERE clauses). Defines which columns are used for pruning partitions and blocks.</p>
+                    <p><strong>Sorting Key:</strong> Determines physical order of data. Can be different from primary key.</p>
+                    <p><strong>Rule of Thumb:</strong> Primary key is usually the first 1-3 columns of sorting key.</p>
+                </div>
+                <div class="card">
+                    <h4>Partitioning Strategy</h4>
+                    <p><strong>Partition:</strong> Logical grouping of data (by date, month, region, etc.)</p>
+                    <p><strong>Benefits:</strong> Faster deletes, parallel processing, manageable data movement</p>
+                    <p><strong>Common:</strong> Partition by date/month for time-series data</p>
+                </div>
+            </div>
+            <div class="grid-2">
+                <div class="card">
+                    <h4>Data Types Impact</h4>
+                    <p>Choosing right types affects compression and speed:</p>
+                    <ul style="margin: 10px 0; padding-left: 20px;">
+                        <li><strong>UInt8/16/32/64:</strong> Best compression for integers</li>
+                        <li><strong>Decimal:</strong> For financial data (fixed precision)</li>
+                        <li><strong>LowCardinality:</strong> 10-100x compression for enums</li>
+                        <li><strong>String:</strong> Avoid if possible, use enums instead</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h4>Codecs for Compression</h4>
+                    <p>Specialized compression algorithms:</p>
+                    <ul style="margin: 10px 0; padding-left: 20px;">
+                        <li><strong>DoubleDelta:</strong> Timestamps, monotonic sequences</li>
+                        <li><strong>Gorilla:</strong> Floating-point numbers, metrics</li>
+                        <li><strong>Delta:</strong> Integer deltas (increments)</li>
+                        <li><strong>ZSTD:</strong> General-purpose, configurable</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Start Section -->
+    <div class="section" id="quick-start">
+        <div class="section-header">🚀 Quick Start</div>
+        <div class="section-content">
+
+            <h3>1. Create Your First Optimized Table</h3>
+            <div class="code-block">-- Connect to ClickHouse
+clickhouse-client
+USE analytics;
+
+-- Create an optimized events table
+CREATE TABLE events (
+    event_date Date,
+    event_time DateTime,
+    user_id UInt64,
+    event_type LowCardinality(String),
+    country LowCardinality(String),
+    revenue Decimal(10, 2)
+) ENGINE = MergeTree()
+PARTITION BY toYYYYMM(event_date)
+ORDER BY (event_date, user_id, event_time);
+
+-- Insert sample data
+INSERT INTO events VALUES
+    ('2026-01-22', '2026-01-22 10:00:00', 101, 'purchase', 'US', 99.99),
+    ('2026-01-22', '2026-01-22 10:05:00', 102, 'click', 'UK', 0.00),
+    ('2026-01-22', '2026-01-22 10:10:00', 103, 'purchase', 'CA', 149.50);
+
+-- Verify the data
+SELECT * FROM events;
+SELECT COUNT(*) FROM events;</div>
+
+            <h3>2. Understanding ReplacingMergeTree</h3>
+            <div class="code-block">-- For data that can be updated/replaced
+CREATE TABLE users (
+    user_id UInt64,
+    name String,
+    email String,
+    status LowCardinality(String),
+    updated_at DateTime,
+    version UInt32  -- Version field required for tracking updates
+) ENGINE = ReplacingMergeTree(version)  -- version field tells engine which is newest
+PARTITION BY toYYYYMM(updated_at)
+ORDER BY (user_id, updated_at);
+
+-- Insert initial version
+INSERT INTO users VALUES
+    (1, 'Alice', 'alice@example.com', 'active', '2026-01-22 10:00:00', 1);
+
+-- "Update" - insert new version with higher version number
+INSERT INTO users VALUES
+    (1, 'Alice Smith', 'alice@example.com', 'active', '2026-01-22 11:00:00', 2);
+
+-- Query - will automatically use latest version during merge
+SELECT * FROM users FINAL WHERE user_id = 1;
+
+-- Note: Without FINAL, you might see duplicate versions
+SELECT * FROM users WHERE user_id = 1;</div>
+
+            <h3>3. Understanding SummingMergeTree</h3>
+            <div class="code-block">-- For pre-aggregated metrics and counters
+CREATE TABLE metrics_daily (
+    metric_date Date,
+    metric_name LowCardinality(String),
+    host LowCardinality(String),
+    cpu_count UInt32,
+    memory_gb UInt64,
+    request_count UInt64,
+    error_count UInt64,
+    total_latency_ms UInt64
+) ENGINE = SummingMergeTree()
+PARTITION BY toYYYYMM(metric_date)
+ORDER BY (metric_name, host, metric_date);
+
+-- Insert daily summaries
+INSERT INTO metrics_daily VALUES
+    ('2026-01-22', 'app.metrics', 'server1', 8, 16, 10000, 50, 50000),
+    ('2026-01-22', 'app.metrics', 'server1', 0, 0, 5000, 10, 25000);  -- Same day, will sum
+
+-- Query - numeric columns are automatically summed during merge
+SELECT
+    metric_date,
+    host,
+    SUM(request_count),
+    SUM(error_count)
+FROM metrics_daily
+GROUP BY metric_date, host;</div>
+
+        </div>
+    </div>
+
+    <!-- Commands Reference Section -->
+    <div class="section" id="commands-reference">
+        <div class="section-header">💻 Commands Reference</div>
+        <div class="section-content">
+
+            <h3>Engine-Specific Commands</h3>
+
+            <h4>MergeTree (Basic)</h4>
+            <div class="code-block">CREATE TABLE logs (
+    timestamp DateTime,
+    level LowCardinality(String),
+    message String
+) ENGINE = MergeTree()
+PARTITION BY toYYYYMM(timestamp)
+ORDER BY (level, timestamp);
+
+-- No special operations, standard INSERT/SELECT</div>
+
+            <h4>ReplacingMergeTree (Updates)</h4>
+            <div class="code-block">CREATE TABLE dimension (
+    id UInt64,
+    name String,
+    version UInt32
+) ENGINE = ReplacingMergeTree(version)
+ORDER BY id;
+
+-- Required: version field, insert with increasing versions
+INSERT INTO dimension VALUES (1, 'Value A', 1);
+INSERT INTO dimension VALUES (1, 'Value B', 2);
+
+-- Use FINAL to get latest
+SELECT * FROM dimension FINAL;
+
+-- Drop duplicate versions
+OPTIMIZE TABLE dimension FINAL;</div>
+
+            <h4>SummingMergeTree (Aggregations)</h4>
+            <div class="code-block">CREATE TABLE rollups (
+    date Date,
+    category String,
+    count UInt64,
+    sum UInt64,
+    avg_value Float64  -- Will NOT be summed
+) ENGINE = SummingMergeTree()
+PARTITION BY toYYYYMM(date)
+ORDER BY (date, category);
+
+-- Numeric columns auto-sum, others stay as-is
+INSERT INTO rollups VALUES
+    ('2026-01-22', 'cat1', 10, 100, 5.5);
+INSERT INTO rollups VALUES
+    ('2026-01-22', 'cat1', 5, 50, 3.3);
+
+-- Will show summed count and sum
+SELECT date, category, sum(count), sum(sum)
+FROM rollups
+GROUP BY date, category;</div>
+
+            <h3>Partitioning and TTL Commands</h3>
+            <div class="code-block">-- Table with TTL for auto-deletion
+CREATE TABLE analytics (
+    event_date Date,
+    event_time DateTime,
+    data String
+) ENGINE = MergeTree()
+PARTITION BY toYYYYMM(event_date)
+ORDER BY event_date
+TTL event_date + INTERVAL 30 DAY;  -- Auto-delete after 30 days
+
+-- Check active partitions
+SELECT partition, name
+FROM system.parts
+WHERE table = 'analytics'
+  AND database = 'default'
+  AND active;
+
+-- Drop specific partition
+ALTER TABLE analytics DROP PARTITION '202601';
+
+-- Detach partition (soft delete, can be reattached)
+ALTER TABLE analytics DETACH PARTITION '202601';
+
+-- Reattach partition
+ALTER TABLE analytics ATTACH PARTITION '202601';
+
+-- Force merge/TTL cleanup
+OPTIMIZE TABLE analytics FINAL;</div>
+
+            <h3>Primary Key and Sorting Key Commands</h3>
+            <div class="code-block">-- Explicit primary key (different from sort key)
+CREATE TABLE data (
+    year UInt16,
+    month UInt8,
+    day UInt8,
+    user_id UInt64,
+    value Float64
+) ENGINE = MergeTree()
+PARTITION BY (year, month)
+PRIMARY KEY (year, month, day)  -- For filtering/pruning
+ORDER BY (year, month, day, user_id);  -- Physical sort
+
+-- Query optimization using primary key
+SELECT * FROM data
+WHERE year = 2026 AND month = 1;  -- Uses primary key
+
+-- Check table schema
+DESCRIBE TABLE data;
+
+-- Check primary key structure
+SHOW CREATE TABLE data;</div>
+
+            <h3>Data Types and Codecs</h3>
+            <div class="code-block">-- Table with optimized data types and codecs
+CREATE TABLE metrics (
+    timestamp DateTime CODEC(DoubleDelta, ZSTD),
+    metric_name LowCardinality(String),
+    value Float64 CODEC(Gorilla, ZSTD),
+    counter UInt64 CODEC(Delta, ZSTD),
+    status LowCardinality(String),
+    message String CODEC(ZSTD(3))
+) ENGINE = MergeTree()
+PARTITION BY toYYYYMM(timestamp)
+ORDER BY (metric_name, timestamp);
+
+-- Check actual compression stats
+SELECT
+    table,
+    column,
+    formatReadableSize(sum(data_compressed_bytes)) as compressed,
+    formatReadableSize(sum(data_uncompressed_bytes)) as uncompressed,
+    round(sum(data_uncompressed_bytes) / sum(data_compressed_bytes), 2) as ratio
+FROM system.parts_columns
+WHERE table = 'metrics'
+  AND database = 'default'
+GROUP BY table, column
+ORDER BY ratio DESC;</div>
+
+        </div>
+    </div>
+
+    <!-- Best Practices Section -->
+    <div class="section" id="best-practices">
+        <div class="section-header">✨ Best Practices</div>
+        <div class="section-content">
+
+            <h3>1. Choosing the Right Engine</h3>
+            <div class="comparison">
+                <div class="card">
+                    <h4>Use MergeTree When:</h4>
+                    <ul>
+                        <li>Append-only workloads</li>
+                        <li>Time-series or event data</li>
+                        <li>No updates needed</li>
+                        <li>Standard analytics queries</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h4>Use ReplacingMergeTree When:</h4>
+                    <ul>
+                        <li>Dimension tables with updates</li>
+                        <li>User profiles or settings</li>
+                        <li>State snapshots</li>
+                        <li>Deduplication needed</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="comparison">
+                <div class="card">
+                    <h4>Use SummingMergeTree When:</h4>
+                    <ul>
+                        <li>Pre-aggregated data</li>
+                        <li>Counters and metrics</li>
+                        <li>Daily/hourly rollups</li>
+                        <li>Numeric columns to sum</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h4>Use AggregatingMergeTree When:</h4>
+                    <ul>
+                        <li>Complex aggregation states</li>
+                        <li>Materialized views</li>
+                        <li>Advanced analytics</li>
+                        <li>State-based aggregations</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>2. Optimal Partitioning Strategy</h3>
+            <div class="comparison">
+                <div class="bad">
+                    <div class="badge badge-bad">❌ Too Many Partitions</div>
+                    <div class="code-block">-- Daily partitions = 365 per year
+CREATE TABLE events (
+    timestamp DateTime,
+    data String
+) ENGINE = MergeTree()
+PARTITION BY toDate(timestamp)  -- Creates 365+ partitions!
+ORDER BY timestamp;</div>
+                    <p><strong>Problem:</strong> 365+ partitions/year, metadata overhead</p>
+                </div>
+                <div class="good">
+                    <div class="badge badge-good">✅ Optimal Partitions</div>
+                    <div class="code-block">-- Monthly partitions = 12 per year
+CREATE TABLE events (
+    timestamp DateTime,
+    data String
+) ENGINE = MergeTree()
+PARTITION BY toYYYYMM(timestamp)
+ORDER BY timestamp;</div>
+                    <p><strong>Benefit:</strong> Only 12 partitions/year, easy data cleanup</p>
+                </div>
+            </div>
+
+            <h3>3. Primary Key Design</h3>
+            <div class="comparison">
+                <div class="bad">
+                    <div class="badge badge-bad">❌ High Cardinality First</div>
+                    <div class="code-block">-- UUID first = poor compression
+CREATE TABLE events (
+    event_id UUID,
+    user_id UInt64,
+    country String,
+    timestamp DateTime
+) ENGINE = MergeTree()
+ORDER BY (event_id, timestamp);</div>
+                    <p><strong>Problem:</strong> Poor compression, inefficient pruning</p>
+                </div>
+                <div class="good">
+                    <div class="badge badge-good">✅ Low Cardinality First</div>
+                    <div class="code-block">-- Low cardinality first = better compression
+CREATE TABLE events (
+    event_id UUID,
+    user_id UInt64,
+    country String,
+    timestamp DateTime
+) ENGINE = MergeTree()
+ORDER BY (country, timestamp, user_id, event_id);</div>
+                    <p><strong>Benefit:</strong> 10-100x better compression, faster queries</p>
+                </div>
+            </div>
+
+            <h3>4. Data Type Selection</h3>
+            <div class="highlight-box">
+                <h4>Use Right Data Types for Compression</h4>
+                <ul>
+                    <li><strong>UInt8/16/32/64:</strong> Use smallest type that fits your range</li>
+                    <li><strong>LowCardinality(String):</strong> 10-100x compression for enums (< 10k values)</li>
+                    <li><strong>Decimal(P, S):</strong> Financial data - use instead of Float</li>
+                    <li><strong>Date/DateTime:</strong> Always use date types, not strings</li>
+                    <li><strong>Enum:</strong> Better than String for fixed values</li>
+                    <li><strong>Avoid String:</strong> String columns are not compressed well</li>
+                </ul>
+            </div>
+
+            <h3>5. TTL Policies for Data Lifecycle</h3>
+            <div class="grid-2">
+                <div class="card">
+                    <h4>TTL for Rows (Auto-delete)</h4>
+                    <div class="code-block">CREATE TABLE logs (
+    timestamp DateTime,
+    message String
+) ENGINE = MergeTree()
+PARTITION BY toYYYYMM(timestamp)
+ORDER BY timestamp
+TTL timestamp + INTERVAL 90 DAY;</div>
+                    <p>Automatically deletes rows after 90 days</p>
+                </div>
+                <div class="card">
+                    <h4>TTL for Column (Move to S3)</h4>
+                    <div class="code-block">CREATE TABLE metrics (
+    timestamp DateTime,
+    value Float64
+) ENGINE = MergeTree()
+PARTITION BY toYYYYMM(timestamp)
+ORDER BY timestamp
+TTL timestamp + INTERVAL 7 DAY TO DISK 'hot_ssd',
+    timestamp + INTERVAL 30 DAY TO DISK 'cold_ssd';</div>
+                    <p>Moves old data to cheaper storage</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- When to Use Section -->
+    <div class="section" id="when-to-use-each-engine">
+        <div class="section-header">🎯 When to Use Each Engine</div>
+        <div class="section-content">
+
+            <h3>Decision Matrix</h3>
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                <thead>
+                    <tr style="background: #ff6b35; color: white;">
+                        <th style="padding: 12px; text-align: left;">Scenario</th>
+                        <th style="padding: 12px; text-align: left;">Recommended Engine</th>
+                        <th style="padding: 12px; text-align: left;">Example Use Case</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="background: #f9f9f9;">
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Append-only events, metrics, logs</td>
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>MergeTree</strong></td>
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Website events, server metrics, application logs</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Dimension tables, user profiles, config</td>
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>ReplacingMergeTree</strong></td>
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">User settings, product catalog, pricing</td>
+                    </tr>
+                    <tr style="background: #f9f9f9;">
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Pre-aggregated metrics, counters, rollups</td>
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>SummingMergeTree</strong></td>
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Daily stats, hourly rollups, aggregated counters</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Complex aggregation state, cardinality tracking</td>
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>AggregatingMergeTree</strong></td>
+                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">HyperLogLog for unique counts, complex statistics</td>
+                    </tr>
+                    <tr style="background: #f9f9f9;">
+                        <td style="padding: 12px;">State transitions, event cancellation</td>
+                        <td style="padding: 12px;"><strong>CollapsingMergeTree</strong></td>
+                        <td style="padding: 12px;">Order status changes, billing events</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="highlight-box">
+                <h4>Real-World Example: E-commerce Analytics</h4>
+                <ul>
+                    <li><strong>Raw Events Table:</strong> MergeTree - store all clicks, views, purchases</li>
+                    <li><strong>Product Dimensions:</strong> ReplacingMergeTree - product info changes over time</li>
+                    <li><strong>Daily Rollups:</strong> SummingMergeTree - pre-aggregate daily stats by category</li>
+                    <li><strong>Session Tracking:</strong> CollapsingMergeTree - track open/close sessions</li>
+                </ul>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Real-World Results Section -->
+    <div class="section" id="real-world-results">
+        <div class="section-header">🏆 Real-World Results</div>
+        <div class="section-content">
+
+            <div class="icon-grid">
+                <div class="icon-card" style="background: #fff9e6;">
+                    <div style="font-size: 2em; font-weight: bold; color: #ff6b35;">50-100x</div>
+                    <h4>Compression Ratio</h4>
+                    <p>Optimal schema design with codecs and data types</p>
+                </div>
+                <div class="icon-card" style="background: #e6f7ed;">
+                    <div style="font-size: 2em; font-weight: bold; color: #ff6b35;">10-1000x</div>
+                    <h4>Query Speedup</h4>
+                    <p>Right primary key = massive performance improvement</p>
+                </div>
+                <div class="icon-card" style="background: #e6f2ff;">
+                    <div style="font-size: 2em; font-weight: bold; color: #ff6b35;">70%</div>
+                    <h4>Cost Reduction</h4>
+                    <p>Less storage needed due to compression</p>
+                </div>
+                <div class="icon-card" style="background: #f0e6ff;">
+                    <div style="font-size: 2em; font-weight: bold; color: #ff6b35;">99.99%</div>
+                    <h4>Query Success</h4>
+                    <p>Proper schema design reduces timeouts</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h4>Case Study: SaaS Analytics Platform</h4>
+                <p><strong>Challenge:</strong> 500 million events/day, slow queries on dashboard</p>
+                <p><strong>Before Optimization:</strong></p>
+                <ul>
+                    <li>Storage: 100GB/day raw data</li>
+                    <li>Query time: 5-10 seconds for dashboards</li>
+                    <li>Using generic MergeTree, all columns with String type</li>
+                </ul>
+                <p><strong>Schema Changes:</strong></p>
+                <ul>
+                    <li>Used LowCardinality for country, event_type, user_type</li>
+                    <li>Added DoubleDelta codec for timestamps</li>
+                    <li>Optimized primary key: (event_type, event_date, user_id)</li>
+                    <li>Monthly partitioning instead of daily</li>
+                </ul>
+                <p><strong>Results:</strong></p>
+                <ul>
+                    <li>Storage: 100GB → 2GB (50x compression!)</li>
+                    <li>Query time: 5-10s → 200-500ms (20-50x faster)</li>
+                    <li>Infrastructure cost: $50k/month → $5k/month (10x reduction)</li>
+                </ul>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Templates Section -->
+    <div class="section" id="ready-to-use-templates">
+        <div class="section-header">📋 Ready-to-Use Templates</div>
+        <div class="section-content">
+
+            <h3>Template 1: Optimized Events Table</h3>
+            <div class="code-block">CREATE TABLE events (
+    event_date Date,
+    event_time DateTime CODEC(DoubleDelta, ZSTD),
+    user_id UInt64,
+    event_type LowCardinality(String),
+    country LowCardinality(String),
+    platform LowCardinality(String),
+    revenue Decimal(10, 2),
+    session_id String
+) ENGINE = MergeTree()
+PARTITION BY toYYYYMM(event_date)
+PRIMARY KEY (event_type, event_date, user_id)
+ORDER BY (event_type, event_date, user_id, event_time)
+TTL event_date + INTERVAL 2 YEAR;</div>
+
+            <h3>Template 2: Dimension Table with Updates</h3>
+            <div class="code-block">CREATE TABLE users_dimension (
+    user_id UInt64,
+    email String,
+    name String,
+    country LowCardinality(String),
+    subscription_level LowCardinality(String),
+    updated_at DateTime,
+    version UInt32
+) ENGINE = ReplacingMergeTree(version)
+PARTITION BY toYYYYMM(updated_at)
+PRIMARY KEY (user_id)
+ORDER BY (user_id, updated_at);
+
+-- Insert new user
+INSERT INTO users_dimension VALUES
+    (1, 'alice@ex.com', 'Alice', 'US', 'premium', now(), 1);
+
+-- Update = new row with higher version
+INSERT INTO users_dimension VALUES
+    (1, 'alice@ex.com', 'Alice Smith', 'US', 'premium', now(), 2);
+
+-- Query with FINAL to get latest
+SELECT * FROM users_dimension FINAL WHERE user_id = 1;</div>
+
+            <h3>Template 3: Pre-Aggregated Metrics</h3>
+            <div class="code-block">CREATE TABLE metrics_hourly (
+    hour DateTime,
+    metric_name LowCardinality(String),
+    host LowCardinality(String),
+    region LowCardinality(String),
+    request_count UInt64,
+    error_count UInt64,
+    total_latency_ms UInt64,
+    avg_latency_ms Float64,
+    p95_latency_ms Float64
+) ENGINE = SummingMergeTree()
+PARTITION BY toYYYYMM(hour)
+PRIMARY KEY (metric_name, host)
+ORDER BY (metric_name, host, hour)
+TTL hour + INTERVAL 90 DAY;</div>
+
+            <h3>Template 4: Logs Table with Optimal Compression</h3>
+            <div class="code-block">CREATE TABLE logs (
+    timestamp DateTime CODEC(DoubleDelta, ZSTD),
+    timestamp_ms DateTime64(3) CODEC(DoubleDelta, ZSTD),
+    level LowCardinality(String),
+    logger_name LowCardinality(String),
+    service LowCardinality(String),
+    host LowCardinality(String),
+    message String CODEC(ZSTD(3)),
+    exception String CODEC(ZSTD(3)),
+    trace_id String,
+    user_id UInt64 DEFAULT 0
+) ENGINE = MergeTree()
+PARTITION BY toYYYYMM(timestamp)
+PRIMARY KEY (level, service)
+ORDER BY (level, service, timestamp)
+TTL timestamp + INTERVAL 90 DAY;</div>
+
+        </div>
+    </div>
+
+    <!-- Advanced Patterns Section -->
+    <div class="section" id="advanced-patterns">
+        <div class="section-header">🔥 Advanced Patterns</div>
+        <div class="section-content">
+
+            <h3>1. Materialized View with Aggregation</h3>
+            <div class="code-block">-- Source events table
+CREATE TABLE raw_events (
+    event_date Date,
+    event_time DateTime,
+    user_id UInt64,
+    event_type String,
+    revenue Decimal(10, 2)
+) ENGINE = MergeTree()
+PARTITION BY toYYYYMM(event_date)
+ORDER BY (event_date, user_id);
+
+-- Pre-aggregated view
+CREATE MATERIALIZED VIEW events_daily_mv
+ENGINE = SummingMergeTree()
+PARTITION BY toYYYYMM(day)
+ORDER BY (day, event_type, user_id)
+AS SELECT
+    toDate(event_time) as day,
+    event_type,
+    user_id,
+    COUNT(*) as event_count,
+    SUM(revenue) as total_revenue
+FROM raw_events
+GROUP BY day, event_type, user_id;
+
+-- Queries on MV are instant
+SELECT
+    day,
+    event_type,
+    sum(event_count),
+    sum(total_revenue)
+FROM events_daily_mv
+WHERE day >= today() - 7
+GROUP BY day, event_type;</div>
+
+            <h3>2. Multi-Level Partitioning</h3>
+            <div class="code-block">-- Partition by multiple columns
+CREATE TABLE analytics_detailed (
+    event_year UInt16,
+    event_month UInt8,
+    event_day UInt8,
+    event_time DateTime,
+    user_id UInt64,
+    metric_value Float64
+) ENGINE = MergeTree()
+PARTITION BY (event_year, event_month)
+PRIMARY KEY (event_year, event_month, event_day)
+ORDER BY (event_year, event_month, event_day, event_time);
+
+-- Easy deletion of specific month/year
+ALTER TABLE analytics_detailed DROP PARTITION (2026, 1);</div>
+
+            <h3>3. Schema Evolution with ALTER</h3>
+            <div class="code-block">-- Original table
+CREATE TABLE products (
+    product_id UInt64,
+    name String,
+    price Decimal(10, 2)
+) ENGINE = MergeTree()
+ORDER BY product_id;
+
+-- Add new column
+ALTER TABLE products ADD COLUMN category String DEFAULT 'general';
+
+-- Modify column type (careful!)
+ALTER TABLE products MODIFY COLUMN name String CODEC(ZSTD);
+
+-- Add column with TTL
+ALTER TABLE products ADD COLUMN created_at DateTime DEFAULT now()
+TTL created_at + INTERVAL 3 YEAR;
+
+-- Drop column
+ALTER TABLE products DROP COLUMN created_at;</div>
+
+            <h3>4. Using Sampling for Approximate Results</h3>
+            <div class="code-block">-- Add sampling key to table
+CREATE TABLE analytics (
+    event_time DateTime,
+    user_id UInt64,
+    event_type String,
+    value Float64
+) ENGINE = MergeTree()
+ORDER BY event_time
+SAMPLE BY intHash32(user_id);
+
+-- Fast approximate queries (10x faster)
+SELECT
+    event_type,
+    COUNT(*) * 10 as estimated_count,
+    AVG(value) as avg_value
+FROM analytics
+SAMPLE 0.1
+WHERE event_time >= today() - 30
+GROUP BY event_type;
+
+-- Accurate queries (slower but complete)
+SELECT
+    event_type,
+    COUNT(*) as exact_count,
+    AVG(value) as avg_value
+FROM analytics
+WHERE event_time >= today() - 30
+GROUP BY event_type;</div>
+
+            <h3>5. Primary Key vs Sorting Key Deep Dive</h3>
+            <div class="code-block">-- Different primary and sort keys
+CREATE TABLE events (
+    year UInt16,
+    month UInt8,
+    day UInt8,
+    user_id UInt64,
+    event_id UUID,
+    value Float64
+) ENGINE = MergeTree()
+PARTITION BY (year, month)
+PRIMARY KEY (year, month, day)  -- Used for pruning
+ORDER BY (year, month, day, user_id, event_id);  -- Physical order
+
+-- This query will use primary key (fast)
+SELECT * FROM events
+WHERE year = 2026 AND month = 1 AND day = 22;
+
+-- This query will scan all blocks (slower, but still optimized)
+SELECT * FROM events
+WHERE user_id = 12345;
+
+-- Best practice: Primary key should match your most common filters
+-- Sorting key can be longer for better compression</div>
+
+        </div>
+    </div>
+
+    <!-- Resources Section -->
+    <div class="section" id="resources-references">
+        <div class="section-header">📚 Resources & References</div>
+        <div class="section-content">
+
+            <div class="grid-2">
                 <div class="card">
                     <h4>📘 View in Notion</h4>
                     <p style="margin: 10px 0;">Access this module in your Notion workspace for note-taking and tracking your progress.</p>
                     <a href="https://www.notion.so/Module-2-Table-Engines-Data-Modeling-2f1bb896952b817e95b9f2b317077715" target="_blank" rel="noopener noreferrer" style="color: #ff6b35; font-weight: 600; text-decoration: none;">Open in Notion →</a>
                 </div>
 
-<div class="card">
-<h4>Official Documentation</h4>
-<ul>
-<li><a href="https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/mergetree" target="_blank">MergeTree Engine</a></li>
-<li><a href="https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replication" target="_blank">Replication Guide</a></li>
-<li><a href="https://clickhouse.com/docs/en/sql-reference/statements/create/table" target="_blank">CREATE TABLE Reference</a></li>
-</ul>
+                <div class="card">
+                    <h4>Official Documentation</h4>
+                    <ul>
+                        <li><a href="https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/mergetree" target="_blank">MergeTree Engine</a></li>
+                        <li><a href="https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replication" target="_blank">Replication Guide</a></li>
+                        <li><a href="https://clickhouse.com/docs/en/sql-reference/statements/create/table" target="_blank">CREATE TABLE Reference</a></li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h4>Engine-Specific Docs</h4>
+                    <ul>
+                        <li><a href="https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replacingmergetree" target="_blank">ReplacingMergeTree</a></li>
+                        <li><a href="https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/summingmergetree" target="_blank">SummingMergeTree</a></li>
+                        <li><a href="https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/aggregatingmergetree" target="_blank">AggregatingMergeTree</a></li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h4>Performance Tuning</h4>
+                    <ul>
+                        <li><a href="https://clickhouse.com/docs/en/operations/settings" target="_blank">Server Settings</a></li>
+                        <li><a href="https://clickhouse.com/docs/en/operations/tips-for-querys-acceleration" target="_blank">Query Optimization Tips</a></li>
+                        <li><a href="https://clickhouse.com/docs/en/sql-reference/data-types/codec" target="_blank">Compression Codecs</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="highlight-box">
+                <h4>Key Takeaways from Module 2</h4>
+                <ul>
+                    <li>✅ Choose MergeTree for most append-only workloads</li>
+                    <li>✅ Use ReplacingMergeTree for dimension tables with updates</li>
+                    <li>✅ Use SummingMergeTree for pre-aggregated metrics</li>
+                    <li>✅ Partition by time (month/day) to enable efficient data management</li>
+                    <li>✅ Order by low-cardinality columns first for better compression</li>
+                    <li>✅ Use LowCardinality for enums (< 10k unique values)</li>
+                    <li>✅ Apply codecs (DoubleDelta, Gorilla, Delta) for specialized data</li>
+                    <li>✅ Implement TTL policies for automatic data cleanup</li>
+                    <li>✅ Primary key ≠ Sorting key (primary key is for pruning)</li>
+                    <li>✅ Test schema changes in development first</li>
+                </ul>
+                <p><strong>Ready for Module 3?</strong> Next, we'll cover Sharding & Distributed Tables!</p>
+            </div>
+
+        </div>
+    </div>
+
 </div>
-<div class="card">
-<h4>Engine-Specific Docs</h4>
-<ul>
-<li><a href="https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replacingmergetree" target="_blank">ReplacingMergeTree</a></li>
-<li><a href="https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/summingmergetree" target="_blank">SummingMergeTree</a></li>
-<li><a href="https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/aggregatingmergetree" target="_blank">AggregatingMergeTree</a></li>
-</ul>
-</div>
-<div class="card">
-<h4>Performance Tuning</h4>
-<ul>
-<li><a href="https://clickhouse.com/docs/en/operations/settings" target="_blank">Server Settings</a></li>
-<li><a href="https://clickhouse.com/docs/en/operations/tips-for-querys-acceleration" target="_blank">Query Optimization Tips</a></li>
-<li><a href="https://clickhouse.com/docs/en/sql-reference/data-types/codec" target="_blank">Compression Codecs</a></li>
-</ul>
-</div>
-<div class="card">
-<h4>Best Practices</h4>
-<ul>
-<li><a href="https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/mergetree#table-engine-mergetree-ttl" target="_blank">TTL Documentation</a></li>
-<li><a href="https://clickhouse.com/docs/en/sql-reference/statements/alter/partition" target="_blank">Partition Management</a></li>
-<li><a href="https://clickhouse.com/docs/en/sql-reference/data-types/lowcardinality" target="_blank">LowCardinality Type</a></li>
-</ul>
-</div>
-</div>
-<div class="highlight-box">
-<h4>Key Takeaways from Module 2</h4>
-<ul>
-<li>&#226;&#339;&#8230; Choose MergeTree for most append-only workloads</li>
-<li>&#226;&#339;&#8230; Use ReplacingMergeTree for dimension tables with updates</li>
-<li>&#226;&#339;&#8230; Use SummingMergeTree for pre-aggregated metrics</li>
-<li>&#226;&#339;&#8230; Partition by time (month/day) to enable efficient data management</li>
-<li>&#226;&#339;&#8230; Order by low-cardinality columns first for better compression</li>
-<li>&#226;&#339;&#8230; Use LowCardinality for enums (&lt; 10k unique values)</li>
-<li>&#226;&#339;&#8230; Apply codecs (DoubleDelta, Gorilla, Delta) for specialized data</li>
-<li>&#226;&#339;&#8230; Implement TTL policies for automatic data cleanup</li>
-<li>&#226;&#339;&#8230; Primary key &#226;&#8240;&nbsp; Sorting key (primary key is for pruning)</li>
-<li>&#226;&#339;&#8230; Test schema changes in development first</li>
-</ul>
-<p><strong>Ready for Module 3?</strong> Next, we'll cover Data Ingestion &amp; Integration!</p>
-</div>
-</div>
-</div>
-</div>
+
 <div style="background: #333; color: white; padding: 40px 20px; text-align: center; margin-top: 40px;">
-<h3>&#240;&#376;&#8220;&#352; ClickHouse Knowledge Transfer</h3>
-<p>Module 2 of 10 | Duration: 6-8 weeks total</p>
-<p style="margin-top: 20px; opacity: 0.8;">Created for comprehensive ClickHouse training | 2026</p>
+    <h3>📊 ClickHouse Knowledge Transfer</h3>
+    <p>Module 2 of 10 | Duration: 6-8 weeks total</p>
+    <p style="margin-top: 20px; opacity: 0.8;">Created for comprehensive ClickHouse training | 2026</p>
 </div>
-<div class="module-nav" style="border-bottom: none; border-top: 2px solid #ff6b35;"><a href="module-1-fundamentals.html" class="nav-btn-module">&#226;&#8224; Previous: Module 1 - Fundamentals</a> <a href="../index.html" class="nav-btn-module nav-home">&#240;&#376;&nbsp; Home</a> <a href="module-3-sharding.html" class="nav-btn-module">Next: Module 3 - Sharding &#226;&#8224;&#8217;</a></div>
+
+<div class="module-nav" style="border-bottom: none; border-top: 2px solid #ff6b35;">
+    <a href="module-1-fundamentals.html" class="nav-btn-module">← Previous: Module 1 - Fundamentals</a>
+    <a href="../index.html" class="nav-btn-module nav-home">🏠 Home</a>
+    <a href="module-3-sharding.html" class="nav-btn-module">Next: Module 3 - Sharding →</a>
 </div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
+
 </body>
 </html>
