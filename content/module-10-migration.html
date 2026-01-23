@@ -177,6 +177,49 @@
             padding-bottom: 10px;
             margin-top: 30px;
         }
+        .module-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: rgba(255, 107, 53, 0.1);
+            border-bottom: 2px solid #ff6b35;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .nav-btn-module {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+            flex: 1;
+            text-align: center;
+            min-width: 200px;
+        }
+        .nav-btn-module:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
+        }
+        .nav-btn-module.disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        .nav-home {
+            flex: 0.5;
+            background: #555;
+        }
+        @media (max-width: 768px) {
+            .module-nav {
+                flex-direction: column;
+            }
+            .nav-btn-module {
+                min-width: 100%;
+            }
+        }
         p, li {
             color: #2c2c2c;
         }
@@ -242,6 +285,12 @@
     </style>
 </head>
 <body>
+
+<div class="module-nav">
+    <a href="module-9-kafka-ingestion.html" class="nav-btn-module">← Previous: Module 9 - Kafka Ingestion</a>
+    <a href="../index.html" class="nav-btn-module nav-home">🏠 Home</a>
+    <span class="nav-btn-module disabled">Next Module →</span>
+</div>
 
 <div class="header">
     <h1>🔄 MODULE 10</h1>
@@ -1863,6 +1912,12 @@ curl http://localhost:8083/connectors/mongo-connector/status | jq '.tasks[].payl
     <h3>🔄 ClickHouse Migration & Integration</h3>
     <p>Module 10 of 10 | Complete ClickHouse Knowledge Transfer</p>
     <p style="margin-top: 20px; opacity: 0.8;">Comprehensive training on migrating from MongoDB/MySQL to ClickHouse | 2026</p>
+</div>
+
+<div class="module-nav" style="border-bottom: none; border-top: 2px solid #ff6b35;">
+    <a href="module-9-kafka-ingestion.html" class="nav-btn-module">← Previous: Module 9 - Kafka Ingestion</a>
+    <a href="../index.html" class="nav-btn-module nav-home">🏠 Home</a>
+    <span class="nav-btn-module disabled">Next Module →</span>
 </div>
 
 </body>
