@@ -34,3 +34,7 @@ __pycache__/
 # Environment files (if you add any secrets)
 .env
 .env.local
+
+# Notion API credentials
+.env
+notion-page-urls.json
