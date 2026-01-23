@@ -4,18 +4,105 @@
 
 ## Architecture Overview
 
+### Backup Architecture Diagram
 ```
-Data Flow
-   ↓
-Primary Database
-   ↓
-Replication Log
-   ↓
-Backup Storage (S3/HDFS)
-   ↓
-Incremental/Full Backups
-   ↓
-Recovery Point
+┌─────────────────────────────────────────────┐
+│     ClickHouse Cluster (Production)         │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  │
+│  │  Node 1  │  │  Node 2  │  │  Node 3  │  │
+│  └──────────┘  └──────────┘  └──────────┘  │
+└──────────────────┬──────────────────────────┘
+                   │
+                   ↓
+         ┌─────────────────────┐
+         │ clickhouse-backup   │
+         │      Tool           │
+         └──────────┬──────────┘
+                    │
+        ┌───────────┼───────────┐
+        │           │           │
+        ↓           ↓           ↓
+┌──────────┐  ┌──────────┐  ┌──────────┐
+│  Local   │  │ S3/Cloud │  │ Glacier  │
+│ Storage  │→ │ Storage  │→ │ Archive  │
+│ 48 hours │  │ 90 days  │  │ 7 years  │
+└──────────┘  └──────────┘  └──────────┘
+```
+
+### Full vs Incremental Backup Flow
+```
+FULL BACKUP STRATEGY:           INCREMENTAL BACKUP STRATEGY:
+┌──────────────────┐            ┌──────────────────┐
+│ Day 1: Full 100GB│            │ Day 1: Full 100GB│
+└────────┬─────────┘            └────────┬─────────┘
+         │                               │
+         ↓                               ↓
+┌──────────────────┐            ┌──────────────────┐
+│ Day 2: Full 102GB│            │ Day 2: Inc +2GB  │
+└────────┬─────────┘            └────────┬─────────┘
+         │                               │
+         ↓                               ↓
+┌──────────────────┐            ┌──────────────────┐
+│ Day 3: Full 105GB│            │ Day 3: Inc +3GB  │
+└──────────────────┘            └──────────────────┘
+
+Total: 307GB                    Total: 105GB
+Time: 3hrs each                 Time: 10min each
+Recovery: Fast                  Recovery: Slower
+```
+
+### Point-in-Time Recovery Timeline
+```
+Timeline:
+┌────────┐     ┌────────┐     ┌────────┐     ┌────────┐
+│ Sunday │────→│ Monday │────→│ Tuesday│────→│Wed 14:30│
+│ Full   │     │ Inc+Log│     │ Inc+Log│     │DISASTER!│
+└────────┘     └────────┘     └────────┘     └────────┘
+   100GB          +2GB          +3GB          ⚠️ Data Loss
+
+RECOVERY PROCESS:
+1. Restore Sunday Full Backup ──────────→ Base State (100GB)
+2. Apply Monday Incremental  ──────────→ +2GB changes
+3. Apply Tuesday Incremental ──────────→ +3GB changes
+4. Apply Wed Logs (00:00-14:29:59) ────→ Precise Recovery
+                                          ✅ Recovered to 14:29:59
+```
+
+### Restore Procedure Flowchart
+```
+      START: Detect Failure
+             ↓
+      ┌──────────────────┐
+      │ Identify Backup  │
+      │ (Most Recent)    │
+      └────────┬─────────┘
+               ↓
+      ┌──────────────────┐
+      │ Download from S3 │
+      │ (if needed)      │
+      └────────┬─────────┘
+               ↓
+      ┌──────────────────┐
+      │ Restore Schema   │
+      │ (Metadata)       │
+      └────────┬─────────┘
+               ↓
+      ┌──────────────────┐
+      │ Restore Data     │
+      │ (Parts/Tables)   │
+      └────────┬─────────┘
+               ↓
+      ┌──────────────────┐
+      │ Apply Incremental│
+      │ Changes          │
+      └────────┬─────────┘
+               ↓
+      ┌──────────────────┐
+      │ Verify Integrity │
+      │ (Count/Checksums)│
+      └────────┬─────────┘
+               ↓
+      ✅ Resume Operations
 ```
 
 ---

@@ -2,6 +2,126 @@
 
 > **Key Goal:** Prepare for total failure, maintain continuous availability, and achieve zero data loss
 
+## Multi-Datacenter Architecture Diagram
+
+### Active-Passive DR Setup
+```
+┌─────────────────────────────────┐         ┌─────────────────────────────────┐
+│   PRIMARY DATACENTER (US-East)  │         │    DR DATACENTER (US-West)      │
+│                                 │         │                                 │
+│  ┌──────────────────────────┐  │         │  ┌──────────────────────────┐  │
+│  │  ClickHouse Cluster      │  │         │  │  ClickHouse Cluster      │  │
+│  │  ┌────┐ ┌────┐ ┌────┐   │  │         │  │  ┌────┐ ┌────┐ ┌────┐   │  │
+│  │  │ N1 │ │ N2 │ │ N3 │   │  │         │  │  │ N1 │ │ N2 │ │ N3 │   │  │
+│  │  └────┘ └────┘ └────┘   │  │         │  │  └────┘ └────┘ └────┘   │  │
+│  │  ✍️  ACTIVE (Writes)     │  │────────→│  │  🔒 STANDBY (Read-Only)  │  │
+│  │  📖 Serves Reads         │  │Real-Time│  │  📖 Receives Replicated  │  │
+│  └──────────────────────────┘  │Sync     │  └──────────────────────────┘  │
+│                                 │< 1 sec  │                                 │
+│  ┌──────────────────────────┐  │         │  ┌──────────────────────────┐  │
+│  │  ZooKeeper Ensemble      │  │         │  │  ZooKeeper Observers     │  │
+│  │  ┌────┐ ┌────┐ ┌────┐   │  │         │  │  ┌────┐ ┌────┐           │  │
+│  │  │ZK1 │ │ZK2 │ │ZK3 │   │  │←──────→│  │  │ZK4 │ │ZK5 │           │  │
+│  │  └────┘ └────┘ └────┘   │  │Quorum   │  │  └────┘ └────┘           │  │
+│  │  (Voting Members)        │  │         │  │  (Non-voting)            │  │
+│  └──────────────────────────┘  │         │  └──────────────────────────┘  │
+└─────────────────────────────────┘         └─────────────────────────────────┘
+
+FAILOVER: DNS Update → DR becomes Primary → Applications reconnect
+RTO: 15 minutes | RPO: < 1 minute
+```
+
+### Active-Passive vs Active-Active
+```
+ACTIVE-PASSIVE:                          ACTIVE-ACTIVE:
+
+┌─────────────────┐                      ┌─────────────────┐
+│   Primary DC    │                      │   Primary DC    │
+│  ✍️  Writes 100% │                      │  ✍️  Writes 50%  │
+│  📖 Reads 100%   │                      │  📖 Reads 50%    │
+│  Status: ACTIVE │                      │  Status: ACTIVE │
+└────────┬────────┘                      └────────┬────────┘
+         │                                        │
+         │ Replication                            │ Bi-directional
+         ↓                                        ↕ Sync
+┌─────────────────┐                      ┌─────────────────┐
+│     DR DC       │                      │     DR DC       │
+│  🔒 Writes 0%    │                      │  ✍️  Writes 50%  │
+│  📖 Reads 0%     │                      │  📖 Reads 50%    │
+│  Status: STANDBY│                      │  Status: ACTIVE │
+└─────────────────┘                      └─────────────────┘
+
+✅ Simple                                ✅ Full utilization
+✅ Easy failover                         ✅ No failover needed
+✅ Lower cost                            ✅ Load balanced
+⚠️  Wasted DR resources                 ⚠️  Complex coordination
+```
+
+### Failover Decision Tree
+```
+                    ⚠️  PRIMARY DC FAILURE DETECTED
+                              │
+                              ↓
+                    ┌──────────────────┐
+                    │ Is DR DC Healthy?│
+                    └────────┬─────────┘
+                    ┌────────┴────────┐
+                 NO │                 │ YES
+                    ↓                 ↓
+         ┌──────────────────┐  ┌─────────────────┐
+         │  Abort Failover  │  │Check Replication│
+         │                  │  │      Lag        │
+         └────────┬─────────┘  └────────┬────────┘
+                  ↓                     ↓
+         ┌──────────────────┐  ┌─────────────────┐
+         │ Alert Operations │  │Wait Queue Drain │
+         │                  │  │    (<30 sec)    │
+         └────────┬─────────┘  └────────┬────────┘
+                  ↓                     ↓
+         ┌──────────────────┐  ┌─────────────────┐
+         │     Manual       │  │  Update DNS to  │
+         │  Investigation   │  │      DR DC      │
+         └──────────────────┘  └────────┬────────┘
+                                        ↓
+                               ┌─────────────────┐
+                               │  Promote DR to  │
+                               │     Primary     │
+                               └────────┬────────┘
+                                        ↓
+                               ┌─────────────────┐
+                               │Resume Application│
+                               │     Traffic     │
+                               └────────┬────────┘
+                                        ↓
+                               ✅ FAILOVER COMPLETE
+```
+
+### RTO/RPO Timeline
+```
+Timeline:
+─────────────────────────────────────────────────────────────────→
+         │                    │                    │
+    14:28:00             14:30:00             14:45:00
+         │                    │                    │
+  ┌──────────┐         ┌──────────┐         ┌──────────┐
+  │   Last   │         │ FAILURE  │         │ Recovery │
+  │   Good   │         │ Detected │         │ Complete │
+  │  State   │         │    ⚠️     │         │    ✅    │
+  └──────────┘         └──────────┘         └──────────┘
+         │                    │                    │
+         ├────── RPO ─────────┤                    │
+         │   (Data Loss)      │                    │
+         │    2 minutes       │                    │
+         │                    ├────── RTO ─────────┤
+         │                    │    (Downtime)      │
+         │                    │   15 minutes       │
+
+RPO (Recovery Point Objective):    RTO (Recovery Time Objective):
+• Max data loss: 2 minutes         • Max downtime: 15 minutes
+• Actual loss: 14:28-14:30         • Actual time: 14:30-14:45
+• Status: ✅ Within SLA             • Status: ✅ Within SLA
+```
+
 ## Disaster Recovery Levels
 
 ```

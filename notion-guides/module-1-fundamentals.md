@@ -16,20 +16,138 @@
 
 ## Core Architecture
 
+### ClickHouse Full Architecture
+
 ```
+┌─────────────────────────────────────────────────┐
+│          Client Application                     │
+│   (Python, Go, Java, Node.js, CLI)            │
+└──────────────────┬──────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────┐
+│      HTTP (Port 8123) / TCP (Port 9000)        │
+│         Protocol Layer                          │
+└──────────────────┬──────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────┐
+│        Query Processing Layer                   │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐     │
+│  │  Parser  │→ │Optimizer │→ │ Executor │     │
+│  └──────────┘  └──────────┘  └──────────┘     │
+└──────────────────┬──────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────┐
+│         Storage Engine (MergeTree)              │
+│   ┌───────────────────────────────────┐        │
+│   │   Column-Oriented Storage         │        │
+│   │   - Primary Index                 │        │
+│   │   - Data Compression (ZSTD, LZ4)  │        │
+│   │   - Partitioning                  │        │
+│   └───────────────────────────────────┘        │
+└──────────────────┬──────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────┐
+│            Disk Storage                         │
+│   SSD / NVMe / Distributed Storage (S3, etc)   │
+└─────────────────────────────────────────────────┘
+```
+
+---
+
+## Column-Oriented vs Row-Oriented Storage
+
+### Row-Oriented Storage (MySQL, PostgreSQL)
+```
+Storage on Disk:
 ┌─────────────────────────────────────────┐
-│        Client Application                │
+│ Row 1: [1, Alice, 25, NYC, 50000]      │
 ├─────────────────────────────────────────┤
-│  HTTP/TCP Client (Native Protocol)       │
+│ Row 2: [2, Bob, 30, LA, 60000]         │
 ├─────────────────────────────────────────┤
-│   ClickHouse Server (Port 8123/9000)    │
-├─────────────────────────────────────────┤
-│  Query Parser → Optimizer → Executor    │
-├─────────────────────────────────────────┤
-│   Storage Engine (Columnar Format)      │
-├─────────────────────────────────────────┤
-│   File System / Distributed Storage     │
+│ Row 3: [3, Carol, 35, SF, 70000]       │
 └─────────────────────────────────────────┘
+
+Query: SELECT AVG(Salary) FROM users;
+Result: ❌ Reads ALL 5 columns for ALL rows
+I/O: High (wasted bandwidth)
+```
+
+### Column-Oriented Storage (ClickHouse)
+```
+Storage on Disk:
+┌──────────────────────────────────┐
+│ ID Column:     [1, 2, 3]         │
+├──────────────────────────────────┤
+│ Name Column:   [Alice,Bob,Carol] │
+├──────────────────────────────────┤
+│ Age Column:    [25, 30, 35]      │
+├──────────────────────────────────┤
+│ City Column:   [NYC, LA, SF]     │
+├──────────────────────────────────┤
+│ Salary Column: [50000,60000,70000]│
+└──────────────────────────────────┘
+
+Query: SELECT AVG(Salary) FROM users;
+Result: ✅ Reads ONLY Salary column
+I/O: 5x less (only 1 column instead of 5)
+Compression: 10-100x better (same values together)
+```
+
+---
+
+## MergeTree Architecture
+
+### How MergeTree Organizes Data
+
+```
+Table: events
+Partition: 202601 (Jan 2026)
+├─── Part 1 (10,000 rows)
+│    ├─ Primary Index (sparse)
+│    ├─ Column Files:
+│    │  ├─ event_date.bin
+│    │  ├─ user_id.bin
+│    │  ├─ event_type.bin
+│    │  └─ revenue.bin
+│    └─ Checksums
+│
+├─── Part 2 (15,000 rows)
+│    ├─ Primary Index
+│    └─ Column Files
+│
+└─── Part 3 (8,000 rows)
+     ├─ Primary Index
+     └─ Column Files
+
+          ⬇ Background Merge Process ⬇
+
+Merged Part (33,000 rows)
+├─ Optimized Primary Index
+└─ Compressed Column Files
+```
+
+### MergeTree Merge Process
+```
+Before Merge (Many Small Parts):
+┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐
+│Part1│ │Part2│ │Part3│ │Part4│ │Part5│
+│100KB│ │150KB│ │120KB│ │90KB │ │110KB│
+└─────┘ └─────┘ └─────┘ └─────┘ └─────┘
+ Query must read 5 separate files
+
+          ⬇ Merge Process ⬇
+
+After Merge (Single Large Part):
+┌──────────────────────────────┐
+│    Merged Part (570KB)       │
+│  Better compressed           │
+│  Faster queries              │
+└──────────────────────────────┘
+ Query reads 1 optimized file
 ```
 
 ---

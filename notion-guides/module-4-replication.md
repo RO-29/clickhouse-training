@@ -7,21 +7,40 @@
 ### Replication Flow
 
 ```
-Client Write Request
+┌────────────────────────────────────────────────────────────┐
+│              REPLICATION FLOW DIAGRAM                      │
+└────────────────────────────────────────────────────────────┘
+
+Client Write Request (INSERT)
         ↓
-    Primary Replica
-        ↓
-    Write to Disk
-        ↓
-    ZooKeeper Coordination
-        ↓
-    Async Replicas
-    ├─ Replica 1 (apply)
-    ├─ Replica 2 (apply)
-    └─ Replica 3 (apply)
-        ↓
-    Acknowledgment to Client
+ ┌──────────────────┐
+ │ Primary Replica  │  ← Receives write first
+ │   Write to Disk  │
+ └────────┬─────────┘
+          ↓
+ ┌──────────────────┐
+ │ Keeper Log Entry │  ← Coordination layer
+ │  (Raft Protocol) │
+ └────────┬─────────┘
+          ↓
+    ┌────┴────┬────────┐
+    ↓         ↓        ↓
+┌────────┐ ┌────────┐ ┌────────┐
+│Replica1│ │Replica2│ │Replica3│  ← Async sync
+│ Apply  │ │ Apply  │ │ Apply  │
+└────────┘ └────────┘ └────────┘
+    ↓         ↓        ↓
+    └────┬────┴────────┘
+         ↓
+  ✅ All Replicas Synced
+         ↓
+  Acknowledgment to Client
 ```
+
+**Key Points:**
+- Write → Primary → Keeper → Background Replication
+- Latency: 1-5ms (async) or 50-200ms (quorum)
+- Quorum waits for N replicas before ACK
 
 ---
 
@@ -36,16 +55,58 @@ Client Write Request
 | **Failover** | Automatic replica switchover |
 | **Queue Management** | Tracks pending operations |
 
-### 2. Replica States
+### 2. ClickHouse Keeper Cluster Architecture
 
 ```
-Ready
-  ↓
+┌────────────────────────────────────────────────────────────┐
+│         CLICKHOUSE KEEPER - 3 NODE CLUSTER                 │
+└────────────────────────────────────────────────────────────┘
+
+       ┌─────────────────┐
+       │   👑 LEADER      │  ← Elected via Raft
+       │   Keeper Node 1  │     Handles all writes
+       │   Port: 9181     │
+       └────────┬─────────┘
+                │
+        ┌───────┴────────┐
+        ↓                ↓
+┌──────────────┐  ┌──────────────┐
+│ 🔵 FOLLOWER  │  │ 🔵 FOLLOWER  │
+│ Keeper Node 2│  │ Keeper Node 3│
+│ Port: 9181   │  │ Port: 9181   │
+└──────────────┘  └──────────────┘
+
+RAFT PROTOCOL:
+├─ Quorum: 2 of 3 nodes required
+├─ Leader election on failure
+├─ Log replication to followers
+└─ Tolerates 1 node failure
+
+COMPARISON:
+
+┌─────────────────┬──────────────┬─────────────────┐
+│    Metric       │  ZooKeeper   │ ClickHouse Keeper│
+├─────────────────┼──────────────┼─────────────────┤
+│ Language        │ Java (JVM)   │ C++ (Native)    │
+│ Memory Usage    │ 1-2 GB       │ 100-300 MB      │
+│ Startup Time    │ 10-30 sec    │ < 1 second      │
+│ Maintenance     │ Complex      │ Simple          │
+│ Recommended     │ ⚠️ Legacy    │ ✅ Yes (v21+)   │
+└─────────────────┴──────────────┴─────────────────┘
+```
+
+### 3. Replica States
+
+```
+Ready ──────────────────────┐
+  ↓                         │
 Catching Up → Ready (if behind)
   ↓
-Dead (no heartbeat)
+Dead (no heartbeat) ────────┐
+  ↓                         │
+Lost (data corruption) ─────┘
   ↓
-Lost (data corruption)
+Requires Manual Intervention
 ```
 
 ---
@@ -241,26 +302,98 @@ GROUP BY database, table;
 ### Scenario 1: Replica Goes Down
 
 ```
-State: 3 replicas (A, B, C)
-Event: Replica C dies
-├─ ZooKeeper detects (heartbeat timeout ~30s)
-├─ Marks C as "Dead"
-├─ A & B continue accepting writes
-└─ When C recovers
-    └─ Auto-syncs from queue
+┌────────────────────────────────────────────────────────────┐
+│              FAILOVER SEQUENCE DIAGRAM                     │
+└────────────────────────────────────────────────────────────┘
+
+T=0: Normal Operation
+┌─────────────────────────────────────────┐
+│  🟢 Node A (Primary)   - ACTIVE         │
+│  🟢 Node B (Replica 1) - ACTIVE         │
+│  🟢 Node C (Replica 2) - ACTIVE         │
+└─────────────────────────────────────────┘
+
+T=5s: Node C Fails
+┌─────────────────────────────────────────┐
+│  🟢 Node A (Primary)   - ACTIVE         │
+│  🟢 Node B (Replica 1) - ACTIVE         │
+│  🔴 Node C (Replica 2) - DOWN ❌        │
+└─────────────────────────────────────────┘
+         ↓
+Keeper detects (heartbeat timeout ~10-30s)
+         ↓
+T=10s: Keeper Marks C Dead
+┌─────────────────────────────────────────┐
+│  🟢 Node A (Primary)   - ACTIVE         │
+│  🟢 Node B (Replica 1) - ACTIVE         │
+│  ⚫ Node C (Replica 2) - MARKED DEAD    │
+└─────────────────────────────────────────┘
+
+A & B continue accepting writes ✅
+Replication queue grows for C
+         ↓
+T=120s: Node C Recovers
+┌─────────────────────────────────────────┐
+│  🟢 Node A (Primary)   - ACTIVE         │
+│  🟢 Node B (Replica 1) - ACTIVE         │
+│  🔄 Node C (Replica 2) - SYNCING        │
+└─────────────────────────────────────────┘
+         ↓
+C replays queue from Keeper log
+         ↓
+T=180s: All Replicas In Sync
+┌─────────────────────────────────────────┐
+│  🟢 Node A (Primary)   - ACTIVE         │
+│  🟢 Node B (Replica 1) - ACTIVE         │
+│  🟢 Node C (Replica 2) - ACTIVE ✅      │
+└─────────────────────────────────────────┘
 ```
 
 **Recovery:** Auto-replay, no manual intervention needed
+**Downtime:** 0ms (queries continue on A & B)
+**Data Loss:** 0 (with quorum writes)
 
-### Scenario 2: Primary Fails
+### Scenario 2: Primary Fails (Leader Election)
 
 ```
-Before: A (primary), B, C (secondary)
-Event: A loses connection
-├─ ZooKeeper marks A "lost"
-├─ B or C becomes primary (quorum needed)
-├─ Clients redirect to new primary
-└─ Old A rejoins as secondary
+Before: A (Leader), B, C (Followers)
+┌─────────────────────────────────────────┐
+│  👑 Node A (Primary)   - LEADER         │
+│  🔵 Node B (Replica 1) - FOLLOWER       │
+│  🔵 Node C (Replica 2) - FOLLOWER       │
+└─────────────────────────────────────────┘
+
+Event: Node A loses connection
+         ↓
+┌─────────────────────────────────────────┐
+│  🔴 Node A (Primary)   - DOWN ❌        │
+│  🔵 Node B (Replica 1) - FOLLOWER       │
+│  🔵 Node C (Replica 2) - FOLLOWER       │
+└─────────────────────────────────────────┘
+         ↓
+Keeper marks A "lost" (heartbeat timeout)
+         ↓
+Leader Election (Raft consensus)
+         ↓
+B or C becomes new primary
+┌─────────────────────────────────────────┐
+│  ⚫ Node A              - DEAD           │
+│  👑 Node B (NEW PRIMARY) - LEADER ✅    │
+│  🔵 Node C (Replica 1)  - FOLLOWER      │
+└─────────────────────────────────────────┘
+         ↓
+Clients redirect to new primary (DNS/LB)
+         ↓
+Old A rejoins as secondary
+┌─────────────────────────────────────────┐
+│  🔄 Node A (Replica 2)  - SYNCING       │
+│  👑 Node B (Primary)    - LEADER        │
+│  🔵 Node C (Replica 1)  - FOLLOWER      │
+└─────────────────────────────────────────┘
+
+**Failover Time:** 10-100ms
+**Data Loss:** 0 (quorum writes)
+**Manual Steps:** 0 (fully automatic)
 ```
 
 **How to Test:**

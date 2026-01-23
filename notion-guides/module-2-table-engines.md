@@ -21,6 +21,262 @@
 
 ---
 
+## MergeTree Engine Internals Diagram
+
+### Data Organization in MergeTree
+
+```
+Table: events
+├── Partition: 202601 (January 2026)
+│   ├── Part 1 (10,000 rows)
+│   │   ├─ Primary Index (sparse): [min_val, max_val]
+│   │   ├─ Column Files:
+│   │   │  ├─ event_date.bin    (compressed)
+│   │   │  ├─ user_id.bin       (compressed)
+│   │   │  ├─ event_type.bin    (compressed)
+│   │   │  └─ revenue.bin       (compressed)
+│   │   └─ Checksums & Metadata
+│   │
+│   ├── Part 2 (15,000 rows)
+│   │   ├─ Primary Index
+│   │   └─ Column Files
+│   │
+│   └── Part 3 (8,000 rows)
+│       ├─ Primary Index
+│       └─ Column Files
+│
+└── Partition: 202602 (February 2026)
+    ├── Part 1 (12,000 rows)
+    └── Part 2 (20,000 rows)
+
+   ⬇ Background Merge Process (happens automatically)
+
+Merged Partition 202601:
+└── Single Optimized Part (33,000 rows)
+    ├─ Smaller, faster primary index
+    ├─ Better compressed column files
+    └─ Improved query performance
+```
+
+### Inside a Single Part
+
+```
+┌─────────────────────────────────────────┐
+│           Part: part_20260122_1         │
+├─────────────────────────────────────────┤
+│ Primary Index (Sparse)                  │
+│  ┌─────────────────────────────┐       │
+│  │ Block 0: (2026-01-22, 1001) │       │
+│  │ Block 1: (2026-01-22, 5001) │       │
+│  │ Block 2: (2026-01-22, 9001) │       │
+│  └─────────────────────────────┘       │
+├─────────────────────────────────────────┤
+│ Column Data Blocks (Compressed)         │
+│  ┌──────────────────────────┐          │
+│  │ event_date.bin (LZ4)     │          │
+│  │ user_id.bin (Delta+ZSTD) │          │
+│  │ event_type.bin (ZSTD)    │          │
+│  │ revenue.bin (Gorilla+ZSTD)│          │
+│  └──────────────────────────┘          │
+├─────────────────────────────────────────┤
+│ Marks File (Offset pointers)           │
+│ Checksums (Data integrity)             │
+└─────────────────────────────────────────┘
+```
+
+---
+
+## Partitioning Strategy Visualization
+
+### Monthly Partitioning (Recommended)
+
+```
+Table: events (PARTITION BY toYYYYMM(event_date))
+
+Disk Storage Structure:
+┌────────────────────────────────────────────────────────┐
+│                                                        │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────┐│
+│  │ 202601   │  │ 202602   │  │ 202603   │  │ 202604 ││
+│  │ Jan 2026 │  │ Feb 2026 │  │ Mar 2026 │  │ Apr... ││
+│  │          │  │          │  │          │  │        ││
+│  │ 2.3 GB   │  │ 2.1 GB   │  │ 2.5 GB   │  │ 2.2 GB ││
+│  │ 3 parts  │  │ 2 parts  │  │ 4 parts  │  │ 2 parts││
+│  └──────────┘  └──────────┘  └──────────┘  └────────┘│
+│                                                        │
+└────────────────────────────────────────────────────────┘
+
+Query: WHERE event_date >= '2026-03-01'
+Result: ✅ Only scans partitions 202603 and 202604
+        ❌ Skips 202601 and 202602 entirely
+```
+
+### Partition Operations
+
+```
+-- Drop old partition (instant operation)
+ALTER TABLE events DROP PARTITION 202601;
+
+Before:
+┌──────────┬──────────┬──────────┬──────────┐
+│ 202601   │ 202602   │ 202603   │ 202604   │
+│ 2.3 GB   │ 2.1 GB   │ 2.5 GB   │ 2.2 GB   │
+└──────────┴──────────┴──────────┴──────────┘
+
+After (in ~1 second):
+┌──────────┬──────────┬──────────┐
+│ 202602   │ 202603   │ 202604   │
+│ 2.1 GB   │ 2.5 GB   │ 2.2 GB   │
+└──────────┴──────────┴──────────┘
+```
+
+---
+
+## ReplacingMergeTree Deduplication Flow
+
+### How Updates Work
+
+```
+Step 1: Insert Initial Record
+┌────────────────────────────────────┐
+│ user_id: 1                         │
+│ name: "Alice"                      │
+│ email: "alice@example.com"         │
+│ status: "active"                   │
+│ version: 1                         │
+└────────────────────────────────────┘
+
+Step 2: Insert Updated Record (Higher Version)
+┌────────────────────────────────────┐
+│ user_id: 1                         │
+│ name: "Alice Smith"                │
+│ email: "alice@example.com"         │
+│ status: "active"                   │
+│ version: 2  ← Higher version       │
+└────────────────────────────────────┘
+
+   ⬇ Background Merge (Deduplication)
+
+Step 3: After Merge - Only Latest Remains
+┌────────────────────────────────────┐
+│ ❌ version: 1 (DELETED)            │
+│ ✅ version: 2 (KEPT)               │
+├────────────────────────────────────┤
+│ user_id: 1                         │
+│ name: "Alice Smith"                │
+│ email: "alice@example.com"         │
+│ status: "active"                   │
+│ version: 2                         │
+└────────────────────────────────────┘
+
+Query Behavior:
+- SELECT * FROM users FINAL WHERE user_id = 1
+  → Returns: Alice Smith (version 2)
+
+- SELECT * FROM users WHERE user_id = 1
+  → May return both versions if merge hasn't occurred yet
+```
+
+### Version Comparison During Merge
+
+```
+Merge Process:
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Part 1    │    │   Part 2    │    │   Part 3    │
+├─────────────┤    ├─────────────┤    ├─────────────┤
+│ user_id: 1  │    │ user_id: 1  │    │ user_id: 2  │
+│ version: 1  │    │ version: 2  │    │ version: 1  │
+│ name: Alice │    │ name: Alice │    │ name: Bob   │
+│             │    │       Smith │    │             │
+└─────────────┘    └─────────────┘    └─────────────┘
+       │                  │                   │
+       └──────────┬───────┘                   │
+                  ▼                           ▼
+        ┌─────────────────┐         ┌─────────────┐
+        │  Merged Result  │         │  Kept As-Is │
+        ├─────────────────┤         ├─────────────┤
+        │ user_id: 1      │         │ user_id: 2  │
+        │ version: 2      │         │ version: 1  │
+        │ name: Alice     │         │ name: Bob   │
+        │       Smith     │         │             │
+        │ (version 1 gone)│         └─────────────┘
+        └─────────────────┘
+```
+
+---
+
+## SummingMergeTree Aggregation Diagram
+
+### Automatic Summing During Merge
+
+```
+Step 1: Insert Multiple Records (Same GROUP BY Keys)
+┌────────────────────────────┐
+│ date: 2026-01-22          │
+│ host: server1              │
+│ requests: 10000            │
+│ errors: 50                 │
+└────────────────────────────┘
+
+┌────────────────────────────┐
+│ date: 2026-01-22          │
+│ host: server1              │
+│ requests: 5000             │
+│ errors: 10                 │
+└────────────────────────────┘
+
+┌────────────────────────────┐
+│ date: 2026-01-22          │
+│ host: server1              │
+│ requests: 3000             │
+│ errors: 5                  │
+└────────────────────────────┘
+
+   ⬇ Background Merge with SUM()
+
+Step 2: Automatic Aggregation
+requests: 10000 + 5000 + 3000 = 18000
+errors:      50 +   10 +    5 =    65
+
+   ⬇
+
+Step 3: Single Aggregated Record
+┌────────────────────────────┐
+│ date: 2026-01-22          │
+│ host: server1              │
+│ requests: 18000  ← SUMMED  │
+│ errors: 65       ← SUMMED  │
+└────────────────────────────┘
+
+Storage Savings: 3 records → 1 record (67% reduction)
+Query Speed: Pre-aggregated (instant results)
+```
+
+### SummingMergeTree Merge Logic
+
+```
+Before Merge (Multiple Parts):
+┌──────────┐  ┌──────────┐  ┌──────────┐
+│ Part 1   │  │ Part 2   │  │ Part 3   │
+├──────────┤  ├──────────┤  ├──────────┤
+│ day: 1   │  │ day: 1   │  │ day: 2   │
+│ cnt: 100 │  │ cnt: 200 │  │ cnt: 300 │
+└──────────┘  └──────────┘  └──────────┘
+
+           ⬇ Merge Process ⬇
+
+After Merge (Summed by ORDER BY key):
+┌──────────┐  ┌──────────┐
+│ Part 1   │  │ Part 2   │
+├──────────┤  ├──────────┤
+│ day: 1   │  │ day: 2   │
+│ cnt: 300 │  │ cnt: 300 │
+│ (summed) │  │ (kept)   │
+└──────────┘  └──────────┘
+```
+
+---
+
 ## 1. MergeTree Family
 
 ### MergeTree (Base Engine)

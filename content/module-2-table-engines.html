@@ -304,6 +304,119 @@
                 </tbody>
             </table>
 
+            <h3>MergeTree Engine Internals</h3>
+            <div style="background: #f9f9f9; padding: 30px; border-radius: 8px; margin: 20px 0;">
+                <div style="max-width: 1000px; margin: 0 auto;">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 25px;">
+                        <!-- Partition 202601 -->
+                        <div style="background: #fff; padding: 20px; border-radius: 8px; border: 3px solid #1976d2;">
+                            <div style="background: #1976d2; color: white; padding: 10px; margin: -20px -20px 15px -20px; border-radius: 5px 5px 0 0; font-weight: bold; text-align: center;">
+                                Partition: 202601
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                <div style="background: #e3f2fd; padding: 12px; border-radius: 4px; border-left: 4px solid #1976d2;">
+                                    <div style="font-weight: bold; color: #0d47a1; margin-bottom: 5px;">Part 1</div>
+                                    <div style="font-size: 0.85em; color: #333;">Rows: 10,000</div>
+                                    <div style="font-size: 0.85em; color: #555;">Primary Index: Sparse</div>
+                                    <div style="font-size: 0.85em; color: #555;">Data Blocks: Compressed</div>
+                                </div>
+                                <div style="background: #e3f2fd; padding: 12px; border-radius: 4px; border-left: 4px solid #1976d2;">
+                                    <div style="font-weight: bold; color: #0d47a1; margin-bottom: 5px;">Part 2</div>
+                                    <div style="font-size: 0.85em; color: #333;">Rows: 15,000</div>
+                                    <div style="font-size: 0.85em; color: #555;">Primary Index: Sparse</div>
+                                    <div style="font-size: 0.85em; color: #555;">Data Blocks: Compressed</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Partition 202602 -->
+                        <div style="background: #fff; padding: 20px; border-radius: 8px; border: 3px solid #f57c00;">
+                            <div style="background: #f57c00; color: white; padding: 10px; margin: -20px -20px 15px -20px; border-radius: 5px 5px 0 0; font-weight: bold; text-align: center;">
+                                Partition: 202602
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                <div style="background: #fff3e0; padding: 12px; border-radius: 4px; border-left: 4px solid #f57c00;">
+                                    <div style="font-weight: bold; color: #e65100; margin-bottom: 5px;">Part 1</div>
+                                    <div style="font-size: 0.85em; color: #333;">Rows: 8,000</div>
+                                    <div style="font-size: 0.85em; color: #555;">Primary Index: Sparse</div>
+                                    <div style="font-size: 0.85em; color: #555;">Data Blocks: Compressed</div>
+                                </div>
+                                <div style="background: #fff3e0; padding: 12px; border-radius: 4px; border-left: 4px solid #f57c00;">
+                                    <div style="font-weight: bold; color: #e65100; margin-bottom: 5px;">Part 2</div>
+                                    <div style="font-size: 0.85em; color: #333;">Rows: 12,000</div>
+                                    <div style="font-size: 0.85em; color: #555;">Primary Index: Sparse</div>
+                                    <div style="font-size: 0.85em; color: #555;">Data Blocks: Compressed</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Part Internals -->
+                    <div style="background: #f3e5f5; padding: 20px; border-radius: 8px; border: 2px solid #7b1fa2;">
+                        <div style="font-weight: bold; color: #6a1b9a; margin-bottom: 15px; font-size: 1.1em;">Inside Each Part:</div>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+                            <div style="background: white; padding: 15px; border-radius: 4px; text-align: center;">
+                                <div style="font-weight: bold; color: #7b1fa2; margin-bottom: 8px;">Primary Index</div>
+                                <div style="font-size: 0.85em; color: #555;">Sparse index for quick lookups</div>
+                            </div>
+                            <div style="background: white; padding: 15px; border-radius: 4px; text-align: center;">
+                                <div style="font-weight: bold; color: #7b1fa2; margin-bottom: 8px;">Column Files</div>
+                                <div style="font-size: 0.85em; color: #555;">Separate .bin file per column</div>
+                            </div>
+                            <div style="background: white; padding: 15px; border-radius: 4px; text-align: center;">
+                                <div style="font-weight: bold; color: #7b1fa2; margin-bottom: 8px;">Data Blocks</div>
+                                <div style="font-size: 0.85em; color: #555;">Compressed with codecs</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Partitioning Strategy Visualization</h3>
+            <div style="background: #f9f9f9; padding: 30px; border-radius: 8px; margin: 20px 0;">
+                <div style="max-width: 900px; margin: 0 auto;">
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <div style="display: inline-block; background: #e3f2fd; padding: 15px 30px; border-radius: 6px; border: 2px solid #1976d2;">
+                            <strong style="color: #0d47a1;">Table: events</strong>
+                        </div>
+                    </div>
+                    <div style="text-align: center; font-size: 24px; color: #666; margin: 10px 0;">↓ PARTITION BY toYYYYMM(event_date) ↓</div>
+
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 20px;">
+                        <div style="background: #e8f5e9; padding: 15px; border-radius: 6px; border: 2px solid #388e3c; text-align: center;">
+                            <div style="font-weight: bold; color: #2e7d32; margin-bottom: 5px;">202601</div>
+                            <div style="font-size: 0.85em; color: #555;">Jan 2026</div>
+                            <div style="font-size: 0.85em; color: #555; margin-top: 5px;">Size: 2.3 GB</div>
+                        </div>
+                        <div style="background: #fff3e0; padding: 15px; border-radius: 6px; border: 2px solid #f57c00; text-align: center;">
+                            <div style="font-weight: bold; color: #e65100; margin-bottom: 5px;">202602</div>
+                            <div style="font-size: 0.85em; color: #555;">Feb 2026</div>
+                            <div style="font-size: 0.85em; color: #555; margin-top: 5px;">Size: 2.1 GB</div>
+                        </div>
+                        <div style="background: #f3e5f5; padding: 15px; border-radius: 6px; border: 2px solid #7b1fa2; text-align: center;">
+                            <div style="font-weight: bold; color: #6a1b9a; margin-bottom: 5px;">202603</div>
+                            <div style="font-size: 0.85em; color: #555;">Mar 2026</div>
+                            <div style="font-size: 0.85em; color: #555; margin-top: 5px;">Size: 2.5 GB</div>
+                        </div>
+                        <div style="background: #fce4ec; padding: 15px; border-radius: 6px; border: 2px solid #c2185b; text-align: center;">
+                            <div style="font-weight: bold; color: #ad1457; margin-bottom: 5px;">202604</div>
+                            <div style="font-size: 0.85em; color: #555;">Apr 2026</div>
+                            <div style="font-size: 0.85em; color: #555; margin-top: 5px;">Size: 2.2 GB</div>
+                        </div>
+                    </div>
+
+                    <div style="background: #fff9e6; padding: 20px; border-radius: 6px; border-left: 4px solid #ffb82e; margin-top: 25px;">
+                        <div style="font-weight: bold; color: #333; margin-bottom: 10px;">Benefits:</div>
+                        <ul style="margin: 0; padding-left: 20px; color: #555;">
+                            <li>Drop old partitions in seconds: ALTER TABLE events DROP PARTITION 202601;</li>
+                            <li>Queries filter partitions first: WHERE event_date >= '2026-03-01' (only scans 202603+)</li>
+                            <li>Parallel processing across partitions</li>
+                            <li>Easier data management and TTL policies</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
             <h3>Key Concepts</h3>
             <div class="grid-2">
                 <div class="card">
@@ -380,6 +493,66 @@ SELECT * FROM events;
 SELECT COUNT(*) FROM events;
 
             <h3>2. Understanding ReplacingMergeTree</h3>
+
+            <div style="background: #f9f9f9; padding: 30px; border-radius: 8px; margin: 20px 0;">
+                <h4 style="color: #333; text-align: center; margin-bottom: 20px;">ReplacingMergeTree Deduplication Flow</h4>
+                <div style="max-width: 900px; margin: 0 auto;">
+                    <div style="display: flex; flex-direction: column; gap: 20px;">
+                        <!-- Step 1: Insert -->
+                        <div style="background: #e3f2fd; padding: 20px; border-radius: 6px; border: 2px solid #1976d2;">
+                            <div style="font-weight: bold; color: #0d47a1; margin-bottom: 10px;">Step 1: Insert Initial Version</div>
+                            <div style="background: white; padding: 12px; border-radius: 4px; font-family: monospace; font-size: 0.9em; color: #333;">
+                                user_id: 1, name: "Alice", email: "alice@ex.com", version: 1
+                            </div>
+                        </div>
+
+                        <div style="text-align: center; font-size: 20px; color: #666;">↓</div>
+
+                        <!-- Step 2: Update -->
+                        <div style="background: #fff3e0; padding: 20px; border-radius: 6px; border: 2px solid #f57c00;">
+                            <div style="font-weight: bold; color: #e65100; margin-bottom: 10px;">Step 2: "Update" (Insert New Version)</div>
+                            <div style="background: white; padding: 12px; border-radius: 4px; font-family: monospace; font-size: 0.9em; color: #333;">
+                                user_id: 1, name: "Alice Smith", email: "alice@ex.com", version: 2
+                            </div>
+                        </div>
+
+                        <div style="text-align: center; font-size: 20px; color: #666;">↓ Background Merge ↓</div>
+
+                        <!-- Step 3: Merge -->
+                        <div style="background: #e8f5e9; padding: 20px; border-radius: 6px; border: 2px solid #388e3c;">
+                            <div style="font-weight: bold; color: #2e7d32; margin-bottom: 10px;">Step 3: Deduplication During Merge</div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div style="background: #ffebee; padding: 12px; border-radius: 4px; text-decoration: line-through; opacity: 0.6;">
+                                    <div style="color: #c62828; font-weight: bold; margin-bottom: 5px;">❌ Old Version (Removed)</div>
+                                    <div style="font-size: 0.85em; color: #555;">version: 1</div>
+                                </div>
+                                <div style="background: #c8e6c9; padding: 12px; border-radius: 4px;">
+                                    <div style="color: #2e7d32; font-weight: bold; margin-bottom: 5px;">✅ Latest Version (Kept)</div>
+                                    <div style="font-size: 0.85em; color: #555;">version: 2</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="text-align: center; font-size: 20px; color: #666;">↓</div>
+
+                        <!-- Step 4: Query -->
+                        <div style="background: #f3e5f5; padding: 20px; border-radius: 6px; border: 2px solid #7b1fa2;">
+                            <div style="font-weight: bold; color: #6a1b9a; margin-bottom: 10px;">Step 4: Query Result</div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div style="background: white; padding: 12px; border-radius: 4px;">
+                                    <div style="font-weight: bold; color: #333; margin-bottom: 5px;">WITH FINAL:</div>
+                                    <div style="font-size: 0.85em; color: #2e7d32;">Returns only latest: "Alice Smith"</div>
+                                </div>
+                                <div style="background: white; padding: 12px; border-radius: 4px;">
+                                    <div style="font-weight: bold; color: #333; margin-bottom: 5px;">WITHOUT FINAL:</div>
+                                    <div style="font-size: 0.85em; color: #d32f2f;">May return duplicates (if not merged yet)</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="code-block">-- For data that can be updated/replaced
 CREATE TABLE users (
     user_id UInt64,
@@ -403,8 +576,97 @@ SELECT * FROM users FINAL WHERE user_id = 1;
 
 -- Note: Without FINAL, you might see duplicate versions
 SELECT * FROM users WHERE user_id = 1;
-
             <h3>3. Understanding SummingMergeTree</h3>
+
+            <div style="background: #f9f9f9; padding: 30px; border-radius: 8px; margin: 20px 0;">
+                <h4 style="color: #333; text-align: center; margin-bottom: 20px;">SummingMergeTree Aggregation Flow</h4>
+                <div style="max-width: 900px; margin: 0 auto;">
+                    <div style="display: flex; flex-direction: column; gap: 20px;">
+                        <!-- Step 1: Initial Inserts -->
+                        <div>
+                            <div style="font-weight: bold; color: #333; margin-bottom: 10px;">Step 1: Insert Multiple Records (Same Key)</div>
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                                <div style="background: #e3f2fd; padding: 15px; border-radius: 4px; border: 2px solid #1976d2;">
+                                    <div style="font-weight: bold; color: #0d47a1; margin-bottom: 5px;">Record 1</div>
+                                    <div style="font-size: 0.85em; color: #333;">date: 2026-01-22</div>
+                                    <div style="font-size: 0.85em; color: #333;">host: server1</div>
+                                    <div style="font-size: 0.85em; color: #388e3c; font-weight: bold;">requests: 10000</div>
+                                    <div style="font-size: 0.85em; color: #388e3c; font-weight: bold;">errors: 50</div>
+                                </div>
+                                <div style="background: #e3f2fd; padding: 15px; border-radius: 4px; border: 2px solid #1976d2;">
+                                    <div style="font-weight: bold; color: #0d47a1; margin-bottom: 5px;">Record 2</div>
+                                    <div style="font-size: 0.85em; color: #333;">date: 2026-01-22</div>
+                                    <div style="font-size: 0.85em; color: #333;">host: server1</div>
+                                    <div style="font-size: 0.85em; color: #388e3c; font-weight: bold;">requests: 5000</div>
+                                    <div style="font-size: 0.85em; color: #388e3c; font-weight: bold;">errors: 10</div>
+                                </div>
+                                <div style="background: #e3f2fd; padding: 15px; border-radius: 4px; border: 2px solid #1976d2;">
+                                    <div style="font-weight: bold; color: #0d47a1; margin-bottom: 5px;">Record 3</div>
+                                    <div style="font-size: 0.85em; color: #333;">date: 2026-01-22</div>
+                                    <div style="font-size: 0.85em; color: #333;">host: server1</div>
+                                    <div style="font-size: 0.85em; color: #388e3c; font-weight: bold;">requests: 3000</div>
+                                    <div style="font-size: 0.85em; color: #388e3c; font-weight: bold;">errors: 5</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="text-align: center; font-size: 20px; color: #666;">↓ Background Merge with Summing ↓</div>
+
+                        <!-- Step 2: Auto-Aggregation -->
+                        <div style="background: #fff3e0; padding: 20px; border-radius: 6px; border: 2px solid #f57c00;">
+                            <div style="font-weight: bold; color: #e65100; margin-bottom: 10px;">Step 2: Automatic Aggregation (Same ORDER BY Keys)</div>
+                            <div style="background: white; padding: 15px; border-radius: 4px;">
+                                <div style="display: flex; justify-content: space-around; align-items: center;">
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 0.85em; color: #555; margin-bottom: 5px;">requests</div>
+                                        <div style="font-size: 1.2em; color: #333;">10000 + 5000 + 3000</div>
+                                        <div style="font-size: 1.5em; font-weight: bold; color: #388e3c; margin-top: 5px;">= 18000</div>
+                                    </div>
+                                    <div style="font-size: 2em; color: #ccc;">|</div>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 0.85em; color: #555; margin-bottom: 5px;">errors</div>
+                                        <div style="font-size: 1.2em; color: #333;">50 + 10 + 5</div>
+                                        <div style="font-size: 1.5em; font-weight: bold; color: #388e3c; margin-top: 5px;">= 65</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="text-align: center; font-size: 20px; color: #666;">↓</div>
+
+                        <!-- Step 3: Final Result -->
+                        <div style="background: #e8f5e9; padding: 20px; border-radius: 6px; border: 2px solid #388e3c;">
+                            <div style="font-weight: bold; color: #2e7d32; margin-bottom: 10px;">Step 3: Single Aggregated Record</div>
+                            <div style="background: white; padding: 15px; border-radius: 4px; text-align: center;">
+                                <div style="font-weight: bold; color: #333; margin-bottom: 10px;">Final Merged Record:</div>
+                                <div style="font-size: 0.9em; color: #555; margin: 5px 0;">date: 2026-01-22, host: server1</div>
+                                <div style="display: flex; justify-content: center; gap: 40px; margin-top: 10px;">
+                                    <div style="background: #c8e6c9; padding: 10px 20px; border-radius: 4px;">
+                                        <div style="font-size: 0.85em; color: #555;">requests</div>
+                                        <div style="font-size: 1.3em; font-weight: bold; color: #2e7d32;">18000</div>
+                                    </div>
+                                    <div style="background: #c8e6c9; padding: 10px 20px; border-radius: 4px;">
+                                        <div style="font-size: 0.85em; color: #555;">errors</div>
+                                        <div style="font-size: 1.3em; font-weight: bold; color: #2e7d32;">65</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Benefits -->
+                        <div style="background: #fff9e6; padding: 15px; border-radius: 6px; border-left: 4px solid #ffb82e;">
+                            <div style="font-weight: bold; color: #333; margin-bottom: 8px;">✨ Benefits:</div>
+                            <ul style="margin: 0; padding-left: 20px; color: #555; font-size: 0.9em;">
+                                <li>Automatic pre-aggregation during merges</li>
+                                <li>Storage savings: 3 rows → 1 row (66% reduction)</li>
+                                <li>Faster queries: already aggregated data</li>
+                                <li>Perfect for metrics, counters, and rollup tables</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="code-block">-- For pre-aggregated metrics and counters
 CREATE TABLE metrics_daily (
     metric_date Date,
@@ -428,7 +690,6 @@ INSERT INTO metrics_daily VALUES
 SELECT metric_date, host, SUM(request_count), SUM(error_count)
 FROM metrics_daily
 GROUP BY metric_date, host;
-
         </div>
     </div>
 

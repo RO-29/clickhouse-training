@@ -158,10 +158,57 @@
             margin-bottom: 15px;
         }
         h3 {
-            color: #333;
+            color: #1a1a1a;
             border-bottom: 2px solid #ff6b35;
             padding-bottom: 10px;
             margin-top: 30px;
+        }
+        p, li {
+            color: #2c2c2c;
+        }
+        .diagram {
+            background: #ffffff;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 30px;
+            margin: 20px 0;
+            font-family: monospace;
+        }
+        .diagram-box {
+            background: #f8f9fa;
+            border: 2px solid #ff6b35;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+            text-align: center;
+            font-weight: bold;
+            color: #1a1a1a;
+        }
+        .diagram-arrow {
+            text-align: center;
+            font-size: 1.5em;
+            color: #ff6b35;
+            margin: 5px 0;
+        }
+        .flow-container {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin: 20px 0;
+        }
+        .flow-box {
+            background: linear-gradient(135deg, #fff9e6 0%, #ffe6cc 100%);
+            border: 2px solid #ffb82e;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            flex: 1;
+            margin: 0 10px;
+            color: #1a1a1a;
+        }
+        .flow-arrow-right {
+            font-size: 2em;
+            color: #ff6b35;
         }
         table {
             width: 100%;
@@ -311,6 +358,112 @@
                         <li>Testing/staging environments</li>
                     </ul>
                 </div>
+            </div>
+
+            <h3>Backup Architecture Diagram</h3>
+            <div class="diagram">
+                <h4 style="text-align: center; color: #ff6b35; margin-top: 0;">ClickHouse Backup Pipeline</h4>
+                <div class="diagram-box" style="background: #e6f7ed;">ClickHouse Cluster (Production Data)</div>
+                <div class="diagram-arrow">↓</div>
+                <div class="diagram-box" style="background: #fff9e6;">clickhouse-backup Tool</div>
+                <div class="diagram-arrow">↓</div>
+                <div class="flow-container">
+                    <div class="flow-box">
+                        <strong>Local Storage</strong><br>
+                        <small>Fast Access<br>48-hour retention</small>
+                    </div>
+                    <div class="flow-arrow-right">→</div>
+                    <div class="flow-box">
+                        <strong>S3/Cloud Storage</strong><br>
+                        <small>Geographic Redundancy<br>90-day retention</small>
+                    </div>
+                    <div class="flow-arrow-right">→</div>
+                    <div class="flow-box">
+                        <strong>Glacier Archive</strong><br>
+                        <small>Long-term Storage<br>7-year retention</small>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Full vs Incremental Backup Flow</h3>
+            <div class="diagram">
+                <div class="grid-2">
+                    <div>
+                        <h4 style="color: #ff6b35;">Full Backup</h4>
+                        <div class="diagram-box" style="background: #e6f7ed;">Day 1: Full Backup (100GB)</div>
+                        <div class="diagram-arrow">↓</div>
+                        <div class="diagram-box" style="background: #e6f7ed;">Day 2: Full Backup (102GB)</div>
+                        <div class="diagram-arrow">↓</div>
+                        <div class="diagram-box" style="background: #e6f7ed;">Day 3: Full Backup (105GB)</div>
+                        <div style="margin-top: 15px; padding: 10px; background: #ffe6e6; border-radius: 5px; color: #1a1a1a;">
+                            <strong>Total Storage:</strong> 307GB<br>
+                            <strong>Backup Time:</strong> ~3 hours each<br>
+                            <strong>Recovery:</strong> Fast (single backup)
+                        </div>
+                    </div>
+                    <div>
+                        <h4 style="color: #ff6b35;">Incremental Backup</h4>
+                        <div class="diagram-box" style="background: #e6f7ed;">Day 1: Full Backup (100GB)</div>
+                        <div class="diagram-arrow">↓</div>
+                        <div class="diagram-box" style="background: #fff9e6;">Day 2: +2GB changes</div>
+                        <div class="diagram-arrow">↓</div>
+                        <div class="diagram-box" style="background: #fff9e6;">Day 3: +3GB changes</div>
+                        <div style="margin-top: 15px; padding: 10px; background: #e6f7ed; border-radius: 5px; color: #1a1a1a;">
+                            <strong>Total Storage:</strong> 105GB<br>
+                            <strong>Backup Time:</strong> ~10 min each<br>
+                            <strong>Recovery:</strong> Slower (chain restore)
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Point-in-Time Recovery Timeline</h3>
+            <div class="diagram">
+                <h4 style="text-align: center; color: #ff6b35; margin-top: 0;">PITR Workflow</h4>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0;">
+                    <div class="diagram-box" style="flex: 1; background: #e6f7ed;">
+                        <strong>Sunday 00:00</strong><br>
+                        Full Backup
+                    </div>
+                    <div style="padding: 0 10px; font-size: 1.5em; color: #ff6b35;">→</div>
+                    <div class="diagram-box" style="flex: 1; background: #fff9e6;">
+                        <strong>Mon-Sat</strong><br>
+                        Incremental + Logs
+                    </div>
+                    <div style="padding: 0 10px; font-size: 1.5em; color: #ff6b35;">→</div>
+                    <div class="diagram-box" style="flex: 1; background: #ffe6e6;">
+                        <strong>Wed 14:30</strong><br>
+                        Disaster!
+                    </div>
+                </div>
+                <div class="diagram-arrow">↓ RECOVERY ↓</div>
+                <div style="background: #e6f7ed; padding: 20px; border-radius: 8px; margin-top: 20px; color: #1a1a1a;">
+                    <strong>Recovery Steps:</strong><br>
+                    1. Restore Sunday Full Backup → Base State<br>
+                    2. Apply Mon Incremental → +changes<br>
+                    3. Apply Tue Incremental → +changes<br>
+                    4. Apply Wed Logs up to 14:29:59 → Exact Recovery Point<br>
+                    <strong style="color: #27ae60;">✅ Result: Data recovered to Wed 14:29:59 (1 second before disaster)</strong>
+                </div>
+            </div>
+
+            <h3>Restore Procedure Flowchart</h3>
+            <div class="diagram">
+                <div class="diagram-box" style="background: #fff9e6;">1. Detect Failure / Data Loss</div>
+                <div class="diagram-arrow">↓</div>
+                <div class="diagram-box" style="background: #e6f2ff;">2. Identify Last Good Backup</div>
+                <div class="diagram-arrow">↓</div>
+                <div class="diagram-box" style="background: #e6f2ff;">3. Download from S3 (if needed)</div>
+                <div class="diagram-arrow">↓</div>
+                <div class="diagram-box" style="background: #fff9e6;">4. Restore Schema (Metadata)</div>
+                <div class="diagram-arrow">↓</div>
+                <div class="diagram-box" style="background: #fff9e6;">5. Restore Data (Parts)</div>
+                <div class="diagram-arrow">↓</div>
+                <div class="diagram-box" style="background: #e6f2ff;">6. Apply Incremental Changes</div>
+                <div class="diagram-arrow">↓</div>
+                <div class="diagram-box" style="background: #e6f2ff;">7. Verify Data Integrity</div>
+                <div class="diagram-arrow">↓</div>
+                <div class="diagram-box" style="background: #e6f7ed;">8. Resume Operations ✅</div>
             </div>
 
             <h3>Backup Architecture Options</h3>

@@ -5,22 +5,183 @@
 ### Production Setup (3-Shard, 2-Replica)
 
 ```
-┌─────────────────────────────────────────────────────┐
-│              Load Balancer / Proxy                   │
-│         (HAProxy, Nginx, or cloud LB)               │
-├─────────────────────────────────────────────────────┤
-│  Shard 1            │  Shard 2            │ Shard 3 │
-│ ┌────────────────┐  │ ┌────────────────┐ │ ┌─────┐ │
-│ │ Primary        │  │ │ Primary        │ │ │ Pri │ │
-│ │ + Replica      │  │ │ + Replica      │ │ │ +Re │ │
-│ └────────────────┘  │ └────────────────┘ │ └─────┘ │
-├─────────────────────────────────────────────────────┤
-│   ZooKeeper Cluster (3 nodes for consensus)         │
-├─────────────────────────────────────────────────────┤
-│   Monitoring: Prometheus + Grafana                  │
-├─────────────────────────────────────────────────────┤
-│   Storage: SSD volumes (distributed/replicated)     │
-└─────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│              FULL CLUSTER TOPOLOGY (3×2)                        │
+└─────────────────────────────────────────────────────────────────┘
+
+                    🌐 User Applications
+                            ↓
+                ┌───────────────────────┐
+                │   ⚖️ Load Balancer    │
+                │ (HAProxy/Nginx/ALB)   │
+                │  Ports: 9000 | 8123   │
+                └──────────┬────────────┘
+                           ↓
+        ┌──────────────────┼──────────────────┐
+        ↓                  ↓                  ↓
+┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+│  SHARD 1     │  │  SHARD 2     │  │  SHARD 3     │
+│  (33% data)  │  │  (33% data)  │  │  (33% data)  │
+├──────────────┤  ├──────────────┤  ├──────────────┤
+│ 👑 Node 1    │  │ 👑 Node 3    │  │ 👑 Node 5    │
+│ (Primary)    │  │ (Primary)    │  │ (Primary)    │
+│ ch1.local    │  │ ch3.local    │  │ ch5.local    │
+├──────────────┤  ├──────────────┤  ├──────────────┤
+│ 🔄 Node 2    │  │ 🔄 Node 4    │  │ 🔄 Node 6    │
+│ (Replica)    │  │ (Replica)    │  │ (Replica)    │
+│ ch2.local    │  │ ch4.local    │  │ ch6.local    │
+└──────────────┘  └──────────────┘  └──────────────┘
+        │                  │                  │
+        └──────────────────┼──────────────────┘
+                           ↓
+              ┌────────────────────────┐
+              │  KEEPER COORDINATION   │
+              ├────────────────────────┤
+              │ 👑 Keeper-1 (Leader)   │
+              │ 🔵 Keeper-2 (Follower) │
+              │ 🔵 Keeper-3 (Follower) │
+              │   Port: 9181 | 9234    │
+              └────────────────────────┘
+                           ↓
+              ┌────────────────────────┐
+              │   📊 MONITORING         │
+              │ Prometheus + Grafana   │
+              │   Port: 9363           │
+              └────────────────────────┘
+
+Total: 6 ClickHouse nodes + 3 Keeper nodes = 9 servers
+Fault Tolerance: 1 node per shard + 1 Keeper can fail
+```
+
+### Network Architecture & Ports
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│               NETWORK ARCHITECTURE DIAGRAM                  │
+└─────────────────────────────────────────────────────────────┘
+
+PUBLIC NETWORK:                 INTERNAL NETWORK:
+┌────────────────┐              ┌─────────────────────┐
+│  🌐 Internet   │              │ 🔐 Private Subnet   │
+│   Load Balancer│              │   Inter-node Comm   │
+│                │              │                     │
+│ Port 8123 HTTP │              │ Port 9000 (Native)  │
+│ Port 9440 HTTPS│              │ Port 9009 (Replic)  │
+│                │              │ Port 9181 (Keeper)  │
+│ ✅ TLS/SSL     │              │ Port 9234 (Raft)    │
+│ 🛡️ Firewalled  │              │                     │
+└────────────────┘              │ 🔒 No external      │
+                                │ ⚡ Low latency       │
+                                └─────────────────────┘
+
+MONITORING NETWORK:
+┌────────────────┐
+│ 📊 Metrics     │
+│                │
+│ Port 9363      │
+│ (Prometheus)   │
+│                │
+│ Port 8123      │
+│ (Metrics API)  │
+└────────────────┘
+
+FIREWALL RULES:
+┌────────┬──────────┬───────────────────────┬─────────────────┐
+│  Port  │ Protocol │      Purpose          │     Access      │
+├────────┼──────────┼───────────────────────┼─────────────────┤
+│  9000  │   TCP    │ ClickHouse Native     │ Internal only   │
+│  8123  │   HTTP   │ HTTP Interface        │ LB + monitoring │
+│  9009  │   TCP    │ Inter-server Replic   │ Internal only   │
+│  9181  │   TCP    │ Keeper Client         │ CH + Keeper     │
+│  9234  │   TCP    │ Keeper Raft           │ Keeper only     │
+│  9363  │   HTTP   │ Prometheus Metrics    │ Monitoring      │
+└────────┴──────────┴───────────────────────┴─────────────────┘
+```
+
+### Distributed DDL Execution Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│            DISTRIBUTED DDL EXECUTION DIAGRAM                │
+└─────────────────────────────────────────────────────────────┘
+
+Step 1: Submit DDL
+┌─────────────────────────────────────┐
+│ CREATE TABLE ... ON CLUSTER         │
+│ 'my_cluster'                        │
+└────────────────┬────────────────────┘
+                 ↓
+Step 2: Keeper Queue
+┌─────────────────────────────────────┐
+│ /clickhouse/task_queue/ddl          │
+│ ├─ task_0001 (CREATE TABLE)         │
+│ └─ Status: PENDING                  │
+└────────────────┬────────────────────┘
+                 ↓
+Step 3: Parallel Execution
+         ┌───────┼───────┐
+         ↓       ↓       ↓
+    ┌────────┬────────┬────────┐
+    │ Node 1 │ Node 2 │ Node 3 │
+    │ Node 4 │ Node 5 │ Node 6 │
+    └────────┴────────┴────────┘
+    Execute DDL simultaneously
+         ↓       ↓       ↓
+         └───────┼───────┘
+                 ↓
+Step 4: Report Status
+┌─────────────────────────────────────┐
+│ All nodes ACK to Keeper             │
+│ ├─ Node 1: ✅ SUCCESS               │
+│ ├─ Node 2: ✅ SUCCESS               │
+│ ├─ Node 3: ✅ SUCCESS               │
+│ ├─ Node 4: ✅ SUCCESS               │
+│ ├─ Node 5: ✅ SUCCESS               │
+│ └─ Node 6: ✅ SUCCESS               │
+└─────────────────────────────────────┘
+                 ↓
+Result: Table created on all nodes ✅
+```
+
+### User/Role Hierarchy
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│              USER/ROLE HIERARCHY DIAGRAM                    │
+└─────────────────────────────────────────────────────────────┘
+
+┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+│   👑 ADMIN USER  │  │ 👤 APP USER      │  │ 📖 READ-ONLY     │
+├──────────────────┤  ├──────────────────┤  ├──────────────────┤
+│ Permissions:     │  │ Permissions:     │  │ Permissions:     │
+│ ✅ ALL privileges│  │ ✅ SELECT        │  │ ✅ SELECT only   │
+│ ✅ CREATE/DROP   │  │ ✅ INSERT        │  │ ❌ No INSERT     │
+│ ✅ Manage users  │  │ ❌ No DDL        │  │ ❌ No DDL        │
+│ ✅ Cluster ops   │  │ ❌ No DROP       │  │ ❌ No mutations  │
+│ ✅ System tables │  │ ❌ No user mgmt  │  │ ❌ No writes     │
+│                  │  │                  │  │                  │
+│ Profile:         │  │ Profile:         │  │ Profile:         │
+│ • unlimited      │  │ • app_profile    │  │ • readonly       │
+│                  │  │                  │  │                  │
+│ Quota:           │  │ Quota:           │  │ Quota:           │
+│ • none           │  │ • 10K queries/hr │  │ • 1K queries/hr  │
+│                  │  │                  │  │                  │
+│ Memory:          │  │ Memory:          │  │ Memory:          │
+│ • 32 GB          │  │ • 10 GB          │  │ • 5 GB           │
+│                  │  │                  │  │                  │
+│ Networks:        │  │ Networks:        │  │ Networks:        │
+│ • internal only  │  │ • app subnet     │  │ • public/VPN     │
+└──────────────────┘  └──────────────────┘  └──────────────────┘
+
+RESOURCE LIMITS BY PROFILE:
+┌───────────────────────┬─────────┬─────────────┬──────────────┐
+│       Setting         │  Admin  │ Application │  Read-Only   │
+├───────────────────────┼─────────┼─────────────┼──────────────┤
+│ max_memory_usage      │  32 GB  │    10 GB    │    5 GB      │
+│ max_execution_time    │ Unlimited│   300 sec   │   60 sec     │
+│ max_threads           │   16    │      8      │      4       │
+│ readonly              │    0    │      0      │      1       │
+└───────────────────────┴─────────┴─────────────┴──────────────┘
 ```
 
 ---

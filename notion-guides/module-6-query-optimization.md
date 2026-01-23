@@ -4,16 +4,208 @@
 
 ## Architecture Overview
 
+### Query Execution Pipeline (Parse → Optimize → Execute → Merge)
+
 ```
-Query Submission
-      ↓
-Parser & Optimizer
-      ↓
-Execution Planner
-      ↓
-Distributed Execution (Shards)
-      ↓
-Aggregation & Result
+┌─────────────────────────────────────────────────────────────┐
+│         QUERY EXECUTION PIPELINE DIAGRAM                    │
+└─────────────────────────────────────────────────────────────┘
+
+     📝 SQL Query String
+             ↓
+┌────────────────────────────┐
+│   1️⃣  LEXER               │  Tokenize SQL into tokens
+│   Time: ~1-2ms            │  "SELECT", "FROM", "WHERE", etc.
+└────────────┬───────────────┘
+             ↓
+┌────────────────────────────┐
+│   2️⃣  PARSER              │  Build Abstract Syntax Tree (AST)
+│   Time: ~2-3ms            │  Hierarchical query structure
+└────────────┬───────────────┘
+             ↓
+┌────────────────────────────┐
+│   3️⃣  SEMANTIC ANALYSIS   │  Validate tables, columns, types
+│   Time: ~5-10ms           │  Check permissions
+└────────────┬───────────────┘
+             ↓
+┌────────────────────────────┐
+│   4️⃣  OPTIMIZATION        │  Rewrite for efficiency
+│   Time: ~10-20ms          │  • Predicate pushdown
+│                           │  • JOIN reordering
+│                           │  • Partition pruning
+└────────────┬───────────────┘
+             ↓
+┌────────────────────────────┐
+│   5️⃣  COMPILATION         │  JIT compile expressions
+│   Time: ~10-50ms          │  • SIMD vectorization
+│   (cached for reuse)      │  • Generate machine code
+└────────────┬───────────────┘
+             ↓
+┌────────────────────────────┐
+│   6️⃣  EXECUTION           │  Run query against data
+│   Time: Variable          │  • Read from disk/cache
+│   (bulk of query time)    │  • Apply filters
+│                           │  • Parallel processing
+└────────────┬───────────────┘
+             ↓
+┌────────────────────────────┐
+│   7️⃣  MERGE RESULTS       │  Combine from all shards
+│   Time: ~5-50ms           │  Final aggregation
+└────────────┬───────────────┘
+             ↓
+        ✅ RESULT
+
+Total: Parsing (10-30ms) + Execution (variable) + Merge (5-50ms)
+```
+
+### Index Utilization Flowchart
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│           INDEX UTILIZATION FLOWCHART                       │
+└─────────────────────────────────────────────────────────────┘
+
+          📝 Query: SELECT * FROM events
+                 WHERE country = 'US'
+                       ↓
+          ┌────────────────────────┐
+          │  Analyze WHERE Clause  │
+          └──────────┬─────────────┘
+                     ↓
+     ┌───────────────┼───────────────┐
+     ↓               ↓               ↓
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│ Primary Key │ │  Skipping   │ │  Partition  │
+│   Check     │ │   Indexes   │ │   Pruning   │
+└──────┬──────┘ └──────┬──────┘ └──────┬──────┘
+       ↓               ↓               ↓
+   Does WHERE     Has set/bloom    Filter by
+   match ORDER    filter index?   partition key?
+       BY?              ↓               ↓
+       ↓          ┌─────┴─────┐   ┌────┴────┐
+   ┌───┴───┐     │           │   │         │
+   │  YES  │     │    YES    │   │   YES   │
+   └───┬───┘     └─────┬─────┘   └────┬────┘
+       ↓               ↓               ↓
+   Range scan     Skip granules   Skip partitions
+       │               │               │
+       └───────────────┼───────────────┘
+                       ↓
+           ┌───────────┴───────────┐
+           ↓                       ↓
+    ┌──────────────┐        ┌─────────────┐
+    │ ⚡ OPTIMIZED │        │ 🐌 SLOW     │
+    │    PATH      │        │   PATH      │
+    ├──────────────┤        ├─────────────┤
+    │ Read 0.1%    │        │ Read 100%   │
+    │ of table     │        │ of table    │
+    │ 10-1000x     │        │ Full scan   │
+    │ faster       │        │ Very slow   │
+    └──────────────┘        └─────────────┘
+
+Example Results:
+✅ Indexed:    10ms,  read 1M rows
+❌ Not indexed: 10s,   read 1B rows (1000x slower!)
+```
+
+### Materialized View Refresh Diagram
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│         MATERIALIZED VIEW REFRESH DIAGRAM                   │
+└─────────────────────────────────────────────────────────────┘
+
+SOURCE TABLE                  TRIGGER                 MATERIALIZED VIEW
+┌──────────────┐                                     ┌──────────────────┐
+│   events     │              ⚙️ AUTO                │  events_daily_mv │
+│  (Raw Data)  │              TRIGGER                │  (Aggregated)    │
+├──────────────┤                                     ├──────────────────┤
+│ 1B rows      │◄─────────────────────────────────►│ 365 rows         │
+│ Continuous   │        On INSERT/MERGE              │ Pre-computed     │
+│ INSERT       │                                     │ Instant queries  │
+│              │                                     │                  │
+│ Fields:      │     SELECT                          │ Fields:          │
+│ • id         │       toDate(event_time) as date,   │ • date           │
+│ • event_time │       country,                      │ • country        │
+│ • user_id    │       COUNT(*) as count,            │ • count          │
+│ • country    │       SUM(revenue) as revenue       │ • revenue        │
+│ • revenue    │     FROM events                     │                  │
+│              │     GROUP BY date, country          │                  │
+└──────┬───────┘                                     └──────────────────┘
+       │                                                      ↑
+       │                                                      │
+       └──────────────────────────────────────────────────────┘
+                    Automatic incremental refresh
+
+FLOW:
+1️⃣  New row inserted into events table
+2️⃣  Materialized view SELECT is triggered automatically
+3️⃣  Query aggregates new data (GROUP BY)
+4️⃣  Result stored/updated in MV table
+5️⃣  Query MV instead of raw table → 100-1000x faster!
+
+Performance:
+• Without MV: Scan 1B rows → 5-10 seconds
+• With MV:    Scan 365 rows → 10-50 milliseconds
+```
+
+### JOIN Execution Strategies
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│           JOIN EXECUTION STRATEGIES COMPARISON              │
+└─────────────────────────────────────────────────────────────┘
+
+🐌 DISTRIBUTED JOIN (Slow)          ⚡ DICTIONARY JOIN (Fast)
+┌───────────────────────┐           ┌─────────────────────────┐
+│ Large Table A         │           │ Large Table A           │
+│ (1B rows, sharded)    │           │ (1B rows, sharded)      │
+└───────┬───────────────┘           └────────┬────────────────┘
+        │                                     │
+        ↓                                     ↓
+┌───────────────────────┐           ┌─────────────────────────┐
+│ Large Table B         │           │ Small Table B (Dict)    │
+│ (100M rows, sharded)  │           │ (100K rows, in RAM)     │
+└───────┬───────────────┘           └────────┬────────────────┘
+        │                                     │
+        ↓                                     ↓
+┌───────────────────────┐           ┌─────────────────────────┐
+│ Shuffle data across   │           │ Replicate dict to       │
+│ network (expensive)   │           │ all nodes (cheap)       │
+└───────┬───────────────┘           └────────┬────────────────┘
+        │                                     │
+        ↓                                     ↓
+┌───────────────────────┐           ┌─────────────────────────┐
+│ JOIN on coordinator   │           │ Hash lookup on          │
+│ (high memory usage)   │           │ each node (local)       │
+└───────┬───────────────┘           └────────┬────────────────┘
+        │                                     │
+        ↓                                     ↓
+┌───────────────────────┐           ┌─────────────────────────┐
+│ Merge results         │           │ No merge needed         │
+└───────────────────────┘           └─────────────────────────┘
+        ↓                                     ↓
+  Time: 10-60 sec                       Time: 100-500ms
+  Network: HIGH                         Network: LOW
+  Memory: 10-50 GB                      Memory: 100 MB
+
+❌ Problems:                          ✅ Benefits:
+• Network bottleneck                  • All operations local
+• High memory usage                   • Minimal memory
+• Slow for large tables               • Fast hash lookups
+• Can cause OOM                       • Cached in RAM
+
+JOIN TYPE RECOMMENDATIONS:
+┌────────────────┬──────────────────┬────────────┬──────────────┐
+│  JOIN Type     │   Use Case       │ Performance│ Recommendation│
+├────────────────┼──────────────────┼────────────┼──────────────┤
+│ Dictionary     │ Small ref tables │ ⚡ Fastest  │ ✅ < 1M rows  │
+│ ANY JOIN       │ 1:1 relationships│ Fast       │ ✅ Preferred  │
+│ ALL JOIN       │ 1:N relationships│ Medium     │ ⚠️ Filter first│
+│ Distributed    │ Large × Large    │ 🐌 Slow    │ ❌ Avoid      │
+└────────────────┴──────────────────┴────────────┴──────────────┘
+
+BEST PRACTICE: Denormalize at write time → Eliminate JOINs → 1000x faster!
 ```
 
 ---

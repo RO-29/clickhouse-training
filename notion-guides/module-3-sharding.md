@@ -15,6 +15,104 @@ Single Node (100TB)          vs    Sharded Cluster (3x 40TB each)
 
 ---
 
+## Distributed Table Architecture
+
+### Full Distributed Query Flow
+
+```
+┌─────────────────────────────────────────────────┐
+│         Client Application                      │
+│   (Python, Go, Java, Web App, etc.)            │
+└──────────────────┬──────────────────────────────┘
+                   │
+                   ▼ Query: SELECT COUNT(*) FROM events WHERE user_id = 12345
+┌─────────────────────────────────────────────────┐
+│      Distributed Table (Virtual Layer)          │
+│   - Calculate shard: cityHash64(12345) % 3     │
+│   - Route query to appropriate shard(s)        │
+└──────────────────┬──────────────────────────────┘
+                   │
+                   ▼ Query routed to Shard 2
+┌──────────────────────────────────────────────────────┐
+│                    Shards Layer                      │
+├──────────────────┬─────────────┬────────────────────┤
+│   Shard 1        │   Shard 2   │   Shard 3          │
+│  (user_id % 3=0) │(user_id%3=1)│  (user_id % 3=2)   │
+│ ┌──────────────┐ │┌──────────┐ │ ┌──────────────┐  │
+│ │ Local Table  │ ││Local Table│ │ │ Local Table  │  │
+│ │ events_local │ ││events_local│ │ │ events_local │  │
+│ │              │ ││           │ │ │              │  │
+│ │ Data:        │ ││Data:      │ │ │ Data:        │  │
+│ │ user 1,4,7...│ ││user 2,5,8 │ │ │ user 3,6,9.. │  │
+│ └──────────────┘ │└──────────┘ │ └──────────────┘  │
+└──────────────────┴─────────────┴────────────────────┘
+                   │
+                   ▼ Results collected
+┌─────────────────────────────────────────────────┐
+│         Query Coordinator / Aggregator          │
+│   - Merges results from all queried shards     │
+│   - Performs final GROUP BY / ORDER BY         │
+└──────────────────┬──────────────────────────────┘
+                   │
+                   ▼ Final result
+┌─────────────────────────────────────────────────┐
+│              Client Receives Result             │
+└─────────────────────────────────────────────────┘
+```
+
+### Cluster with Replication
+
+```
+3 Shards × 2 Replicas = 6 Total Nodes
+
+Shard 1 (33% of data):
+  ┌─────────────────┐
+  │ Node 1 (Rep A)  │ ← Primary
+  │ events_local    │
+  │ user_id % 3 = 0 │
+  └─────────────────┘
+          ↕ Sync
+  ┌─────────────────┐
+  │ Node 2 (Rep B)  │ ← Backup
+  │ events_local    │
+  │ user_id % 3 = 0 │
+  └─────────────────┘
+
+Shard 2 (33% of data):
+  ┌─────────────────┐
+  │ Node 3 (Rep A)  │
+  │ events_local    │
+  │ user_id % 3 = 1 │
+  └─────────────────┘
+          ↕ Sync
+  ┌─────────────────┐
+  │ Node 4 (Rep B)  │
+  │ events_local    │
+  │ user_id % 3 = 1 │
+  └─────────────────┘
+
+Shard 3 (33% of data):
+  ┌─────────────────┐
+  │ Node 5 (Rep A)  │
+  │ events_local    │
+  │ user_id % 3 = 2 │
+  └─────────────────┘
+          ↕ Sync
+  ┌─────────────────┐
+  │ Node 6 (Rep B)  │
+  │ events_local    │
+  │ user_id % 3 = 2 │
+  └─────────────────┘
+
+ZooKeeper:
+  ┌─────────────────────────┐
+  │  Coordination Layer     │
+  │  - Leader election      │
+  │  - Replication metadata │
+  │  - Cluster state        │
+  └─────────────────────────┘
+```
+
 ## Sharding Architecture
 
 ```
@@ -32,6 +130,158 @@ Single Node (100TB)          vs    Sharded Cluster (3x 40TB each)
 ├─────────────────────────────────────────────────┤
 │ ZooKeeper (Metadata & Coordination)             │
 └─────────────────────────────────────────────────┘
+```
+
+---
+
+## Sharding Key Distribution Visualization
+
+### How Hash-Based Sharding Distributes Data
+
+```
+Sharding Function: cityHash64(user_id) % 3
+
+User Data:
+user_id: 1  → cityHash64(1) % 3  = 1 → Shard 2
+user_id: 2  → cityHash64(2) % 3  = 2 → Shard 3
+user_id: 3  → cityHash64(3) % 3  = 0 → Shard 1
+user_id: 4  → cityHash64(4) % 3  = 1 → Shard 2
+user_id: 5  → cityHash64(5) % 3  = 2 → Shard 3
+user_id: 6  → cityHash64(6) % 3  = 0 → Shard 1
+...
+
+Distribution:
+┌───────────────────────────────────────────────────────┐
+│                    All Users                          │
+└───────────────┬───────────────┬───────────────────────┘
+                │               │
+    ┌───────────┴───┐   ┌──────┴────────┐   ┌──────────┐
+    │               │   │               │   │          │
+    ▼               ▼   ▼               ▼   ▼          ▼
+┌─────────┐   ┌─────────┐   ┌─────────┐
+│ Shard 1 │   │ Shard 2 │   │ Shard 3 │
+│ (33.3%) │   │ (33.3%) │   │ (33.3%) │
+├─────────┤   ├─────────┤   ├─────────┤
+│ user 3  │   │ user 1  │   │ user 2  │
+│ user 6  │   │ user 4  │   │ user 5  │
+│ user 9  │   │ user 7  │   │ user 8  │
+│ user 12 │   │ user 10 │   │ user 11 │
+│   ...   │   │   ...   │   │   ...   │
+└─────────┘   └─────────┘   └─────────┘
+```
+
+### Even Distribution Check
+
+```
+Monitoring Shard Balance:
+
+┌─────────┬──────────┬───────────┬──────────┐
+│ Shard   │ Rows     │ Size      │ Balance  │
+├─────────┼──────────┼───────────┼──────────┤
+│ Shard 1 │ 33.5M    │ 2.4 GB    │ ✅ Good  │
+│ Shard 2 │ 33.2M    │ 2.3 GB    │ ✅ Good  │
+│ Shard 3 │ 33.3M    │ 2.4 GB    │ ✅ Good  │
+└─────────┴──────────┴───────────┴──────────┘
+Total: 100M rows, 7.1 GB
+
+Variance: < 1% (Excellent)
+```
+
+---
+
+## Query Execution Flow
+
+### Single-Shard Query (Fast Path)
+
+```
+Query: SELECT * FROM events WHERE user_id = 12345
+
+Step 1: Hash Calculation
+┌────────────────────────────────┐
+│ cityHash64(12345) % 3 = 1      │
+│ Target: Shard 2 ONLY           │
+└────────────────────────────────┘
+           │
+           ▼
+Step 2: Route to Single Shard
+┌─────────┐   ┌─────────┐   ┌─────────┐
+│ Shard 1 │   │ Shard 2 │   │ Shard 3 │
+│  (idle) │   │ ✅ Query│   │  (idle) │
+└─────────┘   └────┬────┘   └─────────┘
+                   │
+                   ▼
+Step 3: Execute on Single Shard
+┌────────────────────────────────┐
+│ Shard 2: Local Table Scan      │
+│ - Scans ONLY user_id 12345     │
+│ - Returns: 1,000 rows          │
+└────────────────────────────────┘
+           │
+           ▼
+Step 4: Return Results
+┌────────────────────────────────┐
+│ Client receives 1,000 rows     │
+│ Latency: ~100ms (Single shard) │
+└────────────────────────────────┘
+```
+
+### Multi-Shard Query (Scatter-Gather)
+
+```
+Query: SELECT event_type, COUNT(*) FROM events
+       WHERE date >= '2026-01-01' GROUP BY event_type
+
+Step 1: No Sharding Key Filter
+┌────────────────────────────────┐
+│ No user_id filter              │
+│ → Broadcast to ALL shards      │
+└────────────────────────────────┘
+           │
+           ▼
+Step 2: Parallel Execution on All Shards
+┌─────────┐   ┌─────────┐   ┌─────────┐
+│ Shard 1 │   │ Shard 2 │   │ Shard 3 │
+├─────────┤   ├─────────┤   ├─────────┤
+│ ✅ Query│   │ ✅ Query│   │ ✅ Query│
+│         │   │         │   │         │
+│ Returns:│   │ Returns:│   │ Returns:│
+│ click:  │   │ click:  │   │ click:  │
+│   10K   │   │   11K   │   │   9K    │
+│ view:   │   │ view:   │   │ view:   │
+│   20K   │   │   19K   │   │   21K   │
+└────┬────┘   └────┬────┘   └────┬────┘
+     │             │             │
+     └─────────────┴─────────────┘
+                   │
+                   ▼
+Step 3: Coordinator Merges Results
+┌────────────────────────────────┐
+│ Aggregation on Coordinator     │
+│ - click: 10K + 11K + 9K = 30K  │
+│ - view: 20K + 19K + 21K = 60K  │
+└────────────────────────────────┘
+           │
+           ▼
+Step 4: Return Aggregated Results
+┌────────────────────────────────┐
+│ Client receives:               │
+│ - click: 30,000                │
+│ - view: 60,000                 │
+│ Latency: ~1-2s (All shards)    │
+└────────────────────────────────┘
+```
+
+### Query Performance Comparison
+
+```
+┌─────────────────────┬────────────────┬──────────────────┐
+│ Query Type          │ Shards Queried │ Latency          │
+├─────────────────────┼────────────────┼──────────────────┤
+│ WITH user_id filter │ 1 shard        │ ~100ms  ✅ Fast  │
+│ WITHOUT user_id     │ ALL shards     │ ~1-2s   ⚠️ Slower│
+└─────────────────────┴────────────────┴──────────────────┘
+
+Optimization: Always filter by sharding key when possible!
 ```
 
 ---
