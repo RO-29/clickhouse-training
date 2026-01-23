@@ -46,38 +46,29 @@ def update_html_file(module_number: int, notion_url: str) -> bool:
         print(f"ℹ️  Module {module_number}: Notion link already exists, skipping")
         return True
 
-    # Find the resources section and add Notion link
-    # We'll add it right after the opening <div class="resources"> tag
+    # Find the resources section grid and add Notion card
+    # We'll add it as the first card in the grid-2 div
 
-    resources_pattern = r'(<div class="resources">)'
-
-    notion_link_html = f'''
-            <div class="resource-card">
-                <h3>📘 View in Notion</h3>
-                <p>Access this module in your Notion workspace for note-taking and tracking progress.</p>
-                <a href="{notion_url}" class="resource-link" target="_blank" rel="noopener noreferrer">Open in Notion →</a>
-            </div>
+    notion_card_html = f'''
+                <div class="card">
+                    <h4>📘 View in Notion</h4>
+                    <p style="margin: 10px 0;">Access this module in your Notion workspace for note-taking and tracking your progress.</p>
+                    <a href="{notion_url}" target="_blank" rel="noopener noreferrer" style="color: #ff6b35; font-weight: 600; text-decoration: none;">Open in Notion →</a>
+                </div>
 '''
 
-    # Insert the Notion link after the resources div opening tag
+    # Pattern to match the grid-2 div in Resources section
+    # Flexible pattern to match any Resources-related section header
+    # Allows for optional h3 tags between section-content and grid-2
+    grid_pattern = r'(<div class="section-header">(?:📚\s*)?.*Resources.*</div>\s*<div class="section-content">\s*(?:<h3>.*?</h3>\s*)?<div class="grid-2">)'
+
     updated_content = re.sub(
-        resources_pattern,
-        r'\1' + notion_link_html,
+        grid_pattern,
+        r'\1' + notion_card_html,
         html_content,
-        count=1
+        count=1,
+        flags=re.DOTALL | re.IGNORECASE
     )
-
-    # If the resources section wasn't found, try adding it before the Quick Guide
-    if updated_content == html_content:
-        # Find the Quick Guide card and add Notion card before it
-        quick_guide_pattern = r'(<div class="resource-card">\s*<h3>📖 Quick Guide</h3>)'
-
-        updated_content = re.sub(
-            quick_guide_pattern,
-            notion_link_html + r'\1',
-            html_content,
-            count=1
-        )
 
     # Save the updated file
     if updated_content != html_content:
