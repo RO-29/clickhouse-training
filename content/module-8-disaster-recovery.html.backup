@@ -6,8 +6,6 @@
     <title>Module 8: Disaster Recovery & Business Continuity</title>
     <link rel="icon" type="image/x-icon" href="../favicon.ico">
     <link rel="icon" type="image/png" href="../favicon.png">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
@@ -413,7 +411,7 @@
 
             <div class="card">
                 <h4>Primary Datacenter (DC1) - Main Processing</h4>
-                <pre><code class="hljs">-- DC1: Create replicated table
+                <div class="code-block">-- DC1: Create replicated table
 CREATE TABLE events (
     event_time DateTime,
     user_id UInt64,
@@ -428,12 +426,12 @@ ORDER BY event_time;
 -- Insert data
 INSERT INTO events VALUES
     (now(), 1001, 'click'),
-    (now(), 1002, 'purchase');</code></pre>
+    (now(), 1002, 'purchase');</div>
             </div>
 
             <div class="card">
                 <h4>Secondary Datacenter (DC2) - Standby (Read-Only)</h4>
-                <pre><code class="hljs">-- DC2: Create replicated table with same ZooKeeper path
+                <div class="code-block">-- DC2: Create replicated table with same ZooKeeper path
 CREATE TABLE events (
     event_time DateTime,
     user_id UInt64,
@@ -446,28 +444,28 @@ PARTITION BY toYYYYMM(event_time)
 ORDER BY event_time;
 
 -- DC2 replica automatically receives data from DC1
--- Queries work on replicated data</code></pre>
+-- Queries work on replicated data</div>
             </div>
 
             <h3>2. Configure ZooKeeper for Coordination</h3>
-            <pre><code class="hljs"># /etc/clickhouse-server/config.d/zookeeper.xml
-&amp;lt;zookeeper&amp;gt;
-    &amp;lt;node&amp;gt;
-        &amp;lt;host&amp;gt;zk1.dc1.example.com&amp;lt;/host&amp;gt;
-        &amp;lt;port&amp;gt;2181&amp;lt;/port&amp;gt;
-    &amp;lt;/node&amp;gt;
-    &amp;lt;node&amp;gt;
-        &amp;lt;host&amp;gt;zk2.dc1.example.com&amp;lt;/host&amp;gt;
-        &amp;lt;port&amp;gt;2181&amp;lt;/port&amp;gt;
-    &amp;lt;/node&amp;gt;
-    &amp;lt;node&amp;gt;
-        &amp;lt;host&amp;gt;zk3.dc2.example.com&amp;lt;/host&amp;gt;
-        &amp;lt;port&amp;gt;2181&amp;lt;/port&amp;gt;
-    &amp;lt;/node&amp;gt;
-&amp;lt;/zookeeper&amp;gt;</code></pre>
+            <div class="code-block"># /etc/clickhouse-server/config.d/zookeeper.xml
+&lt;zookeeper&gt;
+    &lt;node&gt;
+        &lt;host&gt;zk1.dc1.example.com&lt;/host&gt;
+        &lt;port&gt;2181&lt;/port&gt;
+    &lt;/node&gt;
+    &lt;node&gt;
+        &lt;host&gt;zk2.dc1.example.com&lt;/host&gt;
+        &lt;port&gt;2181&lt;/port&gt;
+    &lt;/node&gt;
+    &lt;node&gt;
+        &lt;host&gt;zk3.dc2.example.com&lt;/host&gt;
+        &lt;port&gt;2181&lt;/port&gt;
+    &lt;/node&gt;
+&lt;/zookeeper&gt;</div>
 
             <h3>3. Monitor Replication Status</h3>
-            <pre><code class="hljs">-- Check replication lag
+            <div class="code-block">-- Check replication lag
 SELECT
     database,
     table,
@@ -487,10 +485,10 @@ SELECT
     log_pointer,
     inserts_in_queue,
     merges_in_queue
-FROM system.replicas;</code></pre>
+FROM system.replicas;</div>
 
             <h3>4. Manual Failover Procedure</h3>
-            <pre><code class="hljs">-- STEP 1: Verify DC2 has all data from DC1
+            <div class="code-block">-- STEP 1: Verify DC2 has all data from DC1
 SELECT COUNT(*) FROM events;  -- Run on both DC1 and DC2
 
 -- STEP 2: Stop writes to DC1 (application level)
@@ -499,7 +497,7 @@ SELECT COUNT(*) FROM events;  -- Run on both DC1 and DC2
 -- STEP 3: Wait for replication queue to clear
 SELECT database, table, queue_size
 FROM system.replication_queue
-WHERE queue_size &gt; 0;
+WHERE queue_size > 0;
 
 -- STEP 4: Promote DC2 to PRIMARY
 -- Update connection strings and DNS to point to DC2
@@ -508,7 +506,7 @@ WHERE queue_size &gt; 0;
 SELECT COUNT(*) FROM events;  -- Should match DC1
 
 -- STEP 6: Resume writes on DC2
--- Application now writes to DC2</code></pre>
+-- Application now writes to DC2</div>
         </div>
     </div>
 
@@ -517,7 +515,7 @@ SELECT COUNT(*) FROM events;  -- Should match DC1
         <div class="section-header">💻 DR Commands Reference</div>
         <div class="section-content">
             <h3>Replication Monitoring</h3>
-            <pre><code class="hljs">-- Check replication lag for all tables
+            <div class="code-block">-- Check replication lag for all tables
 SELECT
     database,
     table,
@@ -552,7 +550,7 @@ SELECT
     inserts_in_queue,
     merges_in_queue
 FROM system.replication_queue
-WHERE queue_size &gt; 100;
+WHERE queue_size > 100;
 
 -- Verify replicas are synced (same log_pointer)
 SELECT
@@ -561,10 +559,10 @@ SELECT
     log_pointer
 FROM system.replicas
 WHERE database = 'your_database'
-ORDER BY table, replica_name;</code></pre>
+ORDER BY table, replica_name;</div>
 
             <h3>Backup & Recovery Commands</h3>
-            <pre><code class="hljs">-- Create full backup for recovery
+            <div class="code-block">-- Create full backup for recovery
 BACKUP TABLE events TO '/backup/events_backup';
 
 -- List all backups
@@ -577,7 +575,7 @@ RESTORE TABLE events FROM '/backup/events_backup';
 BACKUP TABLE events TO 's3://my-bucket/clickhouse/backup';
 
 -- Backup all databases
-BACKUP DATABASE mydb TO '/backups/mydb';</code></pre>
+BACKUP DATABASE mydb TO '/backups/mydb';</div>
         </div>
     </div>
 
@@ -589,18 +587,18 @@ BACKUP DATABASE mydb TO '/backups/mydb';</code></pre>
             <div class="comparison">
                 <div class="bad">
                     <div class="badge badge-bad">❌ No DR Planning</div>
-                    <pre><code class="hljs">-- No replication
+                    <div class="code-block">-- No replication
 CREATE TABLE events (...)
 ENGINE = MergeTree();
 
 -- No backup strategy
--- Hope your data is safe!</code></pre>
+-- Hope your data is safe!</div>
                     <p><strong>Risk:</strong> Data loss, weeks to recover, millions in losses</p>
                 </div>
 
                 <div class="good">
                     <div class="badge badge-good">✅ Good DR Strategy</div>
-                    <pre><code class="hljs">-- Define RTO/RPO
+                    <div class="code-block">-- Define RTO/RPO
 -- RTO: 15 minutes
 -- RPO: 1 minute
 
@@ -610,7 +608,7 @@ ENGINE = ReplicatedMergeTree(...)
 
 -- Automated backups
 -- Daily full backups
--- Hourly incremental backups</code></pre>
+-- Hourly incremental backups</div>
                     <p><strong>Benefit:</strong> Quick recovery, minimal data loss, business continuity</p>
                 </div>
             </div>
@@ -661,7 +659,7 @@ ENGINE = ReplicatedMergeTree(...)
             </div>
 
             <h3>5. Data Consistency Verification</h3>
-            <pre><code class="hljs">-- Compare row counts across all replicas
+            <div class="code-block">-- Compare row counts across all replicas
 SELECT
     database,
     table,
@@ -681,7 +679,7 @@ SELECT
     sum(bytes_on_disk) as total_bytes
 FROM system.parts
 WHERE active AND database NOT IN ('system')
-GROUP BY database, table;</code></pre>
+GROUP BY database, table;</div>
 
             <h3>6. DR Testing & Drills</h3>
             <div class="highlight-box">
@@ -846,7 +844,7 @@ GROUP BY database, table;</code></pre>
         <div class="section-header">📋 DR Templates</div>
         <div class="section-content">
             <h3>Template 1: DR Monitoring Dashboard Query</h3>
-            <pre><code class="hljs">-- Use this query in Grafana/Superset for monitoring
+            <div class="code-block">-- Use this query in Grafana/Superset for monitoring
 SELECT
     database,
     table,
@@ -863,13 +861,13 @@ WHERE database NOT IN ('system')
 ORDER BY absolute_delay DESC;
 
 -- Alert conditions:
--- - absolute_delay &gt; 300 (5 min lag): WARN
--- - absolute_delay &gt; 3600 (1 hour lag): CRITICAL
--- - queue_size &gt; 1000: CRITICAL
--- - replica unavailable: CRITICAL</code></pre>
+-- - absolute_delay > 300 (5 min lag): WARN
+-- - absolute_delay > 3600 (1 hour lag): CRITICAL
+-- - queue_size > 1000: CRITICAL
+-- - replica unavailable: CRITICAL</div>
 
             <h3>Template 2: Automated Backup Script</h3>
-            <pre><code class="hljs">#!/bin/bash
+            <div class="code-block">#!/bin/bash
 # Daily backup to S3 with retention policy
 set -e
 
@@ -889,39 +887,39 @@ aws s3 sync "$BACKUP_DIR" "$S3_BUCKET/$BACKUP_DATE"
 find /var/clickhouse/backup -maxdepth 1 -type d -mtime +3 -exec rm -rf {} \;
 
 # Log backup status
-echo "Backup $BACKUP_DATE completed successfully" &gt;&gt; /var/log/backups.log
+echo "Backup $BACKUP_DATE completed successfully" >> /var/log/backups.log
 
 # Send notification
 curl -X POST https://alerts.example.com/backup \
-  -d "status=success&amp;date=$BACKUP_DATE&amp;size=$(du -sh $BACKUP_DIR | cut -f1)"</code></pre>
+  -d "status=success&date=$BACKUP_DATE&size=$(du -sh $BACKUP_DIR | cut -f1)"</div>
 
             <h3>Template 3: Multi-Datacenter Config</h3>
-            <pre><code class="hljs"># /etc/clickhouse-server/config.d/remote_servers.xml
-&amp;lt;yandex&amp;gt;
-    &amp;lt;remote_servers&amp;gt;
-        &amp;lt;mycluster&amp;gt;
-            &amp;lt;shard&amp;gt;
-                &amp;lt;!-- Replica 1 in DC1 --&amp;gt;
-                &amp;lt;replica&amp;gt;
-                    &amp;lt;host&amp;gt;ch1.dc1.example.com&amp;lt;/host&amp;gt;
-                    &amp;lt;port&amp;gt;9000&amp;lt;/port&amp;gt;
-                &amp;lt;/replica&amp;gt;
-                &amp;lt;!-- Replica 2 in DC1 --&amp;gt;
-                &amp;lt;replica&amp;gt;
-                    &amp;lt;host&amp;gt;ch2.dc1.example.com&amp;lt;/host&amp;gt;
-                    &amp;lt;port&amp;gt;9000&amp;lt;/port&amp;gt;
-                &amp;lt;/replica&amp;gt;
-            &amp;lt;/shard&amp;gt;
-            &amp;lt;shard&amp;gt;
-                &amp;lt;!-- Replica 1 in DC2 --&amp;gt;
-                &amp;lt;replica&amp;gt;
-                    &amp;lt;host&amp;gt;ch1.dc2.example.com&amp;lt;/host&amp;gt;
-                    &amp;lt;port&amp;gt;9000&amp;lt;/port&amp;gt;
-                &amp;lt;/replica&amp;gt;
-            &amp;lt;/shard&amp;gt;
-        &amp;lt;/mycluster&amp;gt;
-    &amp;lt;/remote_servers&amp;gt;
-&amp;lt;/yandex&amp;gt;</code></pre>
+            <div class="code-block"># /etc/clickhouse-server/config.d/remote_servers.xml
+&lt;yandex&gt;
+    &lt;remote_servers&gt;
+        &lt;mycluster&gt;
+            &lt;shard&gt;
+                &lt;!-- Replica 1 in DC1 --&gt;
+                &lt;replica&gt;
+                    &lt;host&gt;ch1.dc1.example.com&lt;/host&gt;
+                    &lt;port&gt;9000&lt;/port&gt;
+                &lt;/replica&gt;
+                &lt;!-- Replica 2 in DC1 --&gt;
+                &lt;replica&gt;
+                    &lt;host&gt;ch2.dc1.example.com&lt;/host&gt;
+                    &lt;port&gt;9000&lt;/port&gt;
+                &lt;/replica&gt;
+            &lt;/shard&gt;
+            &lt;shard&gt;
+                &lt;!-- Replica 1 in DC2 --&gt;
+                &lt;replica&gt;
+                    &lt;host&gt;ch1.dc2.example.com&lt;/host&gt;
+                    &lt;port&gt;9000&lt;/port&gt;
+                &lt;/replica&gt;
+            &lt;/shard&gt;
+        &lt;/mycluster&gt;
+    &lt;/remote_servers&gt;
+&lt;/yandex&gt;</div>
         </div>
     </div>
 
@@ -931,7 +929,7 @@ curl -X POST https://alerts.example.com/backup \
         <div class="section-content">
             <h3>1. Cascading Replication (Multi-Tier)</h3>
             <p>For very large clusters, use cascading replication to reduce network traffic</p>
-            <pre><code class="hljs">PRIMARY CLUSTER       REGIONAL REPLICAS      EDGE REPLICAS
+            <div class="code-block">PRIMARY CLUSTER       REGIONAL REPLICAS      EDGE REPLICAS
 (US-East)             (US-West, EU, APAC)    (City-level)
 
 DC1-Primary ────────→ DC2 Replica ────────→ DC3 Replica (read-only)
@@ -944,10 +942,10 @@ Benefits:
 - Primary only replicates to 3 regional replicas
 - Regional replicas propagate to edge locations
 - Reduces network load on primary
-- Better latency for edge queries</code></pre>
+- Better latency for edge queries</div>
 
             <h3>2. Hybrid Active-Active with Regional Partitioning</h3>
-            <pre><code class="hljs">-- DC1 handles US region writes
+            <div class="code-block">-- DC1 handles US region writes
 CREATE TABLE events (
     event_time DateTime,
     region LowCardinality(String),
@@ -972,10 +970,10 @@ Benefits:
 - Each region primary handles its writes
 - No write conflicts (partitioned by region)
 - Can failover region independently
-- Near-local latency for reads/writes</code></pre>
+- Near-local latency for reads/writes</div>
 
             <h3>3. Automatic Failover with Health Checks</h3>
-            <pre><code class="hljs">-- Monitoring script that detects failures
+            <div class="code-block">-- Monitoring script that detects failures
 #!/bin/bash
 PRIMARY="ch-primary.example.com:8123"
 SECONDARY="ch-secondary.example.com:8123"
@@ -993,7 +991,7 @@ while true; do
             echo "Primary failed $FAILURE_THRESHOLD times. Initiating failover..."
 
             # Verify secondary is healthy
-            if curl -s "http://$SECONDARY/?query=SELECT%20COUNT(*)" &gt; /dev/null; then
+            if curl -s "http://$SECONDARY/?query=SELECT%20COUNT(*)" > /dev/null; then
                 # Update DNS
                 aws route53 change-resource-record-sets \
                   --hosted-zone-id ZONE_ID \
@@ -1008,10 +1006,10 @@ while true; do
         consecutive_failures=0
     fi
     sleep $CHECK_INTERVAL
-done</code></pre>
+done</div>
 
             <h3>4. ZooKeeper Cluster Setup for DR</h3>
-            <pre><code class="hljs">-- Optimal ZooKeeper setup for disaster recovery
+            <div class="code-block">-- Optimal ZooKeeper setup for disaster recovery
 -- Use 5 nodes total:
 -- - 3 in primary datacenter (voting members)
 -- - 2 in secondary datacenter (voting members or observers)
@@ -1029,7 +1027,7 @@ server.5=zk2.dc2.example.com:2888:3888:observer
 
 -- Ensures quorum survives primary datacenter failure
 -- Voting members: 3 (majority of 5)
--- Can lose primary DC and still have quorum</code></pre>
+-- Can lose primary DC and still have quorum</div>
         </div>
     </div>
 
@@ -1141,8 +1139,5 @@ server.5=zk2.dc2.example.com:2888:3888:observer
     <a href="module-9-kafka-ingestion.html" class="nav-btn-module">Next: Module 9 - Kafka Ingestion →</a>
 </div>
 
-<script>
-hljs.highlightAll();
-</script>
 </body>
 </html>

@@ -6,8 +6,6 @@
     <title>Module 2: Table Engines & Data Modeling</title>
     <link rel="icon" type="image/x-icon" href="../favicon.ico">
     <link rel="icon" type="image/png" href="../favicon.png">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
@@ -425,7 +423,7 @@
         <div class="section-content">
 
             <h3>1. Create Your First Optimized Table</h3>
-            <pre><code class="hljs">-- Connect to ClickHouse
+            <div class="code-block">-- Connect to ClickHouse
 clickhouse-client
 USE analytics;
 
@@ -449,10 +447,10 @@ INSERT INTO events VALUES
 
 -- Verify the data
 SELECT * FROM events;
-SELECT COUNT(*) FROM events;</code></pre>
+SELECT COUNT(*) FROM events;</div>
 
             <h3>2. Understanding ReplacingMergeTree</h3>
-            <pre><code class="hljs">-- For data that can be updated/replaced
+            <div class="code-block">-- For data that can be updated/replaced
 CREATE TABLE users (
     user_id UInt64,
     name String,
@@ -476,10 +474,10 @@ INSERT INTO users VALUES
 SELECT * FROM users FINAL WHERE user_id = 1;
 
 -- Note: Without FINAL, you might see duplicate versions
-SELECT * FROM users WHERE user_id = 1;</code></pre>
+SELECT * FROM users WHERE user_id = 1;</div>
 
             <h3>3. Understanding SummingMergeTree</h3>
-            <pre><code class="hljs">-- For pre-aggregated metrics and counters
+            <div class="code-block">-- For pre-aggregated metrics and counters
 CREATE TABLE metrics_daily (
     metric_date Date,
     metric_name LowCardinality(String),
@@ -505,7 +503,7 @@ SELECT
     SUM(request_count),
     SUM(error_count)
 FROM metrics_daily
-GROUP BY metric_date, host;</code></pre>
+GROUP BY metric_date, host;</div>
 
         </div>
     </div>
@@ -518,7 +516,7 @@ GROUP BY metric_date, host;</code></pre>
             <h3>Engine-Specific Commands</h3>
 
             <h4>MergeTree (Basic)</h4>
-            <pre><code class="hljs">CREATE TABLE logs (
+            <div class="code-block">CREATE TABLE logs (
     timestamp DateTime,
     level LowCardinality(String),
     message String
@@ -526,10 +524,10 @@ GROUP BY metric_date, host;</code></pre>
 PARTITION BY toYYYYMM(timestamp)
 ORDER BY (level, timestamp);
 
--- No special operations, standard INSERT/SELECT</code></pre>
+-- No special operations, standard INSERT/SELECT</div>
 
             <h4>ReplacingMergeTree (Updates)</h4>
-            <pre><code class="hljs">CREATE TABLE dimension (
+            <div class="code-block">CREATE TABLE dimension (
     id UInt64,
     name String,
     version UInt32
@@ -544,10 +542,10 @@ INSERT INTO dimension VALUES (1, 'Value B', 2);
 SELECT * FROM dimension FINAL;
 
 -- Drop duplicate versions
-OPTIMIZE TABLE dimension FINAL;</code></pre>
+OPTIMIZE TABLE dimension FINAL;</div>
 
             <h4>SummingMergeTree (Aggregations)</h4>
-            <pre><code class="hljs">CREATE TABLE rollups (
+            <div class="code-block">CREATE TABLE rollups (
     date Date,
     category String,
     count UInt64,
@@ -566,10 +564,10 @@ INSERT INTO rollups VALUES
 -- Will show summed count and sum
 SELECT date, category, sum(count), sum(sum)
 FROM rollups
-GROUP BY date, category;</code></pre>
+GROUP BY date, category;</div>
 
             <h3>Partitioning and TTL Commands</h3>
-            <pre><code class="hljs">-- Table with TTL for auto-deletion
+            <div class="code-block">-- Table with TTL for auto-deletion
 CREATE TABLE analytics (
     event_date Date,
     event_time DateTime,
@@ -596,10 +594,10 @@ ALTER TABLE analytics DETACH PARTITION '202601';
 ALTER TABLE analytics ATTACH PARTITION '202601';
 
 -- Force merge/TTL cleanup
-OPTIMIZE TABLE analytics FINAL;</code></pre>
+OPTIMIZE TABLE analytics FINAL;</div>
 
             <h3>Primary Key and Sorting Key Commands</h3>
-            <pre><code class="hljs">-- Explicit primary key (different from sort key)
+            <div class="code-block">-- Explicit primary key (different from sort key)
 CREATE TABLE data (
     year UInt16,
     month UInt8,
@@ -619,10 +617,10 @@ WHERE year = 2026 AND month = 1;  -- Uses primary key
 DESCRIBE TABLE data;
 
 -- Check primary key structure
-SHOW CREATE TABLE data;</code></pre>
+SHOW CREATE TABLE data;</div>
 
             <h3>Data Types and Codecs</h3>
-            <pre><code class="hljs">-- Table with optimized data types and codecs
+            <div class="code-block">-- Table with optimized data types and codecs
 CREATE TABLE metrics (
     timestamp DateTime CODEC(DoubleDelta, ZSTD),
     metric_name LowCardinality(String),
@@ -645,7 +643,7 @@ FROM system.parts_columns
 WHERE table = 'metrics'
   AND database = 'default'
 GROUP BY table, column
-ORDER BY ratio DESC;</code></pre>
+ORDER BY ratio DESC;</div>
 
         </div>
     </div>
@@ -701,24 +699,24 @@ ORDER BY ratio DESC;</code></pre>
             <div class="comparison">
                 <div class="bad">
                     <div class="badge badge-bad">❌ Too Many Partitions</div>
-                    <pre><code class="hljs">-- Daily partitions = 365 per year
+                    <div class="code-block">-- Daily partitions = 365 per year
 CREATE TABLE events (
     timestamp DateTime,
     data String
 ) ENGINE = MergeTree()
 PARTITION BY toDate(timestamp)  -- Creates 365+ partitions!
-ORDER BY timestamp;</code></pre>
+ORDER BY timestamp;</div>
                     <p><strong>Problem:</strong> 365+ partitions/year, metadata overhead</p>
                 </div>
                 <div class="good">
                     <div class="badge badge-good">✅ Optimal Partitions</div>
-                    <pre><code class="hljs">-- Monthly partitions = 12 per year
+                    <div class="code-block">-- Monthly partitions = 12 per year
 CREATE TABLE events (
     timestamp DateTime,
     data String
 ) ENGINE = MergeTree()
 PARTITION BY toYYYYMM(timestamp)
-ORDER BY timestamp;</code></pre>
+ORDER BY timestamp;</div>
                     <p><strong>Benefit:</strong> Only 12 partitions/year, easy data cleanup</p>
                 </div>
             </div>
@@ -727,26 +725,26 @@ ORDER BY timestamp;</code></pre>
             <div class="comparison">
                 <div class="bad">
                     <div class="badge badge-bad">❌ High Cardinality First</div>
-                    <pre><code class="hljs">-- UUID first = poor compression
+                    <div class="code-block">-- UUID first = poor compression
 CREATE TABLE events (
     event_id UUID,
     user_id UInt64,
     country String,
     timestamp DateTime
 ) ENGINE = MergeTree()
-ORDER BY (event_id, timestamp);</code></pre>
+ORDER BY (event_id, timestamp);</div>
                     <p><strong>Problem:</strong> Poor compression, inefficient pruning</p>
                 </div>
                 <div class="good">
                     <div class="badge badge-good">✅ Low Cardinality First</div>
-                    <pre><code class="hljs">-- Low cardinality first = better compression
+                    <div class="code-block">-- Low cardinality first = better compression
 CREATE TABLE events (
     event_id UUID,
     user_id UInt64,
     country String,
     timestamp DateTime
 ) ENGINE = MergeTree()
-ORDER BY (country, timestamp, user_id, event_id);</code></pre>
+ORDER BY (country, timestamp, user_id, event_id);</div>
                     <p><strong>Benefit:</strong> 10-100x better compression, faster queries</p>
                 </div>
             </div>
@@ -768,25 +766,25 @@ ORDER BY (country, timestamp, user_id, event_id);</code></pre>
             <div class="grid-2">
                 <div class="card">
                     <h4>TTL for Rows (Auto-delete)</h4>
-                    <pre><code class="hljs">CREATE TABLE logs (
+                    <div class="code-block">CREATE TABLE logs (
     timestamp DateTime,
     message String
 ) ENGINE = MergeTree()
 PARTITION BY toYYYYMM(timestamp)
 ORDER BY timestamp
-TTL timestamp + INTERVAL 90 DAY;</code></pre>
+TTL timestamp + INTERVAL 90 DAY;</div>
                     <p>Automatically deletes rows after 90 days</p>
                 </div>
                 <div class="card">
                     <h4>TTL for Column (Move to S3)</h4>
-                    <pre><code class="hljs">CREATE TABLE metrics (
+                    <div class="code-block">CREATE TABLE metrics (
     timestamp DateTime,
     value Float64
 ) ENGINE = MergeTree()
 PARTITION BY toYYYYMM(timestamp)
 ORDER BY timestamp
 TTL timestamp + INTERVAL 7 DAY TO DISK 'hot_ssd',
-    timestamp + INTERVAL 30 DAY TO DISK 'cold_ssd';</code></pre>
+    timestamp + INTERVAL 30 DAY TO DISK 'cold_ssd';</div>
                     <p>Moves old data to cheaper storage</p>
                 </div>
             </div>
@@ -911,7 +909,7 @@ TTL timestamp + INTERVAL 7 DAY TO DISK 'hot_ssd',
         <div class="section-content">
 
             <h3>Template 1: Optimized Events Table</h3>
-            <pre><code class="hljs">CREATE TABLE events (
+            <div class="code-block">CREATE TABLE events (
     event_date Date,
     event_time DateTime CODEC(DoubleDelta, ZSTD),
     user_id UInt64,
@@ -924,10 +922,10 @@ TTL timestamp + INTERVAL 7 DAY TO DISK 'hot_ssd',
 PARTITION BY toYYYYMM(event_date)
 PRIMARY KEY (event_type, event_date, user_id)
 ORDER BY (event_type, event_date, user_id, event_time)
-TTL event_date + INTERVAL 2 YEAR;</code></pre>
+TTL event_date + INTERVAL 2 YEAR;</div>
 
             <h3>Template 2: Dimension Table with Updates</h3>
-            <pre><code class="hljs">CREATE TABLE users_dimension (
+            <div class="code-block">CREATE TABLE users_dimension (
     user_id UInt64,
     email String,
     name String,
@@ -949,10 +947,10 @@ INSERT INTO users_dimension VALUES
     (1, 'alice@ex.com', 'Alice Smith', 'US', 'premium', now(), 2);
 
 -- Query with FINAL to get latest
-SELECT * FROM users_dimension FINAL WHERE user_id = 1;</code></pre>
+SELECT * FROM users_dimension FINAL WHERE user_id = 1;</div>
 
             <h3>Template 3: Pre-Aggregated Metrics</h3>
-            <pre><code class="hljs">CREATE TABLE metrics_hourly (
+            <div class="code-block">CREATE TABLE metrics_hourly (
     hour DateTime,
     metric_name LowCardinality(String),
     host LowCardinality(String),
@@ -966,10 +964,10 @@ SELECT * FROM users_dimension FINAL WHERE user_id = 1;</code></pre>
 PARTITION BY toYYYYMM(hour)
 PRIMARY KEY (metric_name, host)
 ORDER BY (metric_name, host, hour)
-TTL hour + INTERVAL 90 DAY;</code></pre>
+TTL hour + INTERVAL 90 DAY;</div>
 
             <h3>Template 4: Logs Table with Optimal Compression</h3>
-            <pre><code class="hljs">CREATE TABLE logs (
+            <div class="code-block">CREATE TABLE logs (
     timestamp DateTime CODEC(DoubleDelta, ZSTD),
     timestamp_ms DateTime64(3) CODEC(DoubleDelta, ZSTD),
     level LowCardinality(String),
@@ -984,7 +982,7 @@ TTL hour + INTERVAL 90 DAY;</code></pre>
 PARTITION BY toYYYYMM(timestamp)
 PRIMARY KEY (level, service)
 ORDER BY (level, service, timestamp)
-TTL timestamp + INTERVAL 90 DAY;</code></pre>
+TTL timestamp + INTERVAL 90 DAY;</div>
 
         </div>
     </div>
@@ -995,7 +993,7 @@ TTL timestamp + INTERVAL 90 DAY;</code></pre>
         <div class="section-content">
 
             <h3>1. Materialized View with Aggregation</h3>
-            <pre><code class="hljs">-- Source events table
+            <div class="code-block">-- Source events table
 CREATE TABLE raw_events (
     event_date Date,
     event_time DateTime,
@@ -1027,11 +1025,11 @@ SELECT
     sum(event_count),
     sum(total_revenue)
 FROM events_daily_mv
-WHERE day &gt;= today() - 7
-GROUP BY day, event_type;</code></pre>
+WHERE day >= today() - 7
+GROUP BY day, event_type;</div>
 
             <h3>2. Multi-Level Partitioning</h3>
-            <pre><code class="hljs">-- Partition by multiple columns
+            <div class="code-block">-- Partition by multiple columns
 CREATE TABLE analytics_detailed (
     event_year UInt16,
     event_month UInt8,
@@ -1045,10 +1043,10 @@ PRIMARY KEY (event_year, event_month, event_day)
 ORDER BY (event_year, event_month, event_day, event_time);
 
 -- Easy deletion of specific month/year
-ALTER TABLE analytics_detailed DROP PARTITION (2026, 1);</code></pre>
+ALTER TABLE analytics_detailed DROP PARTITION (2026, 1);</div>
 
             <h3>3. Schema Evolution with ALTER</h3>
-            <pre><code class="hljs">-- Original table
+            <div class="code-block">-- Original table
 CREATE TABLE products (
     product_id UInt64,
     name String,
@@ -1067,10 +1065,10 @@ ALTER TABLE products ADD COLUMN created_at DateTime DEFAULT now()
 TTL created_at + INTERVAL 3 YEAR;
 
 -- Drop column
-ALTER TABLE products DROP COLUMN created_at;</code></pre>
+ALTER TABLE products DROP COLUMN created_at;</div>
 
             <h3>4. Using Sampling for Approximate Results</h3>
-            <pre><code class="hljs">-- Add sampling key to table
+            <div class="code-block">-- Add sampling key to table
 CREATE TABLE analytics (
     event_time DateTime,
     user_id UInt64,
@@ -1087,7 +1085,7 @@ SELECT
     AVG(value) as avg_value
 FROM analytics
 SAMPLE 0.1
-WHERE event_time &gt;= today() - 30
+WHERE event_time >= today() - 30
 GROUP BY event_type;
 
 -- Accurate queries (slower but complete)
@@ -1096,11 +1094,11 @@ SELECT
     COUNT(*) as exact_count,
     AVG(value) as avg_value
 FROM analytics
-WHERE event_time &gt;= today() - 30
-GROUP BY event_type;</code></pre>
+WHERE event_time >= today() - 30
+GROUP BY event_type;</div>
 
             <h3>5. Primary Key vs Sorting Key Deep Dive</h3>
-            <pre><code class="hljs">-- Different primary and sort keys
+            <div class="code-block">-- Different primary and sort keys
 CREATE TABLE events (
     year UInt16,
     month UInt8,
@@ -1122,7 +1120,7 @@ SELECT * FROM events
 WHERE user_id = 12345;
 
 -- Best practice: Primary key should match your most common filters
--- Sorting key can be longer for better compression</code></pre>
+-- Sorting key can be longer for better compression</div>
 
         </div>
     </div>
@@ -1201,8 +1199,5 @@ WHERE user_id = 12345;
     <a href="module-3-sharding.html" class="nav-btn-module">Next: Module 3 - Sharding →</a>
 </div>
 
-<script>
-hljs.highlightAll();
-</script>
 </body>
 </html>

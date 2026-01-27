@@ -6,8 +6,6 @@
     <title>Module 10: Migration from MongoDB/MySQL</title>
     <link rel="icon" type="image/x-icon" href="../favicon.ico">
     <link rel="icon" type="image/png" href="../favicon.png">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
@@ -412,7 +410,7 @@
         <div class="section-header">🚀 Quick Start: MongoDB to ClickHouse</div>
         <div class="section-content">
             <h3>Step 1: Analyze MongoDB Schema</h3>
-            <pre><code class="hljs">// Sample MongoDB document
+            <div class="code-block">// Sample MongoDB document
 db.users.findOne()
 
 {
@@ -427,10 +425,10 @@ db.users.findOne()
   "created_at": ISODate("2024-01-15T10:00:00Z"),
   "updated_at": ISODate("2024-01-15T10:00:00Z"),
   "is_active": true
-}</code></pre>
+}</div>
 
             <h3>Step 2: Design ClickHouse Schema</h3>
-            <pre><code class="hljs">-- Flattened, denormalized schema for ClickHouse
+            <div class="code-block">-- Flattened, denormalized schema for ClickHouse
 CREATE TABLE users (
     user_id String,        -- MongoDB ObjectId as String
     name String,
@@ -443,10 +441,10 @@ CREATE TABLE users (
     updated_at DateTime
 ) ENGINE = ReplacingMergeTree(updated_at)
 ORDER BY user_id
-PARTITION BY toYYYYMM(created_at);</code></pre>
+PARTITION BY toYYYYMM(created_at);</div>
 
             <h3>Step 3: Install & Configure Debezium</h3>
-            <pre><code class="hljs">#!/bin/bash
+            <div class="code-block">#!/bin/bash
 # Download Debezium Docker Compose
 wget https://raw.githubusercontent.com/debezium/debezium-examples/main/docker-compose.yml
 
@@ -466,10 +464,10 @@ curl -X POST http://localhost:8083/connectors \
       "publish.full.document.only": true,
       "output.format.value": "json"
     }
-  }'</code></pre>
+  }'</div>
 
             <h3>Step 4: Configure ClickHouse Kafka Table</h3>
-            <pre><code class="hljs">-- Kafka table to receive streaming data
+            <div class="code-block">-- Kafka table to receive streaming data
 CREATE TABLE users_kafka (
     user_id String,
     name String,
@@ -485,10 +483,10 @@ SETTINGS
     kafka_broker_list = 'kafka:9092',
     kafka_topic_list = 'my_source.mydb.users',
     kafka_group_id = 'clickhouse_users',
-    kafka_format = 'JSONEachRow';</code></pre>
+    kafka_format = 'JSONEachRow';</div>
 
             <h3>Step 5: Create Materialized View to Sink Data</h3>
-            <pre><code class="hljs">-- Materialized view that reads from Kafka and writes to MergeTree
+            <div class="code-block">-- Materialized view that reads from Kafka and writes to MergeTree
 CREATE MATERIALIZED VIEW users_mv TO users AS
 SELECT
     user_id,
@@ -500,27 +498,27 @@ SELECT
     is_active,
     created_at,
     updated_at
-FROM users_kafka;</code></pre>
+FROM users_kafka;</div>
 
             <h3>Step 6: Bulk Load Historical Data</h3>
-            <pre><code class="hljs">#!/bin/bash
+            <div class="code-block">#!/bin/bash
 # Export data from MongoDB
 mongoexport --db=mydb --collection=users --out=users.json
 
 # Transform and load to ClickHouse
 cat users.json | clickhouse-client \
   --query="INSERT INTO users FORMAT JSONEachRow" \
-  --input_format_json_try_infer_numbers_from_strings=1</code></pre>
+  --input_format_json_try_infer_numbers_from_strings=1</div>
 
             <h3>Step 7: Validate Data</h3>
-            <pre><code class="hljs">-- Count records in source
+            <div class="code-block">-- Count records in source
 db.users.countDocuments()  // MongoDB: 1,000,000
 
 -- Count records in ClickHouse
 SELECT COUNT(*) FROM users;  -- ClickHouse: 1,000,000
 
 -- Compare sample records
-SELECT * FROM users LIMIT 5;</code></pre>
+SELECT * FROM users LIMIT 5;</div>
         </div>
     </div>
 
@@ -529,7 +527,7 @@ SELECT * FROM users LIMIT 5;</code></pre>
         <div class="section-header">💻 Migration Commands & Tools</div>
         <div class="section-content">
             <h3>Debezium Setup Commands</h3>
-            <pre><code class="hljs">-- Create MongoDB connector
+            <div class="code-block">-- Create MongoDB connector
 curl -X POST http://localhost:8083/connectors \
   -H "Content-Type: application/json" \
   -d '{
@@ -571,10 +569,10 @@ curl http://localhost:8083/connectors/mongodb-source/status
 curl -X DELETE http://localhost:8083/connectors/mongodb-source
 
 -- List all connectors
-curl http://localhost:8083/connectors</code></pre>
+curl http://localhost:8083/connectors</div>
 
             <h3>ClickHouse Kafka Setup</h3>
-            <pre><code class="hljs">-- Create Kafka table for MongoDB changes
+            <div class="code-block">-- Create Kafka table for MongoDB changes
 CREATE TABLE orders_kafka (
     _id String,
     order_id String,
@@ -617,17 +615,17 @@ SELECT
     created_at,
     updated_at
 FROM orders_kafka
-WHERE _op IN ('c', 'u');</code></pre>
+WHERE _op IN ('c', 'u');</div>
 
             <h3>Bulk Data Loading</h3>
-            <pre><code class="hljs">-- Load from CSV file
-clickhouse-client --query="INSERT INTO users FORMAT CSV" &lt; users.csv
+            <div class="code-block">-- Load from CSV file
+clickhouse-client --query="INSERT INTO users FORMAT CSV" < users.csv
 
 -- Load from JSON Lines
-clickhouse-client --query="INSERT INTO users FORMAT JSONEachRow" &lt; users.jsonl
+clickhouse-client --query="INSERT INTO users FORMAT JSONEachRow" < users.jsonl
 
 -- Load from Parquet
-clickhouse-client --query="INSERT INTO users FORMAT Parquet" &lt; users.parquet
+clickhouse-client --query="INSERT INTO users FORMAT Parquet" < users.parquet
 
 -- Monitor insert progress
 SELECT
@@ -637,15 +635,15 @@ SELECT
     max(modification_time) as last_modified
 FROM system.parts
 WHERE table = 'users'
-GROUP BY database, table;</code></pre>
+GROUP BY database, table;</div>
 
             <h3>Data Validation Commands</h3>
-            <pre><code class="hljs">-- Find missing records (source -&gt; target)
+            <div class="code-block">-- Find missing records (source -> target)
 SELECT user_id FROM source_table
 EXCEPT
 SELECT user_id FROM clickhouse_table;
 
--- Find extra records (target -&gt; source)
+-- Find extra records (target -> source)
 SELECT user_id FROM clickhouse_table
 EXCEPT
 SELECT user_id FROM source_table;
@@ -658,14 +656,14 @@ SELECT
     COUNT(*) as duplicate_count
 FROM clickhouse_users
 GROUP BY user_id, name, email
-HAVING COUNT(*) &gt; 1;
+HAVING COUNT(*) > 1;
 
 -- Verify data types
 SELECT
     name,
     type
 FROM system.columns
-WHERE table = 'users' AND database = 'default';</code></pre>
+WHERE table = 'users' AND database = 'default';</div>
         </div>
     </div>
 
@@ -677,20 +675,20 @@ WHERE table = 'users' AND database = 'default';</code></pre>
             <div class="comparison">
                 <div class="bad">
                     <div class="badge badge-bad">❌ Wrong</div>
-                    <pre><code class="hljs">-- Trying to preserve MongoDB schema 1-to-1
+                    <div class="code-block">-- Trying to preserve MongoDB schema 1-to-1
 CREATE TABLE user_docs (
     _id String,
     full_document String  -- Storing entire JSON
 ) ENGINE = MergeTree()
 ORDER BY _id;
 
--- Problem: Queries require JSON parsing</code></pre>
+-- Problem: Queries require JSON parsing</div>
                     <p><strong>Issue:</strong> Cannot efficiently query nested data</p>
                 </div>
 
                 <div class="good">
                     <div class="badge badge-good">✅ Correct</div>
-                    <pre><code class="hljs">-- Flatten and denormalize
+                    <div class="code-block">-- Flatten and denormalize
 CREATE TABLE users (
     user_id String,
     first_name String,
@@ -703,7 +701,7 @@ CREATE TABLE users (
 ) ENGINE = MergeTree()
 ORDER BY user_id;
 
--- Benefits: Fast queries, good compression</code></pre>
+-- Benefits: Fast queries, good compression</div>
                     <p><strong>Advantage:</strong> Optimal for ClickHouse analytics</p>
                 </div>
             </div>
@@ -933,7 +931,7 @@ ORDER BY user_id;
         <div class="section-header">📋 Migration Templates</div>
         <div class="section-content">
             <h3>Template 1: Complete Debezium + Kafka Setup</h3>
-            <pre><code class="hljs"># docker-compose.yml for full migration stack
+            <div class="code-block"># docker-compose.yml for full migration stack
 version: '3.8'
 
 services:
@@ -976,10 +974,10 @@ services:
       - ch_data:/var/lib/clickhouse/
 
 volumes:
-  ch_data:</code></pre>
+  ch_data:</div>
 
             <h3>Template 2: MongoDB Connector Configuration</h3>
-            <pre><code class="hljs">{
+            <div class="code-block">{
   "name": "mongo-cdc-connector",
   "config": {
     "connector.class": "io.debezium.connector.mongodb.MongoDbConnector",
@@ -1006,10 +1004,10 @@ volumes:
 # Create connector:
 curl -X POST http://localhost:8083/connectors \
   -H "Content-Type: application/json" \
-  -d @mongo-connector.json</code></pre>
+  -d @mongo-connector.json</div>
 
             <h3>Template 3: Data Validation Query</h3>
-            <pre><code class="hljs">-- Comprehensive validation across source and target
+            <div class="code-block">-- Comprehensive validation across source and target
 WITH counts AS (
     SELECT
         'total_rows' as metric,
@@ -1028,7 +1026,7 @@ duplicates AS (
     SELECT
         'duplicate_ids' as metric,
         COUNT(*) as count,
-        countIf(cnt &gt; 1) as status
+        countIf(cnt > 1) as status
     FROM (
         SELECT id, COUNT(*) as cnt
         FROM users
@@ -1039,7 +1037,7 @@ SELECT metric, count, status FROM counts
 UNION ALL
 SELECT metric, count, status FROM null_checks
 UNION ALL
-SELECT metric, count, status FROM duplicates;</code></pre>
+SELECT metric, count, status FROM duplicates;</div>
         </div>
     </div>
 
@@ -1048,7 +1046,7 @@ SELECT metric, count, status FROM duplicates;</code></pre>
         <div class="section-header">🔥 Advanced Migration Patterns</div>
         <div class="section-content">
             <h3>1. Gradual Read Migration Pattern</h3>
-            <pre><code class="hljs">-- Instead of hard cutover, gradually route traffic to ClickHouse
+            <div class="code-block">-- Instead of hard cutover, gradually route traffic to ClickHouse
 -- Using application-level routing (pseudo-code)
 
 if featureFlag("use_clickhouse_analytics", user_id) {
@@ -1067,10 +1065,10 @@ if featureFlag("use_clickhouse_analytics", user_id) {
 // This allows:
 // - Detection of any ClickHouse-specific issues
 // - A/B testing for performance
-// - Quick rollback by adjusting flag</code></pre>
+// - Quick rollback by adjusting flag</div>
 
             <h3>2. Schema Evolution with ReplacingMergeTree</h3>
-            <pre><code class="hljs">-- Handle schema changes during migration
+            <div class="code-block">-- Handle schema changes during migration
 -- MongoDB adds new field:
 db.users.updateMany({}, {$set: {new_field: ""}})
 
@@ -1095,10 +1093,10 @@ ALTER TABLE users DROP COLUMN old_field;
 SELECT name, type
 FROM system.columns
 WHERE table = 'users'
-ORDER BY name;</code></pre>
+ORDER BY name;</div>
 
             <h3>3. Handling Deletes with ReplacingMergeTree</h3>
-            <pre><code class="hljs">-- When source deletes records, mark them as deleted in ClickHouse
+            <div class="code-block">-- When source deletes records, mark them as deleted in ClickHouse
 -- Instead of physical deletion, use a flag
 
 CREATE TABLE users (
@@ -1121,10 +1119,10 @@ WHERE is_deleted = 0  -- Exclude deleted
 -- Keeping only latest version per key
 
 -- Query to see deleted records:
-SELECT * FROM users FINAL WHERE is_deleted = 1;</code></pre>
+SELECT * FROM users FINAL WHERE is_deleted = 1;</div>
 
             <h3>4. Monitoring Migration Progress</h3>
-            <pre><code class="hljs">-- Check Kafka lag
+            <div class="code-block">-- Check Kafka lag
 kafka-consumer-groups --bootstrap-server kafka:9092 \
   --group clickhouse_users \
   --describe
@@ -1151,12 +1149,12 @@ SELECT
     type
 FROM system.query_log
 WHERE table IN ('users', 'orders', 'products')
-  AND event_date &gt;= today()
+  AND event_date >= today()
 ORDER BY event_time DESC
 LIMIT 20;
 
 -- Monitor Debezium lag
-curl http://localhost:8083/connectors/mongo-connector/status | jq '.tasks[].payload'</code></pre>
+curl http://localhost:8083/connectors/mongo-connector/status | jq '.tasks[].payload'</div>
         </div>
     </div>
 
@@ -1263,8 +1261,5 @@ curl http://localhost:8083/connectors/mongo-connector/status | jq '.tasks[].payl
     <span class="nav-btn-module disabled">Next Module →</span>
 </div>
 
-<script>
-hljs.highlightAll();
-</script>
 </body>
 </html>

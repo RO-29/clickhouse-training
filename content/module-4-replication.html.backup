@@ -6,8 +6,6 @@
     <title>Module 4: Replication & High Availability</title>
     <link rel="icon" type="image/x-icon" href="../favicon.ico">
     <link rel="icon" type="image/png" href="../favicon.png">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
@@ -545,43 +543,43 @@
         <div class="section-content">
 
             <h3>1. Set Up ClickHouse Keeper (3 nodes minimum)</h3>
-            <pre><code class="hljs"># Install keeper on 3 nodes
+            <div class="code-block"># Install keeper on 3 nodes
 sudo apt-get install clickhouse-keeper
 
 # Edit /etc/clickhouse-keeper/keeper_config.xml
 # Each node gets a unique server ID and port configuration
 
 # Node 1 Configuration
-&lt;clickhouse&gt;
-    &lt;keeper_server&gt;
-        &lt;tcp_port&gt;9181&lt;/tcp_port&gt;
-        &lt;server_id&gt;1&lt;/server_id&gt;
-        &lt;raft_configuration&gt;
-            &lt;server&gt;
-                &lt;id&gt;1&lt;/id&gt;
-                &lt;hostname&gt;keeper-1.example.com&lt;/hostname&gt;
-                &lt;port&gt;9234&lt;/port&gt;
-            &lt;/server&gt;
-            &lt;server&gt;
-                &lt;id&gt;2&lt;/id&gt;
-                &lt;hostname&gt;keeper-2.example.com&lt;/hostname&gt;
-                &lt;port&gt;9234&lt;/port&gt;
-            &lt;/server&gt;
-            &lt;server&gt;
-                &lt;id&gt;3&lt;/id&gt;
-                &lt;hostname&gt;keeper-3.example.com&lt;/hostname&gt;
-                &lt;port&gt;9234&lt;/port&gt;
-            &lt;/server&gt;
-        &lt;/raft_configuration&gt;
-        &lt;snapshot_storage_path&gt;/var/lib/clickhouse-keeper/snapshots&lt;/snapshot_storage_path&gt;
-    &lt;/keeper_server&gt;
-&lt;/clickhouse&gt;
+<clickhouse>
+    <keeper_server>
+        <tcp_port>9181</tcp_port>
+        <server_id>1</server_id>
+        <raft_configuration>
+            <server>
+                <id>1</id>
+                <hostname>keeper-1.example.com</hostname>
+                <port>9234</port>
+            </server>
+            <server>
+                <id>2</id>
+                <hostname>keeper-2.example.com</hostname>
+                <port>9234</port>
+            </server>
+            <server>
+                <id>3</id>
+                <hostname>keeper-3.example.com</hostname>
+                <port>9234</port>
+            </server>
+        </raft_configuration>
+        <snapshot_storage_path>/var/lib/clickhouse-keeper/snapshots</snapshot_storage_path>
+    </keeper_server>
+</clickhouse>
 
 # Start keeper on all 3 nodes
-sudo service clickhouse-keeper start</code></pre>
+sudo service clickhouse-keeper start</div>
 
             <h3>2. Configure ClickHouse Replicated Table</h3>
-            <pre><code class="hljs"># On Node 1
+            <div class="code-block"># On Node 1
 CREATE TABLE events_replicated (
     event_date Date,
     event_time DateTime,
@@ -607,10 +605,10 @@ CREATE TABLE events_replicated (
     '2'                              -- Different replica name
 )
 PARTITION BY toYYYYMM(event_date)
-ORDER BY (event_date, user_id);</code></pre>
+ORDER BY (event_date, user_id);</div>
 
             <h3>3. Insert Data and Watch Replication</h3>
-            <pre><code class="hljs"># Insert on Node 1
+            <div class="code-block"># Insert on Node 1
 INSERT INTO events_replicated VALUES
     ('2026-01-22', '2026-01-22 10:00:00', 1001, 'purchase', 99.99),
     ('2026-01-22', '2026-01-22 11:30:00', 1002, 'click', 0.00);
@@ -627,10 +625,10 @@ FROM system.replication_queue
 WHERE table = 'events_replicated';
 
 # Query data on Node 2 (should see data immediately or shortly)
-SELECT COUNT(*) FROM events_replicated;  -- 2 rows</code></pre>
+SELECT COUNT(*) FROM events_replicated;  -- 2 rows</div>
 
             <h3>4. Set Up Distributed Table (Optional)</h3>
-            <pre><code class="hljs"># Create on both nodes for simpler querying
+            <div class="code-block"># Create on both nodes for simpler querying
 CREATE TABLE events_distributed AS events_replicated
 ENGINE = Distributed(
     'my_cluster',
@@ -640,17 +638,17 @@ ENGINE = Distributed(
 );
 
 # Query goes to all replicas automatically
-SELECT COUNT(*) FROM events_distributed;</code></pre>
+SELECT COUNT(*) FROM events_distributed;</div>
 
             <h3>5. Enable Quorum Writes for Data Safety</h3>
-            <pre><code class="hljs"># Add to ClickHouse config on each node
-&lt;clickhouse&gt;
-    &lt;insert_quorum&gt;2&lt;/insert_quorum&gt;
-    &lt;insert_quorum_timeout_ms&gt;10000&lt;/insert_quorum_timeout_ms&gt;
-&lt;/clickhouse&gt;
+            <div class="code-block"># Add to ClickHouse config on each node
+<clickhouse>
+    <insert_quorum>2</insert_quorum>
+    <insert_quorum_timeout_ms>10000</insert_quorum_timeout_ms>
+</clickhouse>
 
 # Now writes wait until at least 2 replicas have the data
-# If you have only 1 replica alive, inserts will fail (safe!)</code></pre>
+# If you have only 1 replica alive, inserts will fail (safe!)</div>
 
         </div>
     </div>
@@ -662,7 +660,7 @@ SELECT COUNT(*) FROM events_distributed;</code></pre>
             <h3>Create Replicated Tables</h3>
             <div class="grid-2">
                 <div class="card">
-                    <pre><code class="hljs">-- Single shard, 2 replicas
+                    <div class="code-block">-- Single shard, 2 replicas
 CREATE TABLE t1 (
     id UInt32,
     name String
@@ -670,10 +668,10 @@ CREATE TABLE t1 (
     '/clickhouse/tables/01/t1',
     'replica_1'
 )
-ORDER BY id;</code></pre>
+ORDER BY id;</div>
                 </div>
                 <div class="card">
-                    <pre><code class="hljs">-- Multi-shard, multi-replica
+                    <div class="code-block">-- Multi-shard, multi-replica
 CREATE TABLE t2 (
     id UInt32,
     name String
@@ -681,12 +679,12 @@ CREATE TABLE t2 (
     '/clickhouse/tables/{shard}/t2',
     'replica_{replica}'
 )
-ORDER BY id;</code></pre>
+ORDER BY id;</div>
                 </div>
             </div>
 
             <h3>Replication Status Monitoring</h3>
-            <pre><code class="hljs">-- Check replica status
+            <div class="code-block">-- Check replica status
 SELECT
     database,
     table,
@@ -721,10 +719,10 @@ SELECT
     num_tries
 FROM system.replication_queue
 WHERE table = 'events_replicated'
-ORDER BY create_time DESC;</code></pre>
+ORDER BY create_time DESC;</div>
 
             <h3>Replica Synchronization Commands</h3>
-            <pre><code class="hljs">-- Manually trigger sync from another replica
+            <div class="code-block">-- Manually trigger sync from another replica
 ALTER TABLE events_replicated RESYNC REPLICA;
 
 -- ATTACH/DETACH for manual control
@@ -738,10 +736,10 @@ ALTER TABLE events_replicated DROP DETACHED PARTS;
 -- Connect to Keeper and explore:
 -- /clickhouse/tables/1/events - contains log entries
 -- /clickhouse/tables/1/events/replicas/1 - node 1 state
--- /clickhouse/tables/1/events/replicas/2 - node 2 state</code></pre>
+-- /clickhouse/tables/1/events/replicas/2 - node 2 state</div>
 
             <h3>Quorum Write Configuration</h3>
-            <pre><code class="hljs">-- Check current quorum settings
+            <div class="code-block">-- Check current quorum settings
 SELECT
     name,
     value
@@ -754,10 +752,10 @@ SET insert_quorum_timeout_ms = 30000;
 SET select_sequential_consistency = 1;  -- Read after write consistency
 
 -- Verify quorum setting
-SELECT @@insert_quorum, @@insert_quorum_timeout_ms;</code></pre>
+SELECT @@insert_quorum, @@insert_quorum_timeout_ms;</div>
 
             <h3>Cluster Configuration Commands</h3>
-            <pre><code class="hljs">-- List cluster configuration
+            <div class="code-block">-- List cluster configuration
 SELECT
     cluster,
     shard_num,
@@ -787,7 +785,7 @@ FROM system.clusters_health;
 -- Execute on specific replica
 SELECT * FROM table_name;  -- Queries all replicas
 -- With settings to prefer specific replica:
-SET prefer_localhost_replica = 1;</code></pre>
+SET prefer_localhost_replica = 1;</div>
 
         </div>
     </div>
@@ -800,28 +798,28 @@ SET prefer_localhost_replica = 1;</code></pre>
             <div class="comparison">
                 <div class="bad">
                     <div class="badge badge-bad">❌ Bad</div>
-                    <pre><code class="hljs">-- Single Keeper node (DANGER!)
-&lt;keeper_server&gt;
-    &lt;tcp_port&gt;9181&lt;/tcp_port&gt;
-&lt;/keeper_server&gt;
+                    <div class="code-block">-- Single Keeper node (DANGER!)
+<keeper_server>
+    <tcp_port>9181</tcp_port>
+</keeper_server>
 
-# If this node fails, entire cluster is down!</code></pre>
+# If this node fails, entire cluster is down!</div>
                     <p><strong>Problem:</strong> Single point of failure</p>
                 </div>
                 <div class="good">
                     <div class="badge badge-good">✅ Good</div>
-                    <pre><code class="hljs">-- 3-node Keeper quorum (recommended)
-&lt;keeper_server&gt;
-    &lt;tcp_port&gt;9181&lt;/tcp_port&gt;
-    &lt;server_id&gt;1&lt;/server_id&gt;
-    &lt;raft_configuration&gt;
-        &lt;server&gt;&lt;id&gt;1&lt;/id&gt;&lt;hostname&gt;keeper-1&lt;/hostname&gt;&lt;/server&gt;
-        &lt;server&gt;&lt;id&gt;2&lt;/id&gt;&lt;hostname&gt;keeper-2&lt;/hostname&gt;&lt;/server&gt;
-        &lt;server&gt;&lt;id&gt;3&lt;/id&gt;&lt;hostname&gt;keeper-3&lt;/hostname&gt;&lt;/server&gt;
-    &lt;/raft_configuration&gt;
-&lt;/keeper_server&gt;
+                    <div class="code-block">-- 3-node Keeper quorum (recommended)
+<keeper_server>
+    <tcp_port>9181</tcp_port>
+    <server_id>1</server_id>
+    <raft_configuration>
+        <server><id>1</id><hostname>keeper-1</hostname></server>
+        <server><id>2</id><hostname>keeper-2</hostname></server>
+        <server><id>3</id><hostname>keeper-3</hostname></server>
+    </raft_configuration>
+</keeper_server>
 
-# Survives 1 node failure; 5 nodes survives 2 failures</code></pre>
+# Survives 1 node failure; 5 nodes survives 2 failures</div>
                     <p><strong>Benefit:</strong> Production-ready fault tolerance</p>
                 </div>
             </div>
@@ -830,21 +828,21 @@ SET prefer_localhost_replica = 1;</code></pre>
             <div class="comparison">
                 <div class="bad">
                     <div class="badge badge-bad">❌ Bad</div>
-                    <pre><code class="hljs">-- Too many partitions
+                    <div class="code-block">-- Too many partitions
 PARTITION BY toDate(event_time)
 
 # Creates 365 partitions/year, massive overhead
-# Replication slower, more complexity</code></pre>
+# Replication slower, more complexity</div>
                     <p><strong>Problem:</strong> Each partition = more replication work</p>
                 </div>
                 <div class="good">
                     <div class="badge badge-good">✅ Good</div>
-                    <pre><code class="hljs">-- Reasonable partitions
+                    <div class="code-block">-- Reasonable partitions
 PARTITION BY toYYYYMM(event_time)
 
 # 12 partitions/year
 # Easier to manage, fast replication
-# Can drop old data easily</code></pre>
+# Can drop old data easily</div>
                     <p><strong>Benefit:</strong> Efficient replication, manageable</p>
                 </div>
             </div>
@@ -853,19 +851,19 @@ PARTITION BY toYYYYMM(event_time)
             <div class="comparison">
                 <div class="bad">
                     <div class="badge badge-bad">❌ Bad</div>
-                    <pre><code class="hljs">-- Inserting one row at a time (SLOW!)
+                    <div class="code-block">-- Inserting one row at a time (SLOW!)
 INSERT INTO t VALUES (1, 'a');
 INSERT INTO t VALUES (2, 'b');
 INSERT INTO t VALUES (3, 'c');
 
 # Each insert triggers separate replication
 # Database thrashes from compaction
-# Hundreds of parts created</code></pre>
+# Hundreds of parts created</div>
                     <p><strong>Problem:</strong> Kills replication performance</p>
                 </div>
                 <div class="good">
                     <div class="badge badge-good">✅ Good</div>
-                    <pre><code class="hljs">-- Batch inserts (1000+ rows)
+                    <div class="code-block">-- Batch inserts (1000+ rows)
 INSERT INTO t VALUES
     (1, 'a'),
     (2, 'b'),
@@ -875,7 +873,7 @@ INSERT INTO t VALUES
 
 # Single replication event
 # One part created
-# Massive performance gain</code></pre>
+# Massive performance gain</div>
                     <p><strong>Benefit:</strong> 100-1000x faster inserts</p>
                 </div>
             </div>
@@ -1057,7 +1055,7 @@ INSERT INTO t VALUES
         <div class="section-content">
 
             <h3>Template 1: Basic 2-Replica Replicated Table</h3>
-            <pre><code class="hljs">-- Node 1
+            <div class="code-block">-- Node 1
 CREATE TABLE events (
     event_id UUID,
     event_time DateTime,
@@ -1096,8 +1094,8 @@ INSERT INTO events VALUES
 SELECT count() FROM events;  -- Should show 2 rows
 
 
-            &lt;h3&gt;Template 2: 3-Shard, 2-Replica Cluster Setup&lt;/h3&gt;
-            &lt;div class="code-block"&gt;-- On each of 6 nodes (3 shards × 2 replicas)
+            <h3>Template 2: 3-Shard, 2-Replica Cluster Setup</h3>
+            <div class="code-block">-- On each of 6 nodes (3 shards × 2 replicas)
 -- Node 1 (Shard 1, Replica 1):
 CREATE TABLE events (
     id UInt64,
@@ -1111,71 +1109,71 @@ PARTITION BY toYYYYMM(timestamp)
 ORDER BY (timestamp, id);
 
 -- Configuration in /etc/clickhouse-server/config.d/cluster.xml:
-&lt;remote_servers&gt;
-    &lt;my_cluster&gt;
-        &lt;shard&gt;
-            &lt;replica&gt;
-                &lt;host&gt;node1&lt;/host&gt;
-                &lt;port&gt;9000&lt;/port&gt;
-                &lt;user&gt;default&lt;/user&gt;
-                &lt;password&gt;&lt;/password&gt;
-            &lt;/replica&gt;
-            &lt;replica&gt;
-                &lt;host&gt;node2&lt;/host&gt;
-                &lt;port&gt;9000&lt;/port&gt;
-            &lt;/replica&gt;
-        &lt;/shard&gt;
-        &lt;shard&gt;
-            &lt;replica&gt;
-                &lt;host&gt;node3&lt;/host&gt;
-                &lt;port&gt;9000&lt;/port&gt;
-            &lt;/replica&gt;
-            &lt;replica&gt;
-                &lt;host&gt;node4&lt;/host&gt;
-                &lt;port&gt;9000&lt;/port&gt;
-            &lt;/replica&gt;
-        &lt;/shard&gt;
-        &lt;shard&gt;
-            &lt;replica&gt;
-                &lt;host&gt;node5&lt;/host&gt;
-                &lt;port&gt;9000&lt;/port&gt;
-            &lt;/replica&gt;
-            &lt;replica&gt;
-                &lt;host&gt;node6&lt;/host&gt;
-                &lt;port&gt;9000&lt;/port&gt;
-            &lt;/replica&gt;
-        &lt;/shard&gt;
-    &lt;/my_cluster&gt;
-&lt;/remote_servers&gt;
+<remote_servers>
+    <my_cluster>
+        <shard>
+            <replica>
+                <host>node1</host>
+                <port>9000</port>
+                <user>default</user>
+                <password></password>
+            </replica>
+            <replica>
+                <host>node2</host>
+                <port>9000</port>
+            </replica>
+        </shard>
+        <shard>
+            <replica>
+                <host>node3</host>
+                <port>9000</port>
+            </replica>
+            <replica>
+                <host>node4</host>
+                <port>9000</port>
+            </replica>
+        </shard>
+        <shard>
+            <replica>
+                <host>node5</host>
+                <port>9000</port>
+            </replica>
+            <replica>
+                <host>node6</host>
+                <port>9000</port>
+            </replica>
+        </shard>
+    </my_cluster>
+</remote_servers>
 
 -- Create distributed table for easier querying
 CREATE TABLE events_distributed AS events
-ENGINE = Distributed('my_cluster', 'default', 'events', rand());</code></pre>
+ENGINE = Distributed('my_cluster', 'default', 'events', rand());</div>
 
             <h3>Template 3: Quorum Write Configuration</h3>
-            <pre><code class="hljs"># Add to /etc/clickhouse-server/config.d/replication.xml
-&lt;clickhouse&gt;
-    &lt;!-- Quorum settings for strong consistency --&gt;
-    &lt;insert_quorum&gt;2&lt;/insert_quorum&gt;
-    &lt;insert_quorum_timeout_ms&gt;10000&lt;/insert_quorum_timeout_ms&gt;
+            <div class="code-block"># Add to /etc/clickhouse-server/config.d/replication.xml
+<clickhouse>
+    <!-- Quorum settings for strong consistency -->
+    <insert_quorum>2</insert_quorum>
+    <insert_quorum_timeout_ms>10000</insert_quorum_timeout_ms>
 
-    &lt;!-- Select consistency --&gt;
-    &lt;select_sequential_consistency&gt;1&lt;/select_sequential_consistency&gt;
+    <!-- Select consistency -->
+    <select_sequential_consistency>1</select_sequential_consistency>
 
-    &lt;!-- Replica settings --&gt;
-    &lt;replicated_deduplication_window&gt;1000&lt;/replicated_deduplication_window&gt;
-    &lt;replicated_deduplication_window_seconds&gt;604800&lt;/replicated_deduplication_window_seconds&gt;
-&lt;/clickhouse&gt;
+    <!-- Replica settings -->
+    <replicated_deduplication_window>1000</replicated_deduplication_window>
+    <replicated_deduplication_window_seconds>604800</replicated_deduplication_window_seconds>
+</clickhouse>
 
 -- Test quorum writes
 SET insert_quorum = 2;
 SET insert_quorum_timeout_ms = 10000;
 
 INSERT INTO events VALUES (1, now(), 'data');
--- This will FAIL if &lt; 2 replicas are available (safe!)</code></pre>
+-- This will FAIL if < 2 replicas are available (safe!)</div>
 
             <h3>Template 4: Monitoring Replica Health</h3>
-            <pre><code class="hljs">-- Create monitoring view
+            <div class="code-block">-- Create monitoring view
 CREATE VIEW replica_health_check AS
 SELECT
     database,
@@ -1190,8 +1188,8 @@ SELECT
     replica_name,
     CASE
         WHEN is_readonly THEN 'READONLY'
-        WHEN absolute_delay &gt; 60 THEN 'LAGGING'
-        WHEN queue_size &gt; 1000 THEN 'BEHIND'
+        WHEN absolute_delay > 60 THEN 'LAGGING'
+        WHEN queue_size > 1000 THEN 'BEHIND'
         ELSE 'HEALTHY'
     END as status
 FROM system.replication_queue
@@ -1208,7 +1206,7 @@ SELECT
     absolute_delay,
     queue_size
 FROM system.replication_queue
-WHERE absolute_delay &gt; 30 AND database != 'system';</code></pre>
+WHERE absolute_delay > 30 AND database != 'system';</div>
 
         </div>
     </div>
@@ -1220,7 +1218,7 @@ WHERE absolute_delay &gt; 30 AND database != 'system';</code></pre>
         <div class="section-content">
 
             <h3>1. Zero-Downtime Rolling Updates</h3>
-            <pre><code class="hljs">-- With replicated setup, update nodes one at a time
+            <div class="code-block">-- With replicated setup, update nodes one at a time
 -- Example: Update Node 2 first
 
 -- Step 1: Verify both replicas are in sync
@@ -1231,20 +1229,20 @@ SELECT * FROM system.replicas WHERE table = 'events';
 sudo service clickhouse-server stop
 
 -- Step 3: Update/restart Node 2
-sudo apt update &amp;&amp; sudo apt install -y clickhouse-server
+sudo apt update && sudo apt install -y clickhouse-server
 sudo service clickhouse-server start
 
 -- Step 4: Verify Node 2 caught up
 SELECT * FROM system.replicas WHERE table = 'events';
 
 -- Step 5: Repeat for Node 1
--- Never stop both replicas simultaneously!</code></pre>
+-- Never stop both replicas simultaneously!</div>
 
             <h3>2. Handling Replica Failures Automatically</h3>
-            <pre><code class="hljs">-- Monitor and auto-heal replica lag
+            <div class="code-block">-- Monitor and auto-heal replica lag
 -- This Lua script (if using Keeper hooks):
 
--- If replica lag &gt; 60 seconds:
+-- If replica lag > 60 seconds:
 -- 1. Check replica network connectivity
 -- 2. If down: wait for recovery (Keeper tracks state)
 -- 3. If up: manually trigger RESYNC if needed
@@ -1256,11 +1254,11 @@ SELECT
     absolute_delay,
     last_queue_update
 FROM system.replicas
-WHERE absolute_delay &gt; 60
-  AND database NOT IN ('system', 'information_schema');</code></pre>
+WHERE absolute_delay > 60
+  AND database NOT IN ('system', 'information_schema');</div>
 
             <h3>3. Sharding Strategy for Large Datasets</h3>
-            <pre><code class="hljs">-- Shard by user_id (consistent hashing)
+            <div class="code-block">-- Shard by user_id (consistent hashing)
 CREATE TABLE events_distributed AS events
 ENGINE = Distributed(
     'my_cluster',
@@ -1282,10 +1280,10 @@ ENGINE = Distributed(
 -- 1. Data distributed across shards
 -- 2. Each shard has 2+ replicas (HA)
 -- 3. Queries parallelized across shards
--- 4. Can lose entire shard, recover from replicas</code></pre>
+-- 4. Can lose entire shard, recover from replicas</div>
 
             <h3>4. Migrating Non-Replicated to Replicated</h3>
-            <pre><code class="hljs">-- Old table (non-replicated)
+            <div class="code-block">-- Old table (non-replicated)
 CREATE TABLE events_old (
     id UInt64,
     timestamp DateTime,
@@ -1314,19 +1312,19 @@ SELECT count() FROM events;
 -- Once verified, drop old table
 DROP TABLE events_old;
 
-            &lt;h3&gt;5. Replica Deduplication&lt;/h3&gt;
-            &lt;div class="code-block"&gt;-- ClickHouse deduplicates inserts across replicas
+            <h3>5. Replica Deduplication</h3>
+            <div class="code-block">-- ClickHouse deduplicates inserts across replicas
 -- This prevents data duplication if insert is retried
 
 -- Configuration settings:
-&lt;clickhouse&gt;
-    &lt;!-- How many blocks to keep for dedup --&gt;
-    &lt;replicated_deduplication_window&gt;1000&lt;/replicated_deduplication_window&gt;
+<clickhouse>
+    <!-- How many blocks to keep for dedup -->
+    <replicated_deduplication_window>1000</replicated_deduplication_window>
 
-    &lt;!-- How long to keep blocks for dedup (seconds) --&gt;
-    &lt;replicated_deduplication_window_seconds&gt;604800&lt;/replicated_deduplication_window_seconds&gt;
-    &lt;!-- 604800 = 7 days --&gt;
-&lt;/clickhouse&gt;
+    <!-- How long to keep blocks for dedup (seconds) -->
+    <replicated_deduplication_window_seconds>604800</replicated_deduplication_window_seconds>
+    <!-- 604800 = 7 days -->
+</clickhouse>
 
 -- This means:
 -- 1. If same data inserted twice within 7 days, only stored once
@@ -1337,7 +1335,7 @@ DROP TABLE events_old;
 SELECT
     table,
     deduplication_queue_size
-FROM system.replication_queue;</code></pre>
+FROM system.replication_queue;</div>
 
         </div>
     
@@ -1452,8 +1450,5 @@ FROM system.replication_queue;</code></pre>
     <a href="module-5-cluster-deployment.html" class="nav-btn-module">Next: Module 5 - Cluster Deployment →</a>
 </div>
 
-<script>
-hljs.highlightAll();
-</script>
 </body>
 </html>

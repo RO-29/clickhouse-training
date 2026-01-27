@@ -6,8 +6,6 @@
     <title>Module 6: Query Optimization & Performance</title>
     <link rel="icon" type="image/x-icon" href="../favicon.ico">
     <link rel="icon" type="image/png" href="../favicon.png">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
@@ -370,11 +368,11 @@
         <div class="section-header">🚀 Quick Start: Basic Query Optimization</div>
         <div class="section-content">
             <h3>1. Understand Your Query Performance</h3>
-            <pre><code class="hljs">-- Get query execution time
+            <div class="code-block">-- Get query execution time
 SELECT /* ... query ... */ FORMAT JSON SETTINGS max_execution_time = 30;
 
 -- Use EXPLAIN to see query plan
-EXPLAIN SELECT * FROM events WHERE country = 'US' AND event_date &gt;= '2026-01-01';
+EXPLAIN SELECT * FROM events WHERE country = 'US' AND event_date >= '2026-01-01';
 
 -- Use EXPLAIN PIPE to understand pipeline
 EXPLAIN PIPE SELECT * FROM events WHERE country = 'US';
@@ -390,10 +388,10 @@ SELECT
 FROM system.query_log
 WHERE query_kind = 'Select'
 ORDER BY query_duration_ms DESC
-LIMIT 10;</code></pre>
+LIMIT 10;</div>
 
             <h3>2. Add an Index to Speed Up Queries</h3>
-            <pre><code class="hljs">-- Create table without optimization
+            <div class="code-block">-- Create table without optimization
 CREATE TABLE events (
     event_date Date,
     event_time DateTime,
@@ -413,16 +411,16 @@ ALTER TABLE events ADD INDEX idx_country country TYPE set(2) GRANULARITY 4;
 OPTIMIZE TABLE events FINAL;
 
 -- Query 2: With index (10-100x faster!)
-SELECT COUNT(*) FROM events WHERE event_type = 'purchase' AND country = 'US';</code></pre>
+SELECT COUNT(*) FROM events WHERE event_type = 'purchase' AND country = 'US';</div>
 
             <h3>3. Materialized Views for Pre-Aggregation</h3>
-            <pre><code class="hljs">-- Slow query (recalculates every time)
+            <div class="code-block">-- Slow query (recalculates every time)
 SELECT
     toDate(event_time) as date,
     country,
     COUNT(*) as count
 FROM events
-WHERE event_date &gt;= today() - 30
+WHERE event_date >= today() - 30
 GROUP BY date, country;
 
 -- Fast solution: Pre-aggregate with materialized view
@@ -439,8 +437,8 @@ GROUP BY date, country;
 -- Now query is instant!
 SELECT date, country, count
 FROM events_daily_mv
-WHERE date &gt;= today() - 30
-ORDER BY date DESC;</code></pre>
+WHERE date >= today() - 30
+ORDER BY date DESC;</div>
         </div>
     </div>
 
@@ -449,7 +447,7 @@ ORDER BY date DESC;</code></pre>
         <div class="section-header">💻 Commands & Tools Reference</div>
         <div class="section-content">
             <h3>EXPLAIN - Understanding Query Plans</h3>
-            <pre><code class="hljs">-- Basic EXPLAIN
+            <div class="code-block">-- Basic EXPLAIN
 EXPLAIN SELECT COUNT(*) FROM events WHERE country = 'US';
 
 -- EXPLAIN SYNTAX (just parse, don't execute)
@@ -459,10 +457,10 @@ EXPLAIN SYNTAX SELECT COUNT(*) FROM events;
 EXPLAIN SELECT COUNT(*) FROM events WHERE country = 'US';
 
 -- EXPLAIN PIPE (show data processing stages)
-EXPLAIN PIPE SELECT COUNT(*) FROM events WHERE country = 'US' GROUP BY country;</code></pre>
+EXPLAIN PIPE SELECT COUNT(*) FROM events WHERE country = 'US' GROUP BY country;</div>
 
             <h3>Index Management</h3>
-            <pre><code class="hljs">-- Add a skipping index
+            <div class="code-block">-- Add a skipping index
 ALTER TABLE events ADD INDEX idx_country country TYPE set(2) GRANULARITY 4;
 
 -- Add a bloom filter index (for IN queries)
@@ -481,10 +479,10 @@ ALTER TABLE events DROP INDEX idx_country;
 SHOW CREATE TABLE events;
 
 -- Rebuild indexes (after ALTER)
-OPTIMIZE TABLE events FINAL;</code></pre>
+OPTIMIZE TABLE events FINAL;</div>
 
             <h3>Query Profiling & System Tables</h3>
-            <pre><code class="hljs">-- View query performance history
+            <div class="code-block">-- View query performance history
 SELECT
     query_id,
     query,
@@ -496,7 +494,7 @@ SELECT
     exception_code
 FROM system.query_log
 WHERE query_kind = 'Select'
-  AND query_start_time &gt;= now() - INTERVAL 1 HOUR
+  AND query_start_time >= now() - INTERVAL 1 HOUR
 ORDER BY query_duration_ms DESC
 LIMIT 20;
 
@@ -532,7 +530,7 @@ SELECT
 FROM system.parts
 WHERE active = 1
 GROUP BY database, table
-ORDER BY sum(bytes) DESC;</code></pre>
+ORDER BY sum(bytes) DESC;</div>
         </div>
     </div>
 
@@ -544,27 +542,27 @@ ORDER BY sum(bytes) DESC;</code></pre>
             <div class="comparison">
                 <div class="bad">
                     <div class="badge badge-bad">❌ Bad</div>
-                    <pre><code class="hljs">-- High cardinality first (user_id has millions of values)
+                    <div class="code-block">-- High cardinality first (user_id has millions of values)
 CREATE TABLE events (
     event_id UUID,
     user_id UUID,  -- HIGH cardinality!
     country String,
     timestamp DateTime
 ) ENGINE = MergeTree()
-ORDER BY (user_id, timestamp);  -- Bad order!</code></pre>
+ORDER BY (user_id, timestamp);  -- Bad order!</div>
                     <p><strong>Problem:</strong> Poor compression, range queries don't benefit</p>
                 </div>
 
                 <div class="good">
                     <div class="badge badge-good">✅ Good</div>
-                    <pre><code class="hljs">-- Low cardinality first
+                    <div class="code-block">-- Low cardinality first
 CREATE TABLE events (
     event_id UUID,
     user_id UUID,
     country LowCardinality(String),  -- LOW cardinality
     timestamp DateTime
 ) ENGINE = MergeTree()
-ORDER BY (country, toDate(timestamp), user_id);  -- Low-to-high cardinality</code></pre>
+ORDER BY (country, toDate(timestamp), user_id);  -- Low-to-high cardinality</div>
                     <p><strong>Benefit:</strong> 10-100x better compression, faster queries</p>
                 </div>
             </div>
@@ -610,18 +608,18 @@ ORDER BY (country, toDate(timestamp), user_id);  -- Low-to-high cardinality</cod
             <div class="comparison">
                 <div class="bad">
                     <div class="badge badge-bad">❌ Bad: Expensive JOIN</div>
-                    <pre><code class="hljs">-- Requires JOIN every time
+                    <div class="code-block">-- Requires JOIN every time
 SELECT u.name, COUNT(*)
 FROM events e
 JOIN users u ON e.user_id = u.user_id
 WHERE e.event_date = today()
-GROUP BY u.name;</code></pre>
+GROUP BY u.name;</div>
                     <p><strong>Problem:</strong> JOINs are slow and memory-intensive</p>
                 </div>
 
                 <div class="good">
                     <div class="badge badge-good">✅ Good: Denormalized Data</div>
-                    <pre><code class="hljs">-- Denormalize: store user_name in events table
+                    <div class="code-block">-- Denormalize: store user_name in events table
 CREATE TABLE events (
     event_date Date,
     user_id UInt64,
@@ -634,7 +632,7 @@ ORDER BY (event_date, user_id);
 SELECT user_name, COUNT(*)
 FROM events
 WHERE event_date = today()
-GROUP BY user_name;</code></pre>
+GROUP BY user_name;</div>
                     <p><strong>Benefit:</strong> 100-1000x faster, no memory overhead</p>
                 </div>
             </div>
@@ -642,21 +640,21 @@ GROUP BY user_name;</code></pre>
             <h3>4. Common Anti-Patterns to Avoid</h3>
             <div class="card" style="background: #ffe6e6;">
                 <h4>Anti-Pattern 1: Full Table Scans</h4>
-                <pre><code class="hljs">-- BAD: Reads entire table
+                <div class="code-block">-- BAD: Reads entire table
 SELECT COUNT(*) FROM events WHERE message LIKE '%error%';
 
 -- GOOD: Use appropriate indexes or filter by partition
 ALTER TABLE events ADD INDEX idx_message message TYPE tokenbf_v1(256, 2, 0);
-SELECT COUNT(*) FROM events WHERE message LIKE '%error%';</code></pre>
+SELECT COUNT(*) FROM events WHERE message LIKE '%error%';</div>
             </div>
 
             <div class="card" style="background: #ffe6e6;">
                 <h4>Anti-Pattern 2: Functions on WHERE Clause Columns</h4>
-                <pre><code class="hljs">-- BAD: Function prevents index use
+                <div class="code-block">-- BAD: Function prevents index use
 SELECT * FROM events WHERE toDate(timestamp) = '2026-01-22';
 
 -- GOOD: Filter on indexed column
-SELECT * FROM events WHERE timestamp &gt;= '2026-01-22' AND timestamp &lt; '2026-01-23';</code></pre>
+SELECT * FROM events WHERE timestamp >= '2026-01-22' AND timestamp < '2026-01-23';</div>
             </div>
 
             <h3>5. Memory Management</h3>
@@ -674,22 +672,22 @@ SELECT * FROM events WHERE timestamp &gt;= '2026-01-22' AND timestamp &lt; '2026
             <h3>6. Query Rewriting Techniques</h3>
             <div class="card">
                 <h4>Technique 1: Use PREWHERE for Early Filtering</h4>
-                <pre><code class="hljs">-- PREWHERE filters before reading other columns (saves I/O!)
+                <div class="code-block">-- PREWHERE filters before reading other columns (saves I/O!)
 SELECT user_id, COUNT(*)
 FROM events
 PREWHERE event_type = 'purchase'
 WHERE country = 'US'
-GROUP BY user_id;</code></pre>
+GROUP BY user_id;</div>
                 <p><strong>Benefit:</strong> Reduces bytes read by 50-90%</p>
             </div>
 
             <div class="card">
                 <h4>Technique 2: Approximate Queries with SAMPLE</h4>
-                <pre><code class="hljs">-- Query 10% of data for faster approximate results
+                <div class="code-block">-- Query 10% of data for faster approximate results
 SELECT country, COUNT(*) * 10 as estimated_count
 FROM events SAMPLE 0.1
-WHERE event_date &gt;= today() - 30
-GROUP BY country;</code></pre>
+WHERE event_date >= today() - 30
+GROUP BY country;</div>
                 <p><strong>Benefit:</strong> 10x faster for exploratory queries</p>
             </div>
         </div>
@@ -806,7 +804,7 @@ GROUP BY country;</code></pre>
         <div class="section-header">📋 Ready-to-Use Templates</div>
         <div class="section-content">
             <h3>Template 1: Optimized Events Table</h3>
-            <pre><code class="hljs">-- Well-optimized for analytics
+            <div class="code-block">-- Well-optimized for analytics
 CREATE TABLE events (
     event_date Date,
     event_time DateTime,
@@ -845,10 +843,10 @@ AS SELECT
     COUNT() as count,
     SUM(revenue) as revenue
 FROM events
-GROUP BY date, country, event_type;</code></pre>
+GROUP BY date, country, event_type;</div>
 
             <h3>Template 2: Performance Monitoring Query</h3>
-            <pre><code class="hljs">-- Monitor query performance
+            <div class="code-block">-- Monitor query performance
 SELECT
     query_id,
     query,
@@ -861,8 +859,8 @@ SELECT
     user
 FROM system.query_log
 WHERE query_kind = 'Select'
-  AND query_start_time &gt;= now() - INTERVAL 1 HOUR
-  AND query_duration_ms &gt; 1000  -- Only slow queries
+  AND query_start_time >= now() - INTERVAL 1 HOUR
+  AND query_duration_ms > 1000  -- Only slow queries
 ORDER BY query_duration_ms DESC
 LIMIT 50;
 
@@ -875,14 +873,14 @@ SELECT
     max(query_duration_ms) as duration_ms
 FROM system.query_log
 WHERE type = 'QueryFinish'
-  AND query_start_time &gt;= now() - INTERVAL 1 DAY
+  AND query_start_time >= now() - INTERVAL 1 DAY
 GROUP BY user, query_id, query
-HAVING peak_memory &gt; 1000000000  -- &gt; 1GB
+HAVING peak_memory > 1000000000  -- > 1GB
 ORDER BY peak_memory DESC
-LIMIT 20;</code></pre>
+LIMIT 20;</div>
 
             <h3>Template 3: Index Analysis</h3>
-            <pre><code class="hljs">-- Check which indexes exist and their sizes
+            <div class="code-block">-- Check which indexes exist and their sizes
 SELECT
     database,
     table,
@@ -901,8 +899,8 @@ SELECT
     formatReadableSize(sum(read_bytes)) as total_bytes_read,
     formatReadableSize(sum(memory_usage)) as total_memory
 FROM system.query_log
-WHERE query_start_time &gt;= now() - INTERVAL 1 HOUR
-  AND query_kind = 'Select';</code></pre>
+WHERE query_start_time >= now() - INTERVAL 1 HOUR
+  AND query_kind = 'Select';</div>
         </div>
     </div>
 
@@ -911,11 +909,11 @@ WHERE query_start_time &gt;= now() - INTERVAL 1 HOUR
         <div class="section-header">🔥 Advanced Patterns</div>
         <div class="section-content">
             <h3>1. Query Execution Pipeline Deep Dive</h3>
-            <pre><code class="hljs">-- Understand each stage with EXPLAIN
+            <div class="code-block">-- Understand each stage with EXPLAIN
 EXPLAIN PIPELINE
 SELECT country, SUM(revenue) as total
 FROM events
-WHERE event_date &gt;= today() - 30
+WHERE event_date >= today() - 30
   AND event_type = 'purchase'
 GROUP BY country
 ORDER BY total DESC
@@ -926,10 +924,10 @@ LIMIT 10;
 -- 2. Where - Apply WHERE filters
 -- 3. Aggregating - GROUP BY and aggregation
 -- 4. LimitStep - LIMIT
--- 5. OutputFormat - Format results</code></pre>
+-- 5. OutputFormat - Format results</div>
 
             <h3>2. Bloom Filter Indexes for Complex Conditions</h3>
-            <pre><code class="hljs">-- Bloom filter for EXISTS queries
+            <div class="code-block">-- Bloom filter for EXISTS queries
 CREATE TABLE events (
     event_id UUID,
     user_id UUID,
@@ -943,10 +941,10 @@ ALTER TABLE events ADD INDEX idx_event_type event_type TYPE bloom_filter GRANULA
 -- Now fast: bloom filter eliminates impossible blocks
 SELECT COUNT(*)
 FROM events
-WHERE event_type IN ('purchase', 'signup', 'login');</code></pre>
+WHERE event_type IN ('purchase', 'signup', 'login');</div>
 
             <h3>3. Materialized Views for Complex Aggregations</h3>
-            <pre><code class="hljs">-- Source table (raw events)
+            <div class="code-block">-- Source table (raw events)
 CREATE TABLE events (
     event_time DateTime,
     user_id UInt64,
@@ -986,11 +984,11 @@ GROUP BY day, event_type;
 -- Now queries are blazingly fast!
 SELECT event_type, count, revenue
 FROM events_daily
-WHERE day &gt;= today() - 30
-ORDER BY count DESC;</code></pre>
+WHERE day >= today() - 30
+ORDER BY count DESC;</div>
 
             <h3>4. Optimizing JOIN Queries</h3>
-            <pre><code class="hljs">-- Strategy 1: Use Dictionary table (small reference data)
+            <div class="code-block">-- Strategy 1: Use Dictionary table (small reference data)
 CREATE TABLE countries (
     country_code String,
     country_name String,
@@ -1020,12 +1018,12 @@ GROUP BY country_code;
 SELECT e.user_id, c.country_name
 FROM events AS e
 ALL LEFT JOIN countries AS c ON e.country_code = c.country_code
-WHERE e.event_date = today();</code></pre>
+WHERE e.event_date = today();</div>
 
             <h3>5. Memory-Aware Query Design</h3>
-            <pre><code class="hljs">-- Monitor and control memory usage
+            <div class="code-block">-- Monitor and control memory usage
 SET max_memory_usage = 1000000000;  -- 1GB limit
-SET max_bytes_before_external_sort = 500000000;  -- Use disk if &gt; 500MB
+SET max_bytes_before_external_sort = 500000000;  -- Use disk if > 500MB
 SET max_bytes_before_external_group_by = 500000000;
 
 -- Streaming aggregation for huge GROUP BY
@@ -1034,7 +1032,7 @@ FROM events
 GROUP BY country
 SETTINGS
     max_threads = 1,
-    max_block_size = 1000000;</code></pre>
+    max_block_size = 1000000;</div>
         </div>
     </div>
 
@@ -1122,8 +1120,5 @@ SETTINGS
     <a href="module-7-backup-recovery.html" class="nav-btn-module">Next: Module 7 - Backup & Recovery →</a>
 </div>
 
-<script>
-hljs.highlightAll();
-</script>
 </body>
 </html>

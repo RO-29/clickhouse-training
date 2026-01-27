@@ -448,7 +448,7 @@
             <div class="grid-2">
                 <div class="card">
                     <h4>🐧 Ubuntu/Debian</h4>
-                    <pre><code class="hljs">sudo apt-get install -y apt-transport-https ca-certificates
+                    <div class="code-block">sudo apt-get install -y apt-transport-https ca-certificates
 curl -fsSL 'https://packages.clickhouse.com/rpm/lts/repodata/repomd.xml.key' | sudo gpg --dearmor -o /usr/share/keyrings/clickhouse-keyring.gpg
 
 echo "deb [signed-by=/usr/share/keyrings/clickhouse-keyring.gpg] https://packages.clickhouse.com/deb stable main" | sudo tee /etc/apt/sources.list.d/clickhouse.list
@@ -457,35 +457,35 @@ sudo apt-get update
 sudo apt-get install -y clickhouse-server clickhouse-client
 
 # Start the server
-sudo service clickhouse-server start</code></pre>
+sudo service clickhouse-server start</div>
                 </div>
 
                 <div class="card">
                     <h4>🍎 macOS</h4>
-                    <pre><code class="hljs">brew install clickhouse
+                    <div class="code-block">brew install clickhouse
 
 # Start the server
 clickhouse server
 
 # In another terminal, connect
-clickhouse-client</code></pre>
+clickhouse-client</div>
                 </div>
             </div>
 
             <div class="card">
                 <h4>🐳 Docker (Fastest Way to Test)</h4>
-                <pre><code class="hljs">docker run -d --name clickhouse-server \
+                <div class="code-block">docker run -d --name clickhouse-server \
   -p 8123:8123 \
   -p 9000:9000 \
   --ulimit nofile=262144:262144 \
   clickhouse/clickhouse-server
 
 # Connect to the server
-docker exec -it clickhouse-server clickhouse-client</code></pre>
+docker exec -it clickhouse-server clickhouse-client</div>
             </div>
 
             <h3>2. First Steps - Create Database and Table</h3>
-            <pre><code class="hljs">-- Connect to ClickHouse
+            <div class="code-block">-- Connect to ClickHouse
 clickhouse-client
 
 -- Create a database
@@ -520,10 +520,10 @@ SELECT
 FROM events
 WHERE event_type = 'purchase'
 GROUP BY country
-ORDER BY total_revenue DESC;</code></pre>
+ORDER BY total_revenue DESC;</div>
 
             <h3>3. Verify Installation</h3>
-            <pre><code class="hljs">-- Check server version
+            <div class="code-block">-- Check server version
 SELECT version();
 
 -- Check server uptime
@@ -533,7 +533,7 @@ SELECT uptime();
 SHOW DATABASES;
 
 -- Show current system tables
-SELECT table, engine FROM system.tables WHERE database = 'system' LIMIT 5;</code></pre>
+SELECT table, engine FROM system.tables WHERE database = 'system' LIMIT 5;</div>
 
         </div>
     </div>
@@ -545,23 +545,23 @@ SELECT table, engine FROM system.tables WHERE database = 'system' LIMIT 5;</code
             <h3>Database Operations</h3>
             <div class="grid-2">
                 <div class="card">
-                    <pre><code class="hljs">-- Create database
+                    <div class="code-block">-- Create database
 CREATE DATABASE my_db;
 
 -- Create database with engine
-CREATE DATABASE my_db ENGINE = Atomic;</code></pre>
+CREATE DATABASE my_db ENGINE = Atomic;</div>
                 </div>
                 <div class="card">
-                    <pre><code class="hljs">-- Drop database
+                    <div class="code-block">-- Drop database
 DROP DATABASE my_db;
 
 -- Show all databases
-SHOW DATABASES;</code></pre>
+SHOW DATABASES;</div>
                 </div>
             </div>
 
             <h3>Table Operations (MergeTree Family)</h3>
-            <pre><code class="hljs">-- Basic MergeTree table
+            <div class="code-block">-- Basic MergeTree table
 CREATE TABLE logs (
     timestamp DateTime,
     level String,
@@ -589,10 +589,10 @@ DROP TABLE logs;
 DESCRIBE TABLE logs;
 
 -- Show create statement
-SHOW CREATE TABLE logs;</code></pre>
+SHOW CREATE TABLE logs;</div>
 
             <h3>Data Insertion</h3>
-            <pre><code class="hljs">-- Insert single row
+            <div class="code-block">-- Insert single row
 INSERT INTO logs VALUES ('2026-01-22 10:00:00', 'INFO', 'User logged in', 1001);
 
 -- Insert multiple rows
@@ -604,13 +604,13 @@ INSERT INTO logs VALUES
 INSERT INTO logs SELECT * FROM logs_temp WHERE level = 'ERROR';
 
 -- Insert from CSV file
-clickhouse-client --query="INSERT INTO logs FORMAT CSV" &lt; data.csv
+clickhouse-client --query="INSERT INTO logs FORMAT CSV" < data.csv
 
 -- Insert from JSON
-cat data.json | clickhouse-client --query="INSERT INTO logs FORMAT JSONEachRow"</code></pre>
+cat data.json | clickhouse-client --query="INSERT INTO logs FORMAT JSONEachRow"</div>
 
             <h3>Query Operations</h3>
-            <pre><code class="hljs">-- Basic SELECT
+            <div class="code-block">-- Basic SELECT
 SELECT * FROM logs WHERE level = 'ERROR' LIMIT 10;
 
 -- Aggregation
@@ -619,7 +619,7 @@ SELECT
     COUNT(*) as count,
     countDistinct(user_id) as unique_users
 FROM logs
-WHERE timestamp &gt;= today() - INTERVAL 7 DAY
+WHERE timestamp >= today() - INTERVAL 7 DAY
 GROUP BY level;
 
 -- Time-series analysis
@@ -627,7 +627,7 @@ SELECT
     toStartOfHour(timestamp) as hour,
     COUNT(*) as events_per_hour
 FROM logs
-WHERE timestamp &gt;= now() - INTERVAL 24 HOUR
+WHERE timestamp >= now() - INTERVAL 24 HOUR
 GROUP BY hour
 ORDER BY hour;
 
@@ -636,14 +636,14 @@ WITH top_users AS (
     SELECT user_id, COUNT(*) as cnt
     FROM logs
     GROUP BY user_id
-    HAVING cnt &gt; 100
+    HAVING cnt > 100
 )
 SELECT l.*
 FROM logs l
-JOIN top_users t ON l.user_id = t.user_id;</code></pre>
+JOIN top_users t ON l.user_id = t.user_id;</div>
 
             <h3>System & Monitoring Commands</h3>
-            <pre><code class="hljs">-- Check disk usage
+            <div class="code-block">-- Check disk usage
 SELECT
     database,
     table,
@@ -673,7 +673,7 @@ SELECT
 FROM system.processes;
 
 -- Kill a query
-KILL QUERY WHERE query_id = 'xxx-xxx-xxx';</code></pre>
+KILL QUERY WHERE query_id = 'xxx-xxx-xxx';</div>
 
         </div>
     </div>
@@ -686,7 +686,7 @@ KILL QUERY WHERE query_id = 'xxx-xxx-xxx';</code></pre>
             <div class="comparison">
                 <div class="bad">
                     <div class="badge badge-bad">❌ Bad</div>
-                    <pre><code class="hljs">-- Normalized schema (like MySQL)
+                    <div class="code-block">-- Normalized schema (like MySQL)
 CREATE TABLE users (
     user_id UInt32,
     name String
@@ -702,13 +702,13 @@ CREATE TABLE events (
 SELECT u.name, COUNT(*)
 FROM events e
 JOIN users u ON e.user_id = u.user_id
-GROUP BY u.name;</code></pre>
+GROUP BY u.name;</div>
                     <p><strong>Problem:</strong> JOINs are expensive in ClickHouse</p>
                 </div>
 
                 <div class="good">
                     <div class="badge badge-good">✅ Good</div>
-                    <pre><code class="hljs">-- Denormalized schema
+                    <div class="code-block">-- Denormalized schema
 CREATE TABLE events (
     event_id UInt64,
     user_id UInt32,
@@ -722,7 +722,7 @@ SELECT
     user_name,
     COUNT(*)
 FROM events
-GROUP BY user_name;</code></pre>
+GROUP BY user_name;</div>
                     <p><strong>Benefit:</strong> 10-100x faster queries, no JOINs</p>
                 </div>
             </div>
@@ -731,25 +731,25 @@ GROUP BY user_name;</code></pre>
             <div class="comparison">
                 <div class="bad">
                     <div class="badge badge-bad">❌ Bad</div>
-                    <pre><code class="hljs">-- Too many partitions (by day)
+                    <div class="code-block">-- Too many partitions (by day)
 CREATE TABLE logs (
     timestamp DateTime,
     message String
 ) ENGINE = MergeTree()
 PARTITION BY toDate(timestamp)
-ORDER BY timestamp;</code></pre>
+ORDER BY timestamp;</div>
                     <p><strong>Problem:</strong> Creates 365+ partitions per year, degrades performance</p>
                 </div>
 
                 <div class="good">
                     <div class="badge badge-good">✅ Good</div>
-                    <pre><code class="hljs">-- Reasonable partitions (by month)
+                    <div class="code-block">-- Reasonable partitions (by month)
 CREATE TABLE logs (
     timestamp DateTime,
     message String
 ) ENGINE = MergeTree()
 PARTITION BY toYYYYMM(timestamp)
-ORDER BY timestamp;</code></pre>
+ORDER BY timestamp;</div>
                     <p><strong>Benefit:</strong> Only 12 partitions per year, better performance, easier to drop old data</p>
                 </div>
             </div>
@@ -758,27 +758,27 @@ ORDER BY timestamp;</code></pre>
             <div class="comparison">
                 <div class="bad">
                     <div class="badge badge-bad">❌ Bad</div>
-                    <pre><code class="hljs">-- High cardinality first
+                    <div class="code-block">-- High cardinality first
 CREATE TABLE events (
     event_id UUID,
     user_id UInt32,
     country String,
     timestamp DateTime
 ) ENGINE = MergeTree()
-ORDER BY (event_id, timestamp);  -- UUID first!</code></pre>
+ORDER BY (event_id, timestamp);  -- UUID first!</div>
                     <p><strong>Problem:</strong> Poor data compression, inefficient queries</p>
                 </div>
 
                 <div class="good">
                     <div class="badge badge-good">✅ Good</div>
-                    <pre><code class="hljs">-- Low cardinality first
+                    <div class="code-block">-- Low cardinality first
 CREATE TABLE events (
     event_id UUID,
     user_id UInt32,
     country String,
     timestamp DateTime
 ) ENGINE = MergeTree()
-ORDER BY (country, timestamp, user_id);  -- Low to high cardinality!</code></pre>
+ORDER BY (country, timestamp, user_id);  -- Low to high cardinality!</div>
                     <p><strong>Benefit:</strong> Better compression, faster queries on country and time ranges</p>
                 </div>
             </div>
@@ -950,7 +950,7 @@ ORDER BY (country, timestamp, user_id);  -- Low to high cardinality!</code></pre
         <div class="section-content">
 
             <h3>Template 1: Event Tracking Table</h3>
-            <pre><code class="hljs">-- Perfect for web/app analytics, user behavior tracking
+            <div class="code-block">-- Perfect for web/app analytics, user behavior tracking
 CREATE TABLE events (
     -- Time dimension
     event_date Date,
@@ -982,17 +982,17 @@ TTL event_date + INTERVAL 2 YEAR;  -- Auto-delete after 2 years
 -- Daily active users
 SELECT toDate(event_time) as date, countDistinct(user_id) as dau
 FROM events
-WHERE event_date &gt;= today() - 30
+WHERE event_date >= today() - 30
 GROUP BY date ORDER BY date;
 
 -- Top events by type
 SELECT event_type, COUNT(*) as count
 FROM events
 WHERE event_date = today()
-GROUP BY event_type ORDER BY count DESC LIMIT 10;</code></pre>
+GROUP BY event_type ORDER BY count DESC LIMIT 10;</div>
 
             <h3>Template 2: Application Logs Table</h3>
-            <pre><code class="hljs">-- Perfect for centralized logging, debugging, monitoring
+            <div class="code-block">-- Perfect for centralized logging, debugging, monitoring
 CREATE TABLE logs (
     -- Timestamp
     timestamp DateTime,
@@ -1032,7 +1032,7 @@ SELECT
     count() as total,
     errors / total * 100 as error_rate_pct
 FROM logs
-WHERE timestamp &gt;= now() - INTERVAL 1 HOUR
+WHERE timestamp >= now() - INTERVAL 1 HOUR
 GROUP BY service
 ORDER BY error_rate_pct DESC;
 
@@ -1041,12 +1041,12 @@ SELECT timestamp, service, message, exception
 FROM logs
 WHERE level = 'ERROR'
   AND exception != ''
-  AND timestamp &gt;= now() - INTERVAL 24 HOUR
+  AND timestamp >= now() - INTERVAL 24 HOUR
 ORDER BY timestamp DESC
-LIMIT 100;</code></pre>
+LIMIT 100;</div>
 
             <h3>Template 3: Metrics/Time-Series Table</h3>
-            <pre><code class="hljs">-- Perfect for system metrics, IoT sensors, monitoring
+            <div class="code-block">-- Perfect for system metrics, IoT sensors, monitoring
 CREATE TABLE metrics (
     -- Time dimension
     timestamp DateTime,
@@ -1077,7 +1077,7 @@ SELECT
     AVG(value) as avg_cpu
 FROM metrics
 WHERE metric_name = 'cpu.usage'
-  AND timestamp &gt;= now() - INTERVAL 1 HOUR
+  AND timestamp >= now() - INTERVAL 1 HOUR
 GROUP BY host
 ORDER BY avg_cpu DESC;
 
@@ -1087,12 +1087,12 @@ SELECT
     quantile(0.95)(value) as p95_response_time
 FROM metrics
 WHERE metric_name = 'http.response_time'
-  AND timestamp &gt;= now() - INTERVAL 24 HOUR
+  AND timestamp >= now() - INTERVAL 24 HOUR
 GROUP BY minute
-ORDER BY minute;</code></pre>
+ORDER BY minute;</div>
 
             <h3>Template 4: User Sessions Table</h3>
-            <pre><code class="hljs">-- Perfect for session analytics, user journey tracking
+            <div class="code-block">-- Perfect for session analytics, user journey tracking
 CREATE TABLE sessions (
     -- Session info
     session_id String,
@@ -1139,7 +1139,7 @@ SELECT
     AVG(duration_seconds) as avg_duration,
     COUNT(*) as session_count
 FROM sessions
-WHERE session_start &gt;= today() - 7
+WHERE session_start >= today() - 7
 GROUP BY device_type;
 
 -- Bounce rate by landing page
@@ -1149,11 +1149,11 @@ SELECT
     countIf(is_bounce = 1) as bounces,
     bounces / sessions * 100 as bounce_rate
 FROM sessions
-WHERE session_start &gt;= today() - 30
+WHERE session_start >= today() - 30
 GROUP BY landing_page
-HAVING sessions &gt; 100
+HAVING sessions > 100
 ORDER BY bounce_rate DESC
-LIMIT 20;</code></pre>
+LIMIT 20;</div>
 
         </div>
     </div>
@@ -1163,7 +1163,7 @@ LIMIT 20;</code></pre>
         <div class="section-content">
 
             <h3>1. Using Materialized Views for Pre-Aggregation</h3>
-            <pre><code class="hljs">-- Source table
+            <div class="code-block">-- Source table
 CREATE TABLE events (
     event_time DateTime,
     user_id UInt64,
@@ -1187,15 +1187,15 @@ FROM events
 GROUP BY hour, event_type;
 
 -- Now queries on hourly data are instant!
-SELECT * FROM events_hourly_mv WHERE hour &gt;= today() - 7;</code></pre>
+SELECT * FROM events_hourly_mv WHERE hour >= today() - 7;</div>
 
             <h3>2. Optimizing with LowCardinality</h3>
-            <pre><code class="hljs">-- LowCardinality optimizes storage and query speed for columns with few unique values
+            <div class="code-block">-- LowCardinality optimizes storage and query speed for columns with few unique values
 CREATE TABLE events (
     event_time DateTime,
     user_id UInt64,
 
-    -- These columns have &lt; 10,000 unique values
+    -- These columns have < 10,000 unique values
     event_type LowCardinality(String),
     country LowCardinality(String),
     platform LowCardinality(String),
@@ -1205,10 +1205,10 @@ CREATE TABLE events (
 ) ENGINE = MergeTree()
 ORDER BY (event_time, user_id);
 
--- Benefits: 2-10x better compression and query speed for GROUP BY operations</code></pre>
+-- Benefits: 2-10x better compression and query speed for GROUP BY operations</div>
 
             <h3>3. Using Codecs for Better Compression</h3>
-            <pre><code class="hljs">-- Different codecs for different data types
+            <div class="code-block">-- Different codecs for different data types
 CREATE TABLE metrics (
     timestamp DateTime CODEC(DoubleDelta, ZSTD),  -- Great for timestamps
     metric_name LowCardinality(String),
@@ -1218,10 +1218,10 @@ CREATE TABLE metrics (
 ) ENGINE = MergeTree()
 ORDER BY (metric_name, timestamp);
 
--- Result: 2-5x better compression than default!</code></pre>
+-- Result: 2-5x better compression than default!</div>
 
             <h3>4. Sampling for Faster Queries</h3>
-            <pre><code class="hljs">-- Add sampling key to table
+            <div class="code-block">-- Add sampling key to table
 CREATE TABLE events (
     event_time DateTime,
     user_id UInt64,
@@ -1236,11 +1236,11 @@ SELECT
     COUNT(*) * 10 as estimated_count  -- Multiply by sampling rate
 FROM events
 SAMPLE 0.1  -- Sample 10% of data
-WHERE event_time &gt;= today() - 30
-GROUP BY event_type;</code></pre>
+WHERE event_time >= today() - 30
+GROUP BY event_type;</div>
 
             <h3>5. Distributed Queries Across Clusters</h3>
-            <pre><code class="hljs">-- Distributed table that queries all shards
+            <div class="code-block">-- Distributed table that queries all shards
 CREATE TABLE events_distributed AS events
 ENGINE = Distributed(
     'my_cluster',      -- Cluster name (defined in config)
@@ -1254,7 +1254,7 @@ INSERT INTO events_distributed VALUES (...);
 
 -- Read from distributed table (queries all shards in parallel)
 SELECT COUNT(*) FROM events_distributed;
--- ClickHouse automatically combines results from all shards!</code></pre>
+-- ClickHouse automatically combines results from all shards!</div>
 
         </div>
     </div>
@@ -1337,10 +1337,6 @@ SELECT COUNT(*) FROM events_distributed;
     <a href="../index.html" class="nav-btn-module nav-home">🏠 Home</a>
     <a href="module-2-table-engines.html" class="nav-btn-module">Next: Module 2 - Table Engines →</a>
 </div>
-
-<script>
-hljs.highlightAll();
-</script>
 
 </body>
 </html>

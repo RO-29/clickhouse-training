@@ -6,8 +6,6 @@
     <title>Module 9: Kafka-Based Real-Time Ingestion</title>
     <link rel="icon" type="image/x-icon" href="../favicon.ico">
     <link rel="icon" type="image/png" href="../favicon.png">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
@@ -431,7 +429,7 @@
             <h3>Architecture Overview</h3>
             <div class="card">
                 <p><strong>Typical Data Flow:</strong></p>
-                <pre><code class="hljs">Application/Producer → Kafka Topic ↓ Kafka Engine (Reads Topic) ↓ Materialized View (Transform) ↓ MergeTree Table (Persist) ↓ SELECT Queries (Analyze)</code></pre>
+                <div class="code-block">Application/Producer → Kafka Topic ↓ Kafka Engine (Reads Topic) ↓ Materialized View (Transform) ↓ MergeTree Table (Persist) ↓ SELECT Queries (Analyze)</div>
                 <p><strong>Key Advantage:</strong> Everything happens within ClickHouse - no external dependencies for the core ingestion pipeline.</p>
             </div>
 
@@ -472,18 +470,18 @@
                     <li>ClickHouse 20.7+</li>
                     <li>Network connectivity between ClickHouse and Kafka brokers</li>
                 </ul>
-                <pre><code class="hljs"># Verify Kafka is running
+                <div class="code-block"># Verify Kafka is running
 kafka-topics.sh --list --bootstrap-server localhost:9092
 
 # Create a test Kafka topic
 kafka-topics.sh --create --topic events \
   --bootstrap-server localhost:9092 \
   --partitions 3 \
-  --replication-factor 1</code></pre>
+  --replication-factor 1</div>
             </div>
 
             <h3>2. Create Kafka Table</h3>
-            <pre><code class="hljs">-- Create a simple Kafka table for consuming JSON messages
+            <div class="code-block">-- Create a simple Kafka table for consuming JSON messages
 CREATE TABLE kafka_events (
     event_id String,
     user_id UInt64,
@@ -502,10 +500,10 @@ SETTINGS
 SHOW CREATE TABLE kafka_events;
 
 -- Check table exists
-SELECT * FROM kafka_events LIMIT 0;</code></pre>
+SELECT * FROM kafka_events LIMIT 0;</div>
 
             <h3>3. Create Materialized View for Persistence</h3>
-            <pre><code class="hljs">-- First, create the target MergeTree table
+            <div class="code-block">-- First, create the target MergeTree table
 CREATE TABLE events_persistent (
     event_id String,
     user_id UInt64,
@@ -530,10 +528,10 @@ SELECT
 FROM kafka_events;
 
 -- Verify the materialized view
-SHOW MATERIALIZED VIEWS;</code></pre>
+SHOW MATERIALIZED VIEWS;</div>
 
             <h3>4. Test with Sample Data</h3>
-            <pre><code class="hljs"># Send test messages to Kafka
+            <div class="code-block"># Send test messages to Kafka
 echo '{"event_id":"evt-001","user_id":1001,"event_type":"click","timestamp":1642772400,"properties":"{}"}' | \
   kafka-console-producer.sh --broker-list localhost:9092 --topic events
 
@@ -544,10 +542,10 @@ echo '{"event_id":"evt-002","user_id":1002,"event_type":"purchase","timestamp":1
 SELECT * FROM events_persistent LIMIT 10;
 
 -- Check ingestion rate
-SELECT COUNT(*) as total_events FROM events_persistent;</code></pre>
+SELECT COUNT(*) as total_events FROM events_persistent;</div>
 
             <h3>5. Verify Setup</h3>
-            <pre><code class="hljs">-- Check Kafka table status
+            <div class="code-block">-- Check Kafka table status
 SELECT * FROM system.tables WHERE table = 'kafka_events';
 
 -- Monitor materialized view processing
@@ -559,7 +557,7 @@ WHERE table = 'kafka_events_consumer';
 SELECT * FROM system.query_log
 WHERE query_kind = 'Select'
 ORDER BY event_time DESC
-LIMIT 5;</code></pre>
+LIMIT 5;</div>
         </div>
     </div>
 
@@ -568,7 +566,7 @@ LIMIT 5;</code></pre>
         <div class="section-header">💻 Kafka Engine Commands & Configuration</div>
         <div class="section-content">
             <h3>Basic Kafka Table Creation</h3>
-            <pre><code class="hljs">-- Minimal Kafka table (JSON format)
+            <div class="code-block">-- Minimal Kafka table (JSON format)
 CREATE TABLE kafka_json (
     id String,
     name String,
@@ -590,34 +588,34 @@ SETTINGS
     kafka_topic_list = 'topic1,topic2,topic3',
     kafka_group_id = 'my-consumer-group',
     kafka_format = 'JSONEachRow',
-    kafka_num_consumers = 4;  -- Parallelism</code></pre>
+    kafka_num_consumers = 4;  -- Parallelism</div>
 
             <h3>Message Format Handlers</h3>
             <div class="grid-2">
                 <div class="card">
                     <h4>JSON Format</h4>
-                    <pre><code class="hljs">kafka_format = 'JSONEachRow'
--- Each Kafka message: one JSON object</code></pre>
+                    <div class="code-block">kafka_format = 'JSONEachRow'
+-- Each Kafka message: one JSON object</div>
                 </div>
                 <div class="card">
                     <h4>CSV Format</h4>
-                    <pre><code class="hljs">kafka_format = 'CSV'
-kafka_skip_broken_messages = 1</code></pre>
+                    <div class="code-block">kafka_format = 'CSV'
+kafka_skip_broken_messages = 1</div>
                 </div>
                 <div class="card">
                     <h4>Avro Format</h4>
-                    <pre><code class="hljs">kafka_format = 'Avro'
-kafka_schema = 'schema_registry_url'</code></pre>
+                    <div class="code-block">kafka_format = 'Avro'
+kafka_schema = 'schema_registry_url'</div>
                 </div>
                 <div class="card">
                     <h4>Protobuf Format</h4>
-                    <pre><code class="hljs">kafka_format = 'Protobuf'
-kafka_schema_registry_url = 'http://...'</code></pre>
+                    <div class="code-block">kafka_format = 'Protobuf'
+kafka_schema_registry_url = 'http://...'</div>
                 </div>
             </div>
 
             <h3>Consumer Group Configuration</h3>
-            <pre><code class="hljs">-- Configure consumer group and offset handling
+            <div class="code-block">-- Configure consumer group and offset handling
 CREATE TABLE kafka_advanced (
     id UInt64,
     data String
@@ -647,10 +645,10 @@ SETTINGS
     -- Security (if needed)
     kafka_sasl_mechanism = 'PLAIN',
     kafka_sasl_username = 'user',
-    kafka_sasl_password = 'password';</code></pre>
+    kafka_sasl_password = 'password';</div>
 
             <h3>Monitoring Kafka Engine</h3>
-            <pre><code class="hljs">-- Check Kafka engine status
+            <div class="code-block">-- Check Kafka engine status
 SELECT
     table,
     engine,
@@ -680,10 +678,10 @@ SELECT
     level,
     message
 FROM system.text_log
-WHERE level &gt;= 'Warning'
+WHERE level >= 'Warning'
   AND message LIKE '%Kafka%'
 ORDER BY event_time DESC
-LIMIT 50;</code></pre>
+LIMIT 50;</div>
         </div>
     </div>
 
@@ -695,21 +693,21 @@ LIMIT 50;</code></pre>
             <div class="comparison">
                 <div class="bad">
                     <div class="badge badge-bad">❌ Bad: Direct Kafka Queries</div>
-                    <pre><code class="hljs">-- DON'T query Kafka table directly
+                    <div class="code-block">-- DON'T query Kafka table directly
 SELECT * FROM kafka_events LIMIT 1000;
 
--- Problem: Messages are consumed &amp;
--- won't be replayed. Lost data!</code></pre>
+-- Problem: Messages are consumed &
+-- won't be replayed. Lost data!</div>
                 </div>
                 <div class="good">
                     <div class="badge badge-good">✅ Good: Use Materialized Views</div>
-                    <pre><code class="hljs">-- DO use materialized view
+                    <div class="code-block">-- DO use materialized view
 CREATE MATERIALIZED VIEW kafka_mv
 TO target_table AS
 SELECT * FROM kafka_events;
 
 -- Messages consumed once, persisted,
--- and replayed for all queries</code></pre>
+-- and replayed for all queries</div>
                 </div>
             </div>
 
@@ -722,12 +720,12 @@ SELECT * FROM kafka_events;
                     <li>Simplifies monitoring and debugging</li>
                     <li>Each consumer group tracks its own offset</li>
                 </ul>
-                <pre><code class="hljs">-- Good: Separate consumer groups
+                <div class="code-block">-- Good: Separate consumer groups
 CREATE TABLE kafka_events
 SETTINGS kafka_group_id = 'clickhouse-events-consumer';
 
 CREATE TABLE kafka_logs
-SETTINGS kafka_group_id = 'clickhouse-logs-consumer';</code></pre>
+SETTINGS kafka_group_id = 'clickhouse-logs-consumer';</div>
             </div>
 
             <h3>3. Backpressure & Throughput Tuning</h3>
@@ -739,7 +737,7 @@ SETTINGS kafka_group_id = 'clickhouse-logs-consumer';</code></pre>
                     <li>Tune <code>kafka_poll_timeout_ms</code> to balance latency vs throughput</li>
                     <li>Monitor ClickHouse resource usage (CPU, memory, disk I/O)</li>
                 </ul>
-                <pre><code class="hljs">-- Tuned for high throughput
+                <div class="code-block">-- Tuned for high throughput
 CREATE TABLE kafka_hpt (
     data String
 ) ENGINE = Kafka()
@@ -749,13 +747,13 @@ SETTINGS
     kafka_num_consumers = 16,  -- More parallelism
     kafka_max_block_size = 524288,  -- 512KB blocks
     kafka_poll_timeout_ms = 1000,  -- Balance latency
-    kafka_poll_max_batch_size = 1000;  -- Larger batches</code></pre>
+    kafka_poll_max_batch_size = 1000;  -- Larger batches</div>
             </div>
 
             <h3>4. Error Handling & Dead Letter Queues</h3>
             <div class="card">
                 <h4>Graceful Error Handling</h4>
-                <pre><code class="hljs">-- Create a DLQ table for failed messages
+                <div class="code-block">-- Create a DLQ table for failed messages
 CREATE TABLE kafka_dlq (
     failed_at DateTime,
     error_message String,
@@ -780,7 +778,7 @@ SELECT
     now() as processed_time,
     *
 FROM kafka_events
-WHERE 1=1;  -- Can add validation here</code></pre>
+WHERE 1=1;  -- Can add validation here</div>
             </div>
 
             <h3>5. Offset Management Strategies</h3>
@@ -792,7 +790,7 @@ WHERE 1=1;  -- Can add validation here</code></pre>
                         <li><code>largest</code>: Start from end (only new messages)</li>
                         <li><code>offset</code>: Specify exact offset</li>
                     </ul>
-                    <pre><code class="hljs">kafka_auto_offset_reset = 'smallest'</code></pre>
+                    <div class="code-block">kafka_auto_offset_reset = 'smallest'</div>
                 </div>
                 <div class="card">
                     <h4>Resuming from Offset</h4>
@@ -813,7 +811,7 @@ WHERE 1=1;  -- Can add validation here</code></pre>
                     <li><strong>Protobuf:</strong> Compact, strongly typed, version-safe</li>
                     <li><strong>CSV:</strong> Lightweight, fixed schema</li>
                 </ul>
-                <pre><code class="hljs">-- Handle nested JSON with proper types
+                <div class="code-block">-- Handle nested JSON with proper types
 CREATE TABLE kafka_nested (
     id UInt64,
     user_data String  -- Store complex object as string
@@ -825,7 +823,7 @@ CREATE TABLE kafka_json_native (
     id UInt64,
     data JSON
 ) ENGINE = Kafka()
-SETTINGS kafka_format = 'JSONEachRow';</code></pre>
+SETTINGS kafka_format = 'JSONEachRow';</div>
             </div>
 
             <h3>7. Scaling Kafka Ingestion</h3>
@@ -836,7 +834,7 @@ SETTINGS kafka_format = 'JSONEachRow';</code></pre>
                     <li><strong>Multiple Kafka partitions:</strong> Match partitions to consumer count</li>
                     <li><strong>Distributed tables:</strong> Scale across cluster with Distributed engine</li>
                 </ul>
-                <pre><code class="hljs">-- Create distributed Kafka table for cluster
+                <div class="code-block">-- Create distributed Kafka table for cluster
 CREATE TABLE kafka_dist (
     id UInt64,
     data String
@@ -852,7 +850,7 @@ CREATE TABLE events_persistent_dist AS events_persistent
 ENGINE = Distributed('my_cluster', 'default', 'events_persistent', rand());
 
 CREATE MATERIALIZED VIEW kafka_to_dist TO events_persistent_dist AS
-SELECT * FROM kafka_dist;</code></pre>
+SELECT * FROM kafka_dist;</div>
             </div>
         </div>
     </div>
@@ -1036,7 +1034,7 @@ SELECT * FROM kafka_dist;</code></pre>
         <div class="section-header">📋 Production-Ready Templates</div>
         <div class="section-content">
             <h3>Template 1: JSON Event Streaming</h3>
-            <pre><code class="hljs">-- Kafka table for JSON events
+            <div class="code-block">-- Kafka table for JSON events
 CREATE TABLE kafka_raw_events (
     event_id String,
     user_id UInt64,
@@ -1083,10 +1081,10 @@ SELECT
     properties,
     platform,
     now() as ingestion_time
-FROM kafka_raw_events;</code></pre>
+FROM kafka_raw_events;</div>
 
             <h3>Template 2: Metrics/Time-Series from Kafka</h3>
-            <pre><code class="hljs">-- Kafka table for metrics
+            <div class="code-block">-- Kafka table for metrics
 CREATE TABLE kafka_metrics (
     metric_name String,
     metric_value Float64,
@@ -1125,10 +1123,10 @@ SELECT
     JSONExtractString(tags, 'service') as service,
     JSONExtractString(tags, 'region') as region,
     tags
-FROM kafka_metrics;</code></pre>
+FROM kafka_metrics;</div>
 
             <h3>Template 3: Logs Aggregation from Kafka</h3>
-            <pre><code class="hljs">-- Kafka table for log events
+            <div class="code-block">-- Kafka table for log events
 CREATE TABLE kafka_logs (
     timestamp UInt64,
     level String,
@@ -1173,7 +1171,7 @@ SELECT
     host,
     trace_id,
     extra_fields
-FROM kafka_logs;</code></pre>
+FROM kafka_logs;</div>
         </div>
     </div>
 
@@ -1182,7 +1180,7 @@ FROM kafka_logs;</code></pre>
         <div class="section-header">🔥 Advanced Patterns</div>
         <div class="section-content">
             <h3>1. Data Enrichment with Materialized Views</h3>
-            <pre><code class="hljs">-- Raw Kafka table with minimal data
+            <div class="code-block">-- Raw Kafka table with minimal data
 CREATE TABLE kafka_raw (
     user_id UInt64,
     product_id UInt32,
@@ -1235,10 +1233,10 @@ SELECT
     u.vip_status
 FROM kafka_raw kr
 LEFT JOIN users u ON kr.user_id = u.user_id
-LEFT JOIN products p ON kr.product_id = p.product_id;</code></pre>
+LEFT JOIN products p ON kr.product_id = p.product_id;</div>
 
             <h3>2. Real-Time Aggregation with SummingMergeTree</h3>
-            <pre><code class="hljs">-- Kafka raw events
+            <div class="code-block">-- Kafka raw events
 CREATE TABLE kafka_events_raw (
     timestamp UInt64,
     event_type String,
@@ -1271,10 +1269,10 @@ SELECT
     COUNT(*) as event_count,
     SUM(revenue) as revenue
 FROM kafka_events_raw
-GROUP BY hour, event_type;</code></pre>
+GROUP BY hour, event_type;</div>
 
             <h3>3. Deduplication with ReplacingMergeTree</h3>
-            <pre><code class="hljs">-- Kafka events (may contain duplicates)
+            <div class="code-block">-- Kafka events (may contain duplicates)
 CREATE TABLE kafka_orders (
     order_id String,
     user_id UInt64,
@@ -1310,10 +1308,10 @@ SELECT
     status,
     fromUnixTimestamp(timestamp) as timestamp,
     version
-FROM kafka_orders;</code></pre>
+FROM kafka_orders;</div>
 
             <h3>4. Distributed Kafka Ingestion Across Cluster</h3>
-            <pre><code class="hljs">-- On each ClickHouse node: local Kafka table
+            <div class="code-block">-- On each ClickHouse node: local Kafka table
 CREATE TABLE kafka_local (
     id UInt64,
     data String
@@ -1342,7 +1340,7 @@ CREATE TABLE events_distributed AS events_local
 ENGINE = Distributed('my_cluster', 'default', 'events_local', rand());
 
 -- Query combines data from all nodes
-SELECT COUNT(*) as total_events FROM events_distributed;</code></pre>
+SELECT COUNT(*) as total_events FROM events_distributed;</div>
         </div>
     </div>
 
@@ -1424,8 +1422,5 @@ SELECT COUNT(*) as total_events FROM events_distributed;</code></pre>
     <a href="module-10-migration.html" class="nav-btn-module">Next: Module 10 - Migration →</a>
 </div>
 
-<script>
-hljs.highlightAll();
-</script>
 </body>
 </html>

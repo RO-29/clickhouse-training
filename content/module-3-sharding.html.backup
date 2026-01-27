@@ -6,8 +6,6 @@
     <title>Module 3: Sharding Strategy & Distribution</title>
     <link rel="icon" type="image/x-icon" href="../favicon.ico">
     <link rel="icon" type="image/png" href="../favicon.png">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
@@ -527,7 +525,7 @@
             </div>
 
             <h3>Cluster Architecture</h3>
-            <pre><code class="hljs">Single Node:
+            <div class="code-block">Single Node:
   Node-1: Table with ALL data
 
 Sharded (3 shards):
@@ -544,7 +542,7 @@ Sharded + Replicated (3 shards × 2 replicas):
     Node-4: Replica-B
   Shard-3:
     Node-5: Replica-A
-    Node-6: Replica-B</code></pre>
+    Node-6: Replica-B</div>
 
         </div>
     </div>
@@ -556,7 +554,7 @@ Sharded + Replicated (3 shards × 2 replicas):
             <h3>1. Setup a 2-Node ClickHouse Cluster</h3>
             <div class="card">
                 <h4>Using Docker (Simplest for Testing)</h4>
-                <pre><code class="hljs">docker-compose up -d
+                <div class="code-block">docker-compose up -d
 
 # After running docker-compose.yml with:
 # - clickhouse-node1 on port 9000
@@ -566,11 +564,11 @@ Sharded + Replicated (3 shards × 2 replicas):
 docker exec -it clickhouse-node1 clickhouse-client
 
 # Connect to node 2 in another terminal
-docker exec -it clickhouse-node2 clickhouse-client</code></pre>
+docker exec -it clickhouse-node2 clickhouse-client</div>
             </div>
 
             <h3>2. Create Local Tables on Each Node</h3>
-            <pre><code class="hljs">-- Run on BOTH nodes (connect to each separately)
+            <div class="code-block">-- Run on BOTH nodes (connect to each separately)
 
 CREATE DATABASE sharding_demo;
 
@@ -582,10 +580,10 @@ CREATE TABLE sharding_demo.events_local (
     value Float64
 ) ENGINE = MergeTree()
 PARTITION BY toYYYYMM(event_date)
-ORDER BY (event_date, user_id);</code></pre>
+ORDER BY (event_date, user_id);</div>
 
             <h3>3. Create Distributed Table (Query All Shards)</h3>
-            <pre><code class="hljs">-- Run on ANY node (or all for convenience)
+            <div class="code-block">-- Run on ANY node (or all for convenience)
 
 CREATE TABLE sharding_demo.events_distributed (
     event_date Date,
@@ -598,10 +596,10 @@ CREATE TABLE sharding_demo.events_distributed (
     'sharding_demo',                 -- Database name
     'events_local',                  -- Local table name
     rand()                           -- Sharding key (random)
-);</code></pre>
+);</div>
 
             <h3>4. Insert Data</h3>
-            <pre><code class="hljs">-- Insert to distributed table (auto-distributed to shards)
+            <div class="code-block">-- Insert to distributed table (auto-distributed to shards)
 INSERT INTO sharding_demo.events_distributed VALUES
     ('2026-01-22', '2026-01-22 10:00:00', 1001, 'click', 1.5),
     ('2026-01-22', '2026-01-22 10:01:00', 1002, 'purchase', 99.99),
@@ -609,17 +607,17 @@ INSERT INTO sharding_demo.events_distributed VALUES
 
 -- Verify data distributed
 SELECT COUNT(*) FROM sharding_demo.events_local;   -- Each node shows its partition
-SELECT COUNT(*) FROM sharding_demo.events_distributed;  -- Total across all nodes</code></pre>
+SELECT COUNT(*) FROM sharding_demo.events_distributed;  -- Total across all nodes</div>
 
             <h3>5. Query Across Shards</h3>
-            <pre><code class="hljs">-- Queries automatically parallelize across shards
+            <div class="code-block">-- Queries automatically parallelize across shards
 SELECT
     event_type,
     COUNT(*) as count,
     SUM(value) as total_value
 FROM sharding_demo.events_distributed
 GROUP BY event_type
-ORDER BY count DESC;</code></pre>
+ORDER BY count DESC;</div>
 
         </div>
     </div>
@@ -629,17 +627,17 @@ ORDER BY count DESC;</code></pre>
         <div class="section-content">
 
             <h3>Cluster Configuration</h3>
-            <pre><code class="hljs">-- Check cluster nodes
+            <div class="code-block">-- Check cluster nodes
 SELECT * FROM system.clusters;
 
 -- Get cluster info
 SELECT cluster, shard_num, replica_num, host_name, port, user
 FROM system.clusters
 WHERE cluster = 'my_cluster'
-ORDER BY shard_num, replica_num;</code></pre>
+ORDER BY shard_num, replica_num;</div>
 
             <h3>Create Local Tables</h3>
-            <pre><code class="hljs">-- Standard MergeTree table on each shard
+            <div class="code-block">-- Standard MergeTree table on each shard
 CREATE TABLE events_local (
     event_date Date,
     event_time DateTime,
@@ -665,8 +663,8 @@ CREATE TABLE events_local_replicated (
 PARTITION BY toYYYYMM(event_date)
 ORDER BY (event_date, user_id);
 
-            &lt;h3&gt;Create Distributed Tables&lt;/h3&gt;
-            &lt;div class="code-block"&gt;-- Distributed table (query all shards)
+            <h3>Create Distributed Tables</h3>
+            <div class="code-block">-- Distributed table (query all shards)
 CREATE TABLE events_distributed (
     event_date Date,
     event_time DateTime,
@@ -684,10 +682,10 @@ CREATE TABLE events_distributed (
 INSERT INTO events_distributed VALUES (...);
 
 -- Query distributed (automatically fans out to all shards)
-SELECT COUNT(*) FROM events_distributed;</code></pre>
+SELECT COUNT(*) FROM events_distributed;</div>
 
             <h3>Data Distribution & Rebalancing</h3>
-            <pre><code class="hljs">-- Check data on each shard
+            <div class="code-block">-- Check data on each shard
 SELECT hostname, COUNT(*) as row_count
 FROM clusterAllReplicas('my_cluster', default.events_local)
 GROUP BY hostname;
@@ -695,7 +693,7 @@ GROUP BY hostname;
 -- Get shard info
 SELECT shard_num, replica_num, host_name, port
 FROM system.clusters
-WHERE cluster = 'my_cluster';</code></pre>
+WHERE cluster = 'my_cluster';</div>
 
         </div>
     </div>
@@ -710,25 +708,25 @@ WHERE cluster = 'my_cluster';</code></pre>
             <div class="comparison">
                 <div class="bad">
                     <div class="badge badge-bad">❌ Bad</div>
-                    <pre><code class="hljs">-- High-cardinality key (millions of unique values)
+                    <div class="code-block">-- High-cardinality key (millions of unique values)
 ENGINE = Distributed(
     'my_cluster',
     'db',
     'events_local',
     user_id  -- ClickHouse uses modulo
 )
--- Problem: Slow hash function, uneven distribution</code></pre>
+-- Problem: Slow hash function, uneven distribution</div>
                 </div>
                 <div class="good">
                     <div class="badge badge-good">✅ Good</div>
-                    <pre><code class="hljs">-- Consistent hash key
+                    <div class="code-block">-- Consistent hash key
 ENGINE = Distributed(
     'my_cluster',
     'db',
     'events_local',
     cityHash64(user_id)  -- Fast hashing
 )
--- Benefit: Even distribution, better parallelization</code></pre>
+-- Benefit: Even distribution, better parallelization</div>
                 </div>
             </div>
 
@@ -802,7 +800,7 @@ ENGINE = Distributed(
             </div>
 
             <h3>5. Handling Uneven Distribution</h3>
-            <pre><code class="hljs">-- Monitor data distribution across shards
+            <div class="code-block">-- Monitor data distribution across shards
 SELECT
     database,
     table,
@@ -815,7 +813,7 @@ WHERE database = 'analytics' AND table LIKE 'events%'
 GROUP BY database, table, shard_num, replica_num
 ORDER BY database, table, shard_num;
 
-        </code></pre>
+        </div>
     
     </div>
 </div>
@@ -919,31 +917,31 @@ ORDER BY database, table, shard_num;
         <div class="section-content">
 
             <h3>Template 1: Basic 3-Node Cluster Setup</h3>
-            <pre><code class="hljs">-- config.xml on coordinator node (defines cluster)
-&lt;clickhouse&gt;
-  &lt;remote_servers&gt;
-    &lt;my_cluster&gt;
-      &lt;shard&gt;
-        &lt;replica&gt;
-          &lt;host&gt;node1&lt;/host&gt;
-          &lt;port&gt;9000&lt;/port&gt;
-        &lt;/replica&gt;
-      &lt;/shard&gt;
-      &lt;shard&gt;
-        &lt;replica&gt;
-          &lt;host&gt;node2&lt;/host&gt;
-          &lt;port&gt;9000&lt;/port&gt;
-        &lt;/replica&gt;
-      &lt;/shard&gt;
-      &lt;shard&gt;
-        &lt;replica&gt;
-          &lt;host&gt;node3&lt;/host&gt;
-          &lt;port&gt;9000&lt;/port&gt;
-        &lt;/replica&gt;
-      &lt;/shard&gt;
-    &lt;/my_cluster&gt;
-  &lt;/remote_servers&gt;
-&lt;/clickhouse&gt;
+            <div class="code-block">-- config.xml on coordinator node (defines cluster)
+<clickhouse>
+  <remote_servers>
+    <my_cluster>
+      <shard>
+        <replica>
+          <host>node1</host>
+          <port>9000</port>
+        </replica>
+      </shard>
+      <shard>
+        <replica>
+          <host>node2</host>
+          <port>9000</port>
+        </replica>
+      </shard>
+      <shard>
+        <replica>
+          <host>node3</host>
+          <port>9000</port>
+        </replica>
+      </shard>
+    </my_cluster>
+  </remote_servers>
+</clickhouse>
 
 -- Create local tables on all nodes
 CREATE TABLE events_local (
@@ -965,8 +963,8 @@ CREATE TABLE events (
     properties String
 ) ENGINE = Distributed('my_cluster', default, events_local, cityHash64(user_id));
 
-            &lt;h3&gt;Template 2: Replicated + Sharded for High Availability&lt;/h3&gt;
-            &lt;div class="code-block"&gt;-- Cluster with replication (2 shards × 2 replicas)
+            <h3>Template 2: Replicated + Sharded for High Availability</h3>
+            <div class="code-block">-- Cluster with replication (2 shards × 2 replicas)
 CREATE TABLE events_local (
     event_date Date,
     event_time DateTime,
@@ -996,8 +994,8 @@ CREATE TABLE events (
 
 -- Result: High availability + horizontal scaling
 
-            &lt;h3&gt;Template 3: Monitoring Data Distribution&lt;/h3&gt;
-            &lt;div class="code-block"&gt;-- Monitor uneven shards
+            <h3>Template 3: Monitoring Data Distribution</h3>
+            <div class="code-block">-- Monitor uneven shards
 CREATE TABLE shard_statistics AS
 SELECT
     database,
@@ -1014,13 +1012,13 @@ ORDER BY database, table, shard_num;
 -- Query for distribution analysis
 SELECT
     table,
-    arrayMap(x -&gt; x.1, groupArray((shard_num, shard_size))) as distribution,
+    arrayMap(x -> x.1, groupArray((shard_num, shard_size))) as distribution,
     SUM(millions_rows) as total_rows_millions
 FROM shard_statistics
 GROUP BY table;
 
        
-    </code></pre>
+    </div>
 
     </div>
 
@@ -1033,30 +1031,30 @@ GROUP BY table;
         <div class="section-content">
 
             <h3>1. Asymmetric Sharding (Variable Shard Sizes)</h3>
-            <pre><code class="hljs">-- Some shards larger than others (e.g., US data is 50% of total)
+            <div class="code-block">-- Some shards larger than others (e.g., US data is 50% of total)
 -- Define multiple cluster configurations
-&lt;remote_servers&gt;
-  &lt;asymmetric_cluster&gt;
-    &lt;!-- US shard (2 replicas, more powerful hardware) --&gt;
-    &lt;shard&gt;
-      &lt;replica&gt;
-        &lt;host&gt;us-node-1&lt;/host&gt;
-        &lt;port&gt;9000&lt;/port&gt;
-      &lt;/replica&gt;
-      &lt;replica&gt;
-        &lt;host&gt;us-node-2&lt;/host&gt;
-        &lt;port&gt;9000&lt;/port&gt;
-      &lt;/replica&gt;
-    &lt;/shard&gt;
-    &lt;!-- EU shard (1 replica, smaller hardware) --&gt;
-    &lt;shard&gt;
-      &lt;replica&gt;
-        &lt;host&gt;eu-node-1&lt;/host&gt;
-        &lt;port&gt;9000&lt;/port&gt;
-      &lt;/replica&gt;
-    &lt;/shard&gt;
-  &lt;/asymmetric_cluster&gt;
-&lt;/remote_servers&gt;
+<remote_servers>
+  <asymmetric_cluster>
+    <!-- US shard (2 replicas, more powerful hardware) -->
+    <shard>
+      <replica>
+        <host>us-node-1</host>
+        <port>9000</port>
+      </replica>
+      <replica>
+        <host>us-node-2</host>
+        <port>9000</port>
+      </replica>
+    </shard>
+    <!-- EU shard (1 replica, smaller hardware) -->
+    <shard>
+      <replica>
+        <host>eu-node-1</host>
+        <port>9000</port>
+      </replica>
+    </shard>
+  </asymmetric_cluster>
+</remote_servers>
 
 -- Use consistent hashing to prefer US shard
 CREATE TABLE events ENGINE = Distributed(
@@ -1066,8 +1064,8 @@ CREATE TABLE events ENGINE = Distributed(
   if(country = 'US', intHash32(user_id) % 1, intHash32(user_id) % 2 + 1)
 );
 
-            &lt;h3&gt;2. Geo-Distributed Sharding&lt;/h3&gt;
-            &lt;div class="code-block"&gt;-- Route data to regional shards based on geography
+            <h3>2. Geo-Distributed Sharding</h3>
+            <div class="code-block">-- Route data to regional shards based on geography
 -- Shard 1: US/Canada/Latin America
 -- Shard 2: Europe/Africa/Middle East
 -- Shard 3: Asia-Pacific
@@ -1086,8 +1084,8 @@ CREATE TABLE events ENGINE = Distributed(
 
 -- Benefits: Data locality, lower latency, compliance (GDPR)
 
-            &lt;h3&gt;3. Two-Level Sharding (Sharded + Replicated)&lt;/h3&gt;
-            &lt;div class="code-block"&gt;-- Maximum reliability: partition data AND replicate
+            <h3>3. Two-Level Sharding (Sharded + Replicated)</h3>
+            <div class="code-block">-- Maximum reliability: partition data AND replicate
 -- 4 shards × 3 replicas = 12 nodes total
 -- Can lose 2 replicas per shard (67% node failure)
 
@@ -1107,8 +1105,8 @@ ORDER BY (event_date, user_id);
 -- Distributed query automatically handles all replicas
 SELECT COUNT(*) FROM events_distributed;  -- Queries all 12 nodes
 
-            &lt;h3&gt;4. Handling Slow Shards (Adaptive Query Timeout)&lt;/h3&gt;
-            &lt;div class="code-block"&gt;-- Set timeout for slow shards
+            <h3>4. Handling Slow Shards (Adaptive Query Timeout)</h3>
+            <div class="code-block">-- Set timeout for slow shards
 SET connect_timeout = 5;
 SET receive_timeout = 30;
 SET send_timeout = 30;
@@ -1130,9 +1128,9 @@ SELECT
     query_duration_ms,
     read_rows
 FROM clusterAllReplicas('my_cluster', system.query_log)
-WHERE type = 'QueryFinish' AND query_duration_ms &gt; 5000
+WHERE type = 'QueryFinish' AND query_duration_ms > 5000
 ORDER
-    </code></pre>
+    </div>
 
     </div>
 
@@ -1232,8 +1230,5 @@ ORDER
     <a href="module-4-replication.html" class="nav-btn-module">Next: Module 4 - Replication →</a>
 </div>
 
-<script>
-hljs.highlightAll();
-</script>
 </body>
 </html>
