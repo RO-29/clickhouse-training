@@ -1,14 +1,15 @@
 <!DOCTYPE html>
+
 <html lang="en" style="scroll-behavior: smooth;">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Module 6: Query Optimization & Performance</title>
-    <link rel="icon" type="image/x-icon" href="../favicon.ico">
-    <link rel="icon" type="image/png" href="../favicon.png">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
-    <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Module 6: Query Optimization &amp; Performance</title>
+<link href="../favicon.ico" rel="icon" type="image/x-icon"/>
+<link href="../favicon.png" rel="icon" type="image/png"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
             margin: 0;
@@ -208,169 +209,238 @@
                 min-width: 100%;
             }
         }
-    </style>
+    
+        .code-wrapper {
+            position: relative;
+            margin: 15px 0;
+        }
+        .code-wrapper pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px 20px 50px 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+        }
+        .code-wrapper .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255,255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+        .code-wrapper .copy-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        .code-wrapper .copy-btn.copied {
+            background: rgba(39, 174, 96, 0.8);
+            border-color: #27ae60;
+        }
+        .code-wrapper .code-content {
+            transition: max-height 0.3s ease-out;
+            overflow: hidden;
+        }
+        .code-wrapper .code-content.expanded {
+            max-height: none !important;
+        }
+        .code-wrapper .code-content.collapsed {
+            max-height: 120px;
+        }
+        .code-wrapper .toggle-btn {
+            display: none;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: -40px;
+            margin-bottom: 20px;
+            transition: transform 0.2s;
+        }
+        .code-wrapper .toggle-btn:hover {
+            transform: translateY(-2px);
+        }
+        .code-wrapper .toggle-btn.visible {
+            display: inline-block;
+        }
+        .code-wrapper .fade-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(transparent, #1e1e1e);
+            pointer-events: none;
+            display: none;
+        }
+        .code-wrapper .code-content.collapsed .fade-overlay {
+            display: block;
+        }
+</style>
 </head>
 <body>
-
 <div class="module-nav">
-    <a href="module-5-cluster-deployment.html" class="nav-btn-module">← Previous: Module 5 - Cluster Deployment</a>
-    <a href="../index.html" class="nav-btn-module nav-home">🏠 Home</a>
-    <a href="module-7-backup-recovery.html" class="nav-btn-module">Next: Module 7 - Backup & Recovery →</a>
+<a class="nav-btn-module" href="module-5-cluster-deployment.html">← Previous: Module 5 - Cluster Deployment</a>
+<a class="nav-btn-module nav-home" href="../index.html">🏠 Home</a>
+<a class="nav-btn-module" href="module-7-backup-recovery.html">Next: Module 7 - Backup &amp; Recovery →</a>
 </div>
-
 <div class="header">
-    <h1>⚡ MODULE 6</h1>
-    <div class="subtitle">Query Optimization & Performance</div>
-    <div class="subtitle" style="font-size: 1em; margin-top: 20px;">Duration: 4-6 hours | Week 4</div>
+<h1>⚡ MODULE 6</h1>
+<div class="subtitle">Query Optimization &amp; Performance</div>
+<div class="subtitle" style="font-size: 1em; margin-top: 20px;">Duration: 4-6 hours | Week 4</div>
 </div>
-
 <div style="background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);">
-    <div class="nav-buttons">
-        <div class="nav-btn">📖 What is it?</div>
-        <div class="nav-btn">🚀 Quick Start</div>
-        <div class="nav-btn">💻 Commands</div>
-        <div class="nav-btn">✨ Best Practices</div>
-        <div class="nav-btn">🎯 When to Use</div>
-        <div class="nav-btn">🏆 Real-World Results</div>
-        <div class="nav-btn">📋 Templates</div>
-        <div class="nav-btn">🔥 Advanced</div>
-        <div class="nav-btn">📚 Resources</div>
-    </div>
+<div class="nav-buttons">
+<div class="nav-btn">📖 What is it?</div>
+<div class="nav-btn">🚀 Quick Start</div>
+<div class="nav-btn">💻 Commands</div>
+<div class="nav-btn">✨ Best Practices</div>
+<div class="nav-btn">🎯 When to Use</div>
+<div class="nav-btn">🏆 Real-World Results</div>
+<div class="nav-btn">📋 Templates</div>
+<div class="nav-btn">🔥 Advanced</div>
+<div class="nav-btn">📚 Resources</div>
 </div>
-
+</div>
 <div class="container">
-
-    <!-- What is it Section -->
-    <div class="section" id="what-is">
-        <div class="section-header">📖 What is Query Optimization & Performance?</div>
-        <div class="section-content">
-            <div class="highlight-box">
-                <h4 style="margin-top: 0;">Query Optimization in a Nutshell</h4>
-                <p><strong>Query optimization is the art and science of making ClickHouse queries run faster, use less memory, and consume fewer CPU cycles.</strong> In ClickHouse, a well-optimized query can be 100-1000x faster than a poorly written one. Optimization involves understanding the query execution pipeline, leveraging indexes effectively, and writing queries that align with ClickHouse's architecture.</p>
-            </div>
-
-            <div class="icon-grid">
-                <div class="icon-card">
-                    <div class="icon">📊</div>
-                    <h4>Query Analysis</h4>
-                    <p>Use EXPLAIN to understand how ClickHouse executes your queries and identify bottlenecks.</p>
-                </div>
-                <div class="icon-card">
-                    <div class="icon">🗂️</div>
-                    <h4>Index Strategy</h4>
-                    <p>Leverage primary keys, skipping indexes, and bloom filters to drastically reduce data scanned.</p>
-                </div>
-                <div class="icon-card">
-                    <div class="icon">⚙️</div>
-                    <h4>Execution Pipeline</h4>
-                    <p>Understand how ClickHouse processes queries: parsing, optimization, compilation, execution.</p>
-                </div>
-                <div class="icon-card">
-                    <div class="icon">💾</div>
-                    <h4>Resource Management</h4>
-                    <p>Optimize memory usage, CPU utilization, and I/O operations for maximum performance.</p>
-                </div>
-            </div>
-
-            <h3>Architecture Diagrams</h3>
-            <div style="background: white; border: 3px solid #ff6b35; padding: 30px; margin: 30px 0;">
-                <h4 style="color: #ff6b35; margin-top: 0;">1. Query Execution Pipeline (Parse → Optimize → Execute → Merge)</h4>
-                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 15px; margin: 30px 0; text-align: center;">
-                    <div style="background: #e3f2fd; padding: 20px; border-radius: 8px; border: 2px solid #2196F3;">
-                        <div style="font-size: 1.5em; color: #1976D2;">1️⃣</div>
-                        <strong style="color: #333; font-size: 0.9em;">LEXER</strong>
-                        <p style="font-size: 0.75em; color: #555; margin-top: 5px;">Tokenize SQL</p>
-                    </div>
-                    <div style="font-size: 1.5em; color: #ff6b35; display: flex; align-items: center; justify-content: center;">→</div>
-                    <div style="background: #fff3e0; padding: 20px; border-radius: 8px; border: 2px solid #FF9800;">
-                        <div style="font-size: 1.5em; color: #F57C00;">2️⃣</div>
-                        <strong style="color: #333; font-size: 0.9em;">PARSER</strong>
-                        <p style="font-size: 0.75em; color: #555; margin-top: 5px;">Build AST</p>
-                    </div>
-                    <div style="font-size: 1.5em; color: #ff6b35; display: flex; align-items: center; justify-content: center;">→</div>
-                    <div style="background: #e8f5e9; padding: 20px; border-radius: 8px; border: 2px solid #4CAF50;">
-                        <div style="font-size: 1.5em; color: #2e7d32;">3️⃣</div>
-                        <strong style="color: #333; font-size: 0.9em;">SEMANTIC</strong>
-                        <p style="font-size: 0.75em; color: #555; margin-top: 5px;">Validate</p>
-                    </div>
-                    <div style="font-size: 1.5em; color: #ff6b35; display: flex; align-items: center; justify-content: center;">→</div>
-                    <div style="background: #f3e5f5; padding: 20px; border-radius: 8px; border: 2px solid #9C27B0;">
-                        <div style="font-size: 1.5em; color: #6A1B9A;">4️⃣</div>
-                        <strong style="color: #333; font-size: 0.9em;">OPTIMIZE</strong>
-                        <p style="font-size: 0.75em; color: #555; margin-top: 5px;">Rewrite</p>
-                    </div>
-                </div>
-                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin: 20px 0; text-align: center;">
-                    <div style="background: #fce4ec; padding: 20px; border-radius: 8px; border: 2px solid #E91E63;">
-                        <div style="font-size: 1.5em; color: #C2185B;">5️⃣</div>
-                        <strong style="color: #333; font-size: 0.9em;">COMPILATION</strong>
-                        <p style="font-size: 0.75em; color: #555; margin-top: 5px;">Generate code</p>
-                    </div>
-                    <div style="font-size: 1.5em; color: #ff6b35; display: flex; align-items: center; justify-content: center;">→</div>
-                    <div style="background: #e0f2f1; padding: 20px; border-radius: 8px; border: 2px solid #009688;">
-                        <div style="font-size: 1.5em; color: #00695C;">6️⃣</div>
-                        <strong style="color: #333; font-size: 0.9em;">EXECUTION</strong>
-                        <p style="font-size: 0.75em; color: #555; margin-top: 5px;">Run query</p>
-                    </div>
-                    <div style="font-size: 1.5em; color: #ff6b35; display: flex; align-items: center; justify-content: center;">→</div>
-                    <div style="background: #fff9c4; padding: 20px; border-radius: 8px; border: 2px solid #FBC02D;">
-                        <div style="font-size: 1.5em; color: #F57F17;">✓</div>
-                        <strong style="color: #333; font-size: 0.9em;">RESULT</strong>
-                        <p style="font-size: 0.75em; color: #555; margin-top: 5px;">Return data</p>
-                    </div>
-                </div>
-            </div>
-
-            <h3>Key Optimization Areas</h3>
-            <div class="grid-2">
-                <div class="card">
-                    <h4>Primary Key Optimization</h4>
-                    <p>The primary key determines sort order and enables range queries. Use low-cardinality columns first to maximize effectiveness.</p>
-                    <ul>
-                        <li>Reduces data to scan</li>
-                        <li>Enables binary search</li>
-                        <li>Improves cache locality</li>
-                    </ul>
-                </div>
-                <div class="card">
-                    <h4>Index Utilization</h4>
-                    <p>ClickHouse has multiple index types: primary key, skipping indexes, bloom filters.</p>
-                    <ul>
-                        <li>Skipping indexes skip blocks</li>
-                        <li>Bloom filters check membership</li>
-                        <li>Reduce I/O significantly</li>
-                    </ul>
-                </div>
-            </div>
-            <div class="grid-2">
-                <div class="card">
-                    <h4>Memory Optimization</h4>
-                    <p>Control memory usage with settings and query tuning.</p>
-                    <ul>
-                        <li>max_memory_usage limits RAM</li>
-                        <li>Aggregation state compression</li>
-                        <li>Streaming aggregation</li>
-                    </ul>
-                </div>
-                <div class="card">
-                    <h4>JOIN Optimization</h4>
-                    <p>Joins are expensive; minimize or eliminate them.</p>
-                    <ul>
-                        <li>Denormalize data when possible</li>
-                        <li>Use dictionary tables</li>
-                        <li>Filter before joining</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Quick Start Section -->
-    <div class="section" id="quick-start">
-        <div class="section-header">🚀 Quick Start: Basic Query Optimization</div>
-        <div class="section-content">
-            <h3>1. Understand Your Query Performance</h3>
-            <pre><code class="hljs">-- Get query execution time
+<!-- What is it Section -->
+<div class="section" id="what-is">
+<div class="section-header">📖 What is Query Optimization &amp; Performance?</div>
+<div class="section-content">
+<div class="highlight-box">
+<h4 style="margin-top: 0;">Query Optimization in a Nutshell</h4>
+<p><strong>Query optimization is the art and science of making ClickHouse queries run faster, use less memory, and consume fewer CPU cycles.</strong> In ClickHouse, a well-optimized query can be 100-1000x faster than a poorly written one. Optimization involves understanding the query execution pipeline, leveraging indexes effectively, and writing queries that align with ClickHouse's architecture.</p>
+</div>
+<div class="icon-grid">
+<div class="icon-card">
+<div class="icon">📊</div>
+<h4>Query Analysis</h4>
+<p>Use EXPLAIN to understand how ClickHouse executes your queries and identify bottlenecks.</p>
+</div>
+<div class="icon-card">
+<div class="icon">🗂️</div>
+<h4>Index Strategy</h4>
+<p>Leverage primary keys, skipping indexes, and bloom filters to drastically reduce data scanned.</p>
+</div>
+<div class="icon-card">
+<div class="icon">⚙️</div>
+<h4>Execution Pipeline</h4>
+<p>Understand how ClickHouse processes queries: parsing, optimization, compilation, execution.</p>
+</div>
+<div class="icon-card">
+<div class="icon">💾</div>
+<h4>Resource Management</h4>
+<p>Optimize memory usage, CPU utilization, and I/O operations for maximum performance.</p>
+</div>
+</div>
+<h3>Architecture Diagrams</h3>
+<div style="background: white; border: 3px solid #ff6b35; padding: 30px; margin: 30px 0;">
+<h4 style="color: #ff6b35; margin-top: 0;">1. Query Execution Pipeline (Parse → Optimize → Execute → Merge)</h4>
+<div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 15px; margin: 30px 0; text-align: center;">
+<div style="background: #e3f2fd; padding: 20px; border-radius: 8px; border: 2px solid #2196F3;">
+<div style="font-size: 1.5em; color: #1976D2;">1️⃣</div>
+<strong style="color: #333; font-size: 0.9em;">LEXER</strong>
+<p style="font-size: 0.75em; color: #555; margin-top: 5px;">Tokenize SQL</p>
+</div>
+<div style="font-size: 1.5em; color: #ff6b35; display: flex; align-items: center; justify-content: center;">→</div>
+<div style="background: #fff3e0; padding: 20px; border-radius: 8px; border: 2px solid #FF9800;">
+<div style="font-size: 1.5em; color: #F57C00;">2️⃣</div>
+<strong style="color: #333; font-size: 0.9em;">PARSER</strong>
+<p style="font-size: 0.75em; color: #555; margin-top: 5px;">Build AST</p>
+</div>
+<div style="font-size: 1.5em; color: #ff6b35; display: flex; align-items: center; justify-content: center;">→</div>
+<div style="background: #e8f5e9; padding: 20px; border-radius: 8px; border: 2px solid #4CAF50;">
+<div style="font-size: 1.5em; color: #2e7d32;">3️⃣</div>
+<strong style="color: #333; font-size: 0.9em;">SEMANTIC</strong>
+<p style="font-size: 0.75em; color: #555; margin-top: 5px;">Validate</p>
+</div>
+<div style="font-size: 1.5em; color: #ff6b35; display: flex; align-items: center; justify-content: center;">→</div>
+<div style="background: #f3e5f5; padding: 20px; border-radius: 8px; border: 2px solid #9C27B0;">
+<div style="font-size: 1.5em; color: #6A1B9A;">4️⃣</div>
+<strong style="color: #333; font-size: 0.9em;">OPTIMIZE</strong>
+<p style="font-size: 0.75em; color: #555; margin-top: 5px;">Rewrite</p>
+</div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin: 20px 0; text-align: center;">
+<div style="background: #fce4ec; padding: 20px; border-radius: 8px; border: 2px solid #E91E63;">
+<div style="font-size: 1.5em; color: #C2185B;">5️⃣</div>
+<strong style="color: #333; font-size: 0.9em;">COMPILATION</strong>
+<p style="font-size: 0.75em; color: #555; margin-top: 5px;">Generate code</p>
+</div>
+<div style="font-size: 1.5em; color: #ff6b35; display: flex; align-items: center; justify-content: center;">→</div>
+<div style="background: #e0f2f1; padding: 20px; border-radius: 8px; border: 2px solid #009688;">
+<div style="font-size: 1.5em; color: #00695C;">6️⃣</div>
+<strong style="color: #333; font-size: 0.9em;">EXECUTION</strong>
+<p style="font-size: 0.75em; color: #555; margin-top: 5px;">Run query</p>
+</div>
+<div style="font-size: 1.5em; color: #ff6b35; display: flex; align-items: center; justify-content: center;">→</div>
+<div style="background: #fff9c4; padding: 20px; border-radius: 8px; border: 2px solid #FBC02D;">
+<div style="font-size: 1.5em; color: #F57F17;">✓</div>
+<strong style="color: #333; font-size: 0.9em;">RESULT</strong>
+<p style="font-size: 0.75em; color: #555; margin-top: 5px;">Return data</p>
+</div>
+</div>
+</div>
+<h3>Key Optimization Areas</h3>
+<div class="grid-2">
+<div class="card">
+<h4>Primary Key Optimization</h4>
+<p>The primary key determines sort order and enables range queries. Use low-cardinality columns first to maximize effectiveness.</p>
+<ul>
+<li>Reduces data to scan</li>
+<li>Enables binary search</li>
+<li>Improves cache locality</li>
+</ul>
+</div>
+<div class="card">
+<h4>Index Utilization</h4>
+<p>ClickHouse has multiple index types: primary key, skipping indexes, bloom filters.</p>
+<ul>
+<li>Skipping indexes skip blocks</li>
+<li>Bloom filters check membership</li>
+<li>Reduce I/O significantly</li>
+</ul>
+</div>
+</div>
+<div class="grid-2">
+<div class="card">
+<h4>Memory Optimization</h4>
+<p>Control memory usage with settings and query tuning.</p>
+<ul>
+<li>max_memory_usage limits RAM</li>
+<li>Aggregation state compression</li>
+<li>Streaming aggregation</li>
+</ul>
+</div>
+<div class="card">
+<h4>JOIN Optimization</h4>
+<p>Joins are expensive; minimize or eliminate them.</p>
+<ul>
+<li>Denormalize data when possible</li>
+<li>Use dictionary tables</li>
+<li>Filter before joining</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Start Section -->
+<div class="section" id="quick-start">
+<div class="section-header">🚀 Quick Start: Basic Query Optimization</div>
+<div class="section-content">
+<h3>1. Understand Your Query Performance</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Get query execution time
 SELECT /* ... query ... */ FORMAT JSON SETTINGS max_execution_time = 30;
 
 -- Use EXPLAIN to see query plan
@@ -390,10 +460,9 @@ SELECT
 FROM system.query_log
 WHERE query_kind = 'Select'
 ORDER BY query_duration_ms DESC
-LIMIT 10;</code></pre>
-
-            <h3>2. Add an Index to Speed Up Queries</h3>
-            <pre><code class="hljs">-- Create table without optimization
+LIMIT 10;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>2. Add an Index to Speed Up Queries</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Create table without optimization
 CREATE TABLE events (
     event_date Date,
     event_time DateTime,
@@ -413,10 +482,9 @@ ALTER TABLE events ADD INDEX idx_country country TYPE set(2) GRANULARITY 4;
 OPTIMIZE TABLE events FINAL;
 
 -- Query 2: With index (10-100x faster!)
-SELECT COUNT(*) FROM events WHERE event_type = 'purchase' AND country = 'US';</code></pre>
-
-            <h3>3. Materialized Views for Pre-Aggregation</h3>
-            <pre><code class="hljs">-- Slow query (recalculates every time)
+SELECT COUNT(*) FROM events WHERE event_type = 'purchase' AND country = 'US';</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>3. Materialized Views for Pre-Aggregation</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Slow query (recalculates every time)
 SELECT
     toDate(event_time) as date,
     country,
@@ -440,16 +508,15 @@ GROUP BY date, country;
 SELECT date, country, count
 FROM events_daily_mv
 WHERE date &gt;= today() - 30
-ORDER BY date DESC;</code></pre>
-        </div>
-    </div>
-
-    <!-- Commands Reference Section -->
-    <div class="section" id="commands">
-        <div class="section-header">💻 Commands & Tools Reference</div>
-        <div class="section-content">
-            <h3>EXPLAIN - Understanding Query Plans</h3>
-            <pre><code class="hljs">-- Basic EXPLAIN
+ORDER BY date DESC;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+</div>
+</div>
+<!-- Commands Reference Section -->
+<div class="section" id="commands">
+<div class="section-header">💻 Commands &amp; Tools Reference</div>
+<div class="section-content">
+<h3>EXPLAIN - Understanding Query Plans</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Basic EXPLAIN
 EXPLAIN SELECT COUNT(*) FROM events WHERE country = 'US';
 
 -- EXPLAIN SYNTAX (just parse, don't execute)
@@ -459,10 +526,9 @@ EXPLAIN SYNTAX SELECT COUNT(*) FROM events;
 EXPLAIN SELECT COUNT(*) FROM events WHERE country = 'US';
 
 -- EXPLAIN PIPE (show data processing stages)
-EXPLAIN PIPE SELECT COUNT(*) FROM events WHERE country = 'US' GROUP BY country;</code></pre>
-
-            <h3>Index Management</h3>
-            <pre><code class="hljs">-- Add a skipping index
+EXPLAIN PIPE SELECT COUNT(*) FROM events WHERE country = 'US' GROUP BY country;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>Index Management</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Add a skipping index
 ALTER TABLE events ADD INDEX idx_country country TYPE set(2) GRANULARITY 4;
 
 -- Add a bloom filter index (for IN queries)
@@ -481,10 +547,9 @@ ALTER TABLE events DROP INDEX idx_country;
 SHOW CREATE TABLE events;
 
 -- Rebuild indexes (after ALTER)
-OPTIMIZE TABLE events FINAL;</code></pre>
-
-            <h3>Query Profiling & System Tables</h3>
-            <pre><code class="hljs">-- View query performance history
+OPTIMIZE TABLE events FINAL;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>Query Profiling &amp; System Tables</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- View query performance history
 SELECT
     query_id,
     query,
@@ -532,96 +597,91 @@ SELECT
 FROM system.parts
 WHERE active = 1
 GROUP BY database, table
-ORDER BY sum(bytes) DESC;</code></pre>
-        </div>
-    </div>
-
-    <!-- Best Practices Section -->
-    <div class="section" id="best-practices">
-        <div class="section-header">✨ Best Practices</div>
-        <div class="section-content">
-            <h3>1. Primary Key Design is Critical</h3>
-            <div class="comparison">
-                <div class="bad">
-                    <div class="badge badge-bad">❌ Bad</div>
-                    <pre><code class="hljs">-- High cardinality first (user_id has millions of values)
+ORDER BY sum(bytes) DESC;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+</div>
+</div>
+<!-- Best Practices Section -->
+<div class="section" id="best-practices">
+<div class="section-header">✨ Best Practices</div>
+<div class="section-content">
+<h3>1. Primary Key Design is Critical</h3>
+<div class="comparison">
+<div class="bad">
+<div class="badge badge-bad">❌ Bad</div>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- High cardinality first (user_id has millions of values)
 CREATE TABLE events (
     event_id UUID,
     user_id UUID,  -- HIGH cardinality!
     country String,
     timestamp DateTime
 ) ENGINE = MergeTree()
-ORDER BY (user_id, timestamp);  -- Bad order!</code></pre>
-                    <p><strong>Problem:</strong> Poor compression, range queries don't benefit</p>
-                </div>
-
-                <div class="good">
-                    <div class="badge badge-good">✅ Good</div>
-                    <pre><code class="hljs">-- Low cardinality first
+ORDER BY (user_id, timestamp);  -- Bad order!</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<p><strong>Problem:</strong> Poor compression, range queries don't benefit</p>
+</div>
+<div class="good">
+<div class="badge badge-good">✅ Good</div>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Low cardinality first
 CREATE TABLE events (
     event_id UUID,
     user_id UUID,
     country LowCardinality(String),  -- LOW cardinality
     timestamp DateTime
 ) ENGINE = MergeTree()
-ORDER BY (country, toDate(timestamp), user_id);  -- Low-to-high cardinality</code></pre>
-                    <p><strong>Benefit:</strong> 10-100x better compression, faster queries</p>
-                </div>
-            </div>
-
-            <h3>2. Use Indexes Strategically</h3>
-            <div class="highlight-box">
-                <h4>Index Type Selection</h4>
-                <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
-                    <tr style="background: #ff6b35; color: white;">
-                        <th style="padding: 10px; text-align: left;">Index Type</th>
-                        <th style="padding: 10px; text-align: left;">Use Case</th>
-                        <th style="padding: 10px; text-align: left;">Query Type</th>
-                        <th style="padding: 10px; text-align: left;">Speedup</th>
-                    </tr>
-                    <tr style="background: #f9f9f9;">
-                        <td style="padding: 10px;"><strong>set(n)</strong></td>
-                        <td style="padding: 10px;">Low cardinality columns</td>
-                        <td style="padding: 10px;">WHERE country = 'US'</td>
-                        <td style="padding: 10px;">5-50x</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 10px;"><strong>bloom_filter</strong></td>
-                        <td style="padding: 10px;">IN and EXISTS queries</td>
-                        <td style="padding: 10px;">WHERE event_type IN (...)</td>
-                        <td style="padding: 10px;">10-100x</td>
-                    </tr>
-                    <tr style="background: #f9f9f9;">
-                        <td style="padding: 10px;"><strong>minmax</strong></td>
-                        <td style="padding: 10px;">Range queries</td>
-                        <td style="padding: 10px;">WHERE timestamp > date</td>
-                        <td style="padding: 10px;">2-10x</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 10px;"><strong>tokenbf_v1</strong></td>
-                        <td style="padding: 10px;">String substring search</td>
-                        <td style="padding: 10px;">WHERE message LIKE '%error%'</td>
-                        <td style="padding: 10px;">5-20x</td>
-                    </tr>
-                </table>
-            </div>
-
-            <h3>3. Optimize JOINs or Eliminate Them</h3>
-            <div class="comparison">
-                <div class="bad">
-                    <div class="badge badge-bad">❌ Bad: Expensive JOIN</div>
-                    <pre><code class="hljs">-- Requires JOIN every time
+ORDER BY (country, toDate(timestamp), user_id);  -- Low-to-high cardinality</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<p><strong>Benefit:</strong> 10-100x better compression, faster queries</p>
+</div>
+</div>
+<h3>2. Use Indexes Strategically</h3>
+<div class="highlight-box">
+<h4>Index Type Selection</h4>
+<table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+<tr style="background: #ff6b35; color: white;">
+<th style="padding: 10px; text-align: left;">Index Type</th>
+<th style="padding: 10px; text-align: left;">Use Case</th>
+<th style="padding: 10px; text-align: left;">Query Type</th>
+<th style="padding: 10px; text-align: left;">Speedup</th>
+</tr>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px;"><strong>set(n)</strong></td>
+<td style="padding: 10px;">Low cardinality columns</td>
+<td style="padding: 10px;">WHERE country = 'US'</td>
+<td style="padding: 10px;">5-50x</td>
+</tr>
+<tr>
+<td style="padding: 10px;"><strong>bloom_filter</strong></td>
+<td style="padding: 10px;">IN and EXISTS queries</td>
+<td style="padding: 10px;">WHERE event_type IN (...)</td>
+<td style="padding: 10px;">10-100x</td>
+</tr>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px;"><strong>minmax</strong></td>
+<td style="padding: 10px;">Range queries</td>
+<td style="padding: 10px;">WHERE timestamp &gt; date</td>
+<td style="padding: 10px;">2-10x</td>
+</tr>
+<tr>
+<td style="padding: 10px;"><strong>tokenbf_v1</strong></td>
+<td style="padding: 10px;">String substring search</td>
+<td style="padding: 10px;">WHERE message LIKE '%error%'</td>
+<td style="padding: 10px;">5-20x</td>
+</tr>
+</table>
+</div>
+<h3>3. Optimize JOINs or Eliminate Them</h3>
+<div class="comparison">
+<div class="bad">
+<div class="badge badge-bad">❌ Bad: Expensive JOIN</div>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Requires JOIN every time
 SELECT u.name, COUNT(*)
 FROM events e
 JOIN users u ON e.user_id = u.user_id
 WHERE e.event_date = today()
-GROUP BY u.name;</code></pre>
-                    <p><strong>Problem:</strong> JOINs are slow and memory-intensive</p>
-                </div>
-
-                <div class="good">
-                    <div class="badge badge-good">✅ Good: Denormalized Data</div>
-                    <pre><code class="hljs">-- Denormalize: store user_name in events table
+GROUP BY u.name;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<p><strong>Problem:</strong> JOINs are slow and memory-intensive</p>
+</div>
+<div class="good">
+<div class="badge badge-good">✅ Good: Denormalized Data</div>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Denormalize: store user_name in events table
 CREATE TABLE events (
     event_date Date,
     user_id UInt64,
@@ -634,179 +694,165 @@ ORDER BY (event_date, user_id);
 SELECT user_name, COUNT(*)
 FROM events
 WHERE event_date = today()
-GROUP BY user_name;</code></pre>
-                    <p><strong>Benefit:</strong> 100-1000x faster, no memory overhead</p>
-                </div>
-            </div>
-
-            <h3>4. Common Anti-Patterns to Avoid</h3>
-            <div class="card" style="background: #ffe6e6;">
-                <h4>Anti-Pattern 1: Full Table Scans</h4>
-                <pre><code class="hljs">-- BAD: Reads entire table
+GROUP BY user_name;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<p><strong>Benefit:</strong> 100-1000x faster, no memory overhead</p>
+</div>
+</div>
+<h3>4. Common Anti-Patterns to Avoid</h3>
+<div class="card" style="background: #ffe6e6;">
+<h4>Anti-Pattern 1: Full Table Scans</h4>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- BAD: Reads entire table
 SELECT COUNT(*) FROM events WHERE message LIKE '%error%';
 
 -- GOOD: Use appropriate indexes or filter by partition
 ALTER TABLE events ADD INDEX idx_message message TYPE tokenbf_v1(256, 2, 0);
-SELECT COUNT(*) FROM events WHERE message LIKE '%error%';</code></pre>
-            </div>
-
-            <div class="card" style="background: #ffe6e6;">
-                <h4>Anti-Pattern 2: Functions on WHERE Clause Columns</h4>
-                <pre><code class="hljs">-- BAD: Function prevents index use
+SELECT COUNT(*) FROM events WHERE message LIKE '%error%';</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+</div>
+<div class="card" style="background: #ffe6e6;">
+<h4>Anti-Pattern 2: Functions on WHERE Clause Columns</h4>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content"><pre><code class="hljs">-- BAD: Function prevents index use
 SELECT * FROM events WHERE toDate(timestamp) = '2026-01-22';
 
 -- GOOD: Filter on indexed column
-SELECT * FROM events WHERE timestamp &gt;= '2026-01-22' AND timestamp &lt; '2026-01-23';</code></pre>
-            </div>
-
-            <h3>5. Memory Management</h3>
-            <div class="highlight-box">
-                <h4>Control Memory Usage</h4>
-                <ul>
-                    <li><strong>max_memory_usage</strong> - Limit per-query memory (default 10GB)</li>
-                    <li><strong>max_memory_usage_for_user</strong> - Total for all user queries</li>
-                    <li><strong>memory_overcommit_ratio</strong> - Allow temporary overage for final results</li>
-                    <li><strong>max_bytes_before_external_sort</strong> - Use disk for sorting</li>
-                    <li><strong>max_bytes_before_external_group_by</strong> - Use disk for GROUP BY</li>
-                </ul>
-            </div>
-
-            <h3>6. Query Rewriting Techniques</h3>
-            <div class="card">
-                <h4>Technique 1: Use PREWHERE for Early Filtering</h4>
-                <pre><code class="hljs">-- PREWHERE filters before reading other columns (saves I/O!)
+SELECT * FROM events WHERE timestamp &gt;= '2026-01-22' AND timestamp &lt; '2026-01-23';</code></pre></div><button class="toggle-btn"></button></div>
+</div>
+<h3>5. Memory Management</h3>
+<div class="highlight-box">
+<h4>Control Memory Usage</h4>
+<ul>
+<li><strong>max_memory_usage</strong> - Limit per-query memory (default 10GB)</li>
+<li><strong>max_memory_usage_for_user</strong> - Total for all user queries</li>
+<li><strong>memory_overcommit_ratio</strong> - Allow temporary overage for final results</li>
+<li><strong>max_bytes_before_external_sort</strong> - Use disk for sorting</li>
+<li><strong>max_bytes_before_external_group_by</strong> - Use disk for GROUP BY</li>
+</ul>
+</div>
+<h3>6. Query Rewriting Techniques</h3>
+<div class="card">
+<h4>Technique 1: Use PREWHERE for Early Filtering</h4>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- PREWHERE filters before reading other columns (saves I/O!)
 SELECT user_id, COUNT(*)
 FROM events
 PREWHERE event_type = 'purchase'
 WHERE country = 'US'
-GROUP BY user_id;</code></pre>
-                <p><strong>Benefit:</strong> Reduces bytes read by 50-90%</p>
-            </div>
-
-            <div class="card">
-                <h4>Technique 2: Approximate Queries with SAMPLE</h4>
-                <pre><code class="hljs">-- Query 10% of data for faster approximate results
+GROUP BY user_id;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<p><strong>Benefit:</strong> Reduces bytes read by 50-90%</p>
+</div>
+<div class="card">
+<h4>Technique 2: Approximate Queries with SAMPLE</h4>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content"><pre><code class="hljs">-- Query 10% of data for faster approximate results
 SELECT country, COUNT(*) * 10 as estimated_count
 FROM events SAMPLE 0.1
 WHERE event_date &gt;= today() - 30
-GROUP BY country;</code></pre>
-                <p><strong>Benefit:</strong> 10x faster for exploratory queries</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- When to Use Section -->
-    <div class="section" id="when-to-use">
-        <div class="section-header">🎯 When to Use Query Optimization</div>
-        <div class="section-content">
-            <div class="grid-2">
-                <div class="card" style="background: #e6f7ed;">
-                    <h4>✅ Optimize When</h4>
-                    <ul>
-                        <li>Query takes > 100ms</li>
-                        <li>Full table scans happening</li>
-                        <li>Memory usage is high</li>
-                        <li>JOINs are slow</li>
-                        <li>Dashboards are lagging</li>
-                        <li>Reports take too long</li>
-                        <li>Alerts trigger late</li>
-                        <li>Ad-hoc queries are slow</li>
-                    </ul>
-                </div>
-
-                <div class="card" style="background: #ffe6e6;">
-                    <h4>❌ When Optimization Matters Less</h4>
-                    <ul>
-                        <li>One-time batch jobs (correct > fast)</li>
-                        <li>Query already < 50ms</li>
-                        <li>Data is tiny (< 1M rows)</li>
-                        <li>Running on fast SSD with plenty of RAM</li>
-                        <li>Queries run rarely</li>
-                        <li>Not on critical path</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Real-World Results Section -->
-    <div class="section" id="real-world">
-        <div class="section-header">🏆 Real-World Results</div>
-        <div class="section-content">
-            <div class="icon-grid">
-                <div class="icon-card" style="background: #fff9e6;">
-                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">100x</div>
-                    <h4>Faster with Index</h4>
-                    <p>Adding proper indexes can speed up queries 100x on large tables</p>
-                </div>
-
-                <div class="icon-card" style="background: #e6f7ed;">
-                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">50-90%</div>
-                    <h4>I/O Reduction</h4>
-                    <p>Using PREWHERE and proper filtering reduces bytes read by 50-90%</p>
-                </div>
-
-                <div class="icon-card" style="background: #e6f2ff;">
-                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">10x</div>
-                    <h4>Memory Savings</h4>
-                    <p>Denormalizing data eliminates JOINs and reduces memory 10x</p>
-                </div>
-
-                <div class="icon-card" style="background: #f0e6ff;">
-                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">1000x</div>
-                    <h4>Combined Optimization</h4>
-                    <p>Combining multiple techniques: indexes + denormalization + materialized views</p>
-                </div>
-            </div>
-
-            <h3>Case Study 1: Analytics Dashboard</h3>
-            <div class="card">
-                <h4>Challenge</h4>
-                <p>Dashboard queries taking 5-10 seconds, users frustrated with slow loads</p>
-                <h4>Solutions Applied</h4>
-                <ul>
-                    <li>Added skipping indexes on country, event_type</li>
-                    <li>Created materialized views for hourly/daily aggregations</li>
-                    <li>Denormalized user data into events table</li>
-                    <li>Used PREWHERE for event filtering</li>
-                </ul>
-                <h4>Results</h4>
-                <p><strong>Query Time: 10s → 200ms (50x faster)</strong></p>
-                <ul>
-                    <li>Dashboard refresh time: 30s → 2s</li>
-                    <li>User satisfaction: 2/5 → 5/5</li>
-                    <li>Dashboard CPU usage: 80% → 15%</li>
-                </ul>
-            </div>
-
-            <h3>Case Study 2: Real-Time Alerting System</h3>
-            <div class="card">
-                <h4>Challenge</h4>
-                <p>Alert queries take 15 seconds, alerts fire late and miss anomalies</p>
-                <h4>Solutions Applied</h4>
-                <ul>
-                    <li>Added bloom filter indexes on alert_type</li>
-                    <li>Created streaming aggregation views</li>
-                    <li>Optimized memory usage with streaming aggregation</li>
-                    <li>Used sampling for approximate anomaly detection</li>
-                </ul>
-                <h4>Results</h4>
-                <p><strong>Alert Latency: 15s → 500ms (30x faster)</strong></p>
-                <ul>
-                    <li>Anomalies detected: 70% → 98%</li>
-                    <li>Mean time to alert: 15s → 0.5s</li>
-                    <li>False positives reduced with faster queries</li>
-                </ul>
-            </div>
-        </div>
-    </div>
-
-    <!-- Templates Section -->
-    <div class="section" id="templates">
-        <div class="section-header">📋 Ready-to-Use Templates</div>
-        <div class="section-content">
-            <h3>Template 1: Optimized Events Table</h3>
-            <pre><code class="hljs">-- Well-optimized for analytics
+GROUP BY country;</code></pre></div><button class="toggle-btn"></button></div>
+<p><strong>Benefit:</strong> 10x faster for exploratory queries</p>
+</div>
+</div>
+</div>
+<!-- When to Use Section -->
+<div class="section" id="when-to-use">
+<div class="section-header">🎯 When to Use Query Optimization</div>
+<div class="section-content">
+<div class="grid-2">
+<div class="card" style="background: #e6f7ed;">
+<h4>✅ Optimize When</h4>
+<ul>
+<li>Query takes &gt; 100ms</li>
+<li>Full table scans happening</li>
+<li>Memory usage is high</li>
+<li>JOINs are slow</li>
+<li>Dashboards are lagging</li>
+<li>Reports take too long</li>
+<li>Alerts trigger late</li>
+<li>Ad-hoc queries are slow</li>
+</ul>
+</div>
+<div class="card" style="background: #ffe6e6;">
+<h4>❌ When Optimization Matters Less</h4>
+<ul>
+<li>One-time batch jobs (correct &gt; fast)</li>
+<li>Query already &lt; 50ms</li>
+<li>Data is tiny (&lt; 1M rows)</li>
+<li>Running on fast SSD with plenty of RAM</li>
+<li>Queries run rarely</li>
+<li>Not on critical path</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<!-- Real-World Results Section -->
+<div class="section" id="real-world">
+<div class="section-header">🏆 Real-World Results</div>
+<div class="section-content">
+<div class="icon-grid">
+<div class="icon-card" style="background: #fff9e6;">
+<div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">100x</div>
+<h4>Faster with Index</h4>
+<p>Adding proper indexes can speed up queries 100x on large tables</p>
+</div>
+<div class="icon-card" style="background: #e6f7ed;">
+<div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">50-90%</div>
+<h4>I/O Reduction</h4>
+<p>Using PREWHERE and proper filtering reduces bytes read by 50-90%</p>
+</div>
+<div class="icon-card" style="background: #e6f2ff;">
+<div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">10x</div>
+<h4>Memory Savings</h4>
+<p>Denormalizing data eliminates JOINs and reduces memory 10x</p>
+</div>
+<div class="icon-card" style="background: #f0e6ff;">
+<div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">1000x</div>
+<h4>Combined Optimization</h4>
+<p>Combining multiple techniques: indexes + denormalization + materialized views</p>
+</div>
+</div>
+<h3>Case Study 1: Analytics Dashboard</h3>
+<div class="card">
+<h4>Challenge</h4>
+<p>Dashboard queries taking 5-10 seconds, users frustrated with slow loads</p>
+<h4>Solutions Applied</h4>
+<ul>
+<li>Added skipping indexes on country, event_type</li>
+<li>Created materialized views for hourly/daily aggregations</li>
+<li>Denormalized user data into events table</li>
+<li>Used PREWHERE for event filtering</li>
+</ul>
+<h4>Results</h4>
+<p><strong>Query Time: 10s → 200ms (50x faster)</strong></p>
+<ul>
+<li>Dashboard refresh time: 30s → 2s</li>
+<li>User satisfaction: 2/5 → 5/5</li>
+<li>Dashboard CPU usage: 80% → 15%</li>
+</ul>
+</div>
+<h3>Case Study 2: Real-Time Alerting System</h3>
+<div class="card">
+<h4>Challenge</h4>
+<p>Alert queries take 15 seconds, alerts fire late and miss anomalies</p>
+<h4>Solutions Applied</h4>
+<ul>
+<li>Added bloom filter indexes on alert_type</li>
+<li>Created streaming aggregation views</li>
+<li>Optimized memory usage with streaming aggregation</li>
+<li>Used sampling for approximate anomaly detection</li>
+</ul>
+<h4>Results</h4>
+<p><strong>Alert Latency: 15s → 500ms (30x faster)</strong></p>
+<ul>
+<li>Anomalies detected: 70% → 98%</li>
+<li>Mean time to alert: 15s → 0.5s</li>
+<li>False positives reduced with faster queries</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- Templates Section -->
+<div class="section" id="templates">
+<div class="section-header">📋 Ready-to-Use Templates</div>
+<div class="section-content">
+<h3>Template 1: Optimized Events Table</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Well-optimized for analytics
 CREATE TABLE events (
     event_date Date,
     event_time DateTime,
@@ -845,10 +891,9 @@ AS SELECT
     COUNT() as count,
     SUM(revenue) as revenue
 FROM events
-GROUP BY date, country, event_type;</code></pre>
-
-            <h3>Template 2: Performance Monitoring Query</h3>
-            <pre><code class="hljs">-- Monitor query performance
+GROUP BY date, country, event_type;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>Template 2: Performance Monitoring Query</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Monitor query performance
 SELECT
     query_id,
     query,
@@ -879,10 +924,9 @@ WHERE type = 'QueryFinish'
 GROUP BY user, query_id, query
 HAVING peak_memory &gt; 1000000000  -- &gt; 1GB
 ORDER BY peak_memory DESC
-LIMIT 20;</code></pre>
-
-            <h3>Template 3: Index Analysis</h3>
-            <pre><code class="hljs">-- Check which indexes exist and their sizes
+LIMIT 20;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>Template 3: Index Analysis</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Check which indexes exist and their sizes
 SELECT
     database,
     table,
@@ -902,16 +946,15 @@ SELECT
     formatReadableSize(sum(memory_usage)) as total_memory
 FROM system.query_log
 WHERE query_start_time &gt;= now() - INTERVAL 1 HOUR
-  AND query_kind = 'Select';</code></pre>
-        </div>
-    </div>
-
-    <!-- Advanced Section -->
-    <div class="section" id="advanced">
-        <div class="section-header">🔥 Advanced Patterns</div>
-        <div class="section-content">
-            <h3>1. Query Execution Pipeline Deep Dive</h3>
-            <pre><code class="hljs">-- Understand each stage with EXPLAIN
+  AND query_kind = 'Select';</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+</div>
+</div>
+<!-- Advanced Section -->
+<div class="section" id="advanced">
+<div class="section-header">🔥 Advanced Patterns</div>
+<div class="section-content">
+<h3>1. Query Execution Pipeline Deep Dive</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Understand each stage with EXPLAIN
 EXPLAIN PIPELINE
 SELECT country, SUM(revenue) as total
 FROM events
@@ -926,10 +969,9 @@ LIMIT 10;
 -- 2. Where - Apply WHERE filters
 -- 3. Aggregating - GROUP BY and aggregation
 -- 4. LimitStep - LIMIT
--- 5. OutputFormat - Format results</code></pre>
-
-            <h3>2. Bloom Filter Indexes for Complex Conditions</h3>
-            <pre><code class="hljs">-- Bloom filter for EXISTS queries
+-- 5. OutputFormat - Format results</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>2. Bloom Filter Indexes for Complex Conditions</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Bloom filter for EXISTS queries
 CREATE TABLE events (
     event_id UUID,
     user_id UUID,
@@ -943,10 +985,9 @@ ALTER TABLE events ADD INDEX idx_event_type event_type TYPE bloom_filter GRANULA
 -- Now fast: bloom filter eliminates impossible blocks
 SELECT COUNT(*)
 FROM events
-WHERE event_type IN ('purchase', 'signup', 'login');</code></pre>
-
-            <h3>3. Materialized Views for Complex Aggregations</h3>
-            <pre><code class="hljs">-- Source table (raw events)
+WHERE event_type IN ('purchase', 'signup', 'login');</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>3. Materialized Views for Complex Aggregations</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Source table (raw events)
 CREATE TABLE events (
     event_time DateTime,
     user_id UInt64,
@@ -987,10 +1028,9 @@ GROUP BY day, event_type;
 SELECT event_type, count, revenue
 FROM events_daily
 WHERE day &gt;= today() - 30
-ORDER BY count DESC;</code></pre>
-
-            <h3>4. Optimizing JOIN Queries</h3>
-            <pre><code class="hljs">-- Strategy 1: Use Dictionary table (small reference data)
+ORDER BY count DESC;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>4. Optimizing JOIN Queries</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Strategy 1: Use Dictionary table (small reference data)
 CREATE TABLE countries (
     country_code String,
     country_name String,
@@ -1020,10 +1060,9 @@ GROUP BY country_code;
 SELECT e.user_id, c.country_name
 FROM events AS e
 ALL LEFT JOIN countries AS c ON e.country_code = c.country_code
-WHERE e.event_date = today();</code></pre>
-
-            <h3>5. Memory-Aware Query Design</h3>
-            <pre><code class="hljs">-- Monitor and control memory usage
+WHERE e.event_date = today();</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>5. Memory-Aware Query Design</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Monitor and control memory usage
 SET max_memory_usage = 1000000000;  -- 1GB limit
 SET max_bytes_before_external_sort = 500000000;  -- Use disk if &gt; 500MB
 SET max_bytes_before_external_group_by = 500000000;
@@ -1034,96 +1073,128 @@ FROM events
 GROUP BY country
 SETTINGS
     max_threads = 1,
-    max_block_size = 1000000;</code></pre>
-        </div>
-    </div>
-
-    <!-- Resources Section -->
-    <div class="section" id="resources">
-        <div class="section-header">📚 Resources & Further Learning</div>
-        <div class="section-content">
-            <div class="grid-2">
-                <div class="card">
-                    <h4>📘 View in Notion</h4>
-                    <p style="margin: 10px 0;">Access this module in your Notion workspace for note-taking and tracking your progress.</p>
-                    <a href="https://www.notion.so/Module-6-Query-Optimization-Performance-2f1bb896952b81a28882d5b16167fc45" target="_blank" rel="noopener noreferrer" style="color: #ff6b35; font-weight: 600; text-decoration: none;">Open in Notion →</a>
-                </div>
-
-                <div class="card">
-                    <h4>📖 Official Documentation</h4>
-                    <ul>
-                        <li><a href="https://clickhouse.com/docs/en/sql-reference/statements/explain" target="_blank">EXPLAIN Documentation</a></li>
-                        <li><a href="https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/mergetree#skipping-indexes" target="_blank">Skipping Indexes</a></li>
-                        <li><a href="https://clickhouse.com/docs/en/sql-reference/functions/other-functions#dictget" target="_blank">Dictionary Functions</a></li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <h4>⚡ Performance Tuning</h4>
-                    <ul>
-                        <li><a href="https://clickhouse.com/docs/en/operations/settings/query-complexity" target="_blank">Query Complexity Settings</a></li>
-                        <li><a href="https://clickhouse.com/docs/en/operations/settings/merge-tree-settings" target="_blank">MergeTree Settings</a></li>
-                        <li><a href="https://clickhouse.com/docs/en/operations/monitoring" target="_blank">Monitoring & Profiling</a></li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <h4>🎓 Learning & Blogs</h4>
-                    <ul>
-                        <li><a href="https://clickhouse.com/blog" target="_blank">ClickHouse Blog</a></li>
-                        <li><a href="https://clickhouse.com/learn" target="_blank">Learn ClickHouse</a></li>
-                        <li><a href="https://github.com/ClickHouse/ClickHouse" target="_blank">GitHub Repository</a></li>
-                    </ul>
-                </div>
-            </div>
-
-            <div class="highlight-box">
-                <h4>🎯 Key Takeaways</h4>
-                <ul>
-                    <li>✅ Use EXPLAIN to understand query execution</li>
-                    <li>✅ Design primary keys for your access patterns</li>
-                    <li>✅ Add skipping indexes for common filter columns</li>
-                    <li>✅ Denormalize data to eliminate JOINs</li>
-                    <li>✅ Use materialized views for pre-aggregation</li>
-                    <li>✅ Monitor system tables to identify bottlenecks</li>
-                    <li>✅ Rewrite queries using PREWHERE and SAMPLE</li>
-                    <li>✅ Control memory usage with settings</li>
-                </ul>
-            </div>
-
-            <div class="highlight-box" style="background: #e6f7ed; border-left-color: #27ae60;">
-                <h4>🎯 Next Steps</h4>
-                <p>After mastering query optimization, you should be able to:</p>
-                <ul>
-                    <li>✅ Analyze query execution plans</li>
-                    <li>✅ Design optimal primary and secondary indexes</li>
-                    <li>✅ Create materialized views for pre-aggregation</li>
-                    <li>✅ Optimize JOIN queries or eliminate them</li>
-                    <li>✅ Manage memory and CPU resources effectively</li>
-                    <li>✅ Implement performance monitoring</li>
-                    <li>✅ Achieve 100-1000x query speedups</li>
-                </ul>
-                <p><strong>Ready for Module 7?</strong> Next we'll explore Backup & Recovery!</p>
-            </div>
-        </div>
-    </div>
-
+    max_block_size = 1000000;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 </div>
-
+</div>
+<!-- Resources Section -->
+<div class="section" id="resources">
+<div class="section-header">📚 Resources &amp; Further Learning</div>
+<div class="section-content">
+<div class="grid-2">
+<div class="card">
+<h4>📘 View in Notion</h4>
+<p style="margin: 10px 0;">Access this module in your Notion workspace for note-taking and tracking your progress.</p>
+<a href="https://www.notion.so/Module-6-Query-Optimization-Performance-2f1bb896952b81a28882d5b16167fc45" rel="noopener noreferrer" style="color: #ff6b35; font-weight: 600; text-decoration: none;" target="_blank">Open in Notion →</a>
+</div>
+<div class="card">
+<h4>📖 Official Documentation</h4>
+<ul>
+<li><a href="https://clickhouse.com/docs/en/sql-reference/statements/explain" target="_blank">EXPLAIN Documentation</a></li>
+<li><a href="https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/mergetree#skipping-indexes" target="_blank">Skipping Indexes</a></li>
+<li><a href="https://clickhouse.com/docs/en/sql-reference/functions/other-functions#dictget" target="_blank">Dictionary Functions</a></li>
+</ul>
+</div>
+<div class="card">
+<h4>⚡ Performance Tuning</h4>
+<ul>
+<li><a href="https://clickhouse.com/docs/en/operations/settings/query-complexity" target="_blank">Query Complexity Settings</a></li>
+<li><a href="https://clickhouse.com/docs/en/operations/settings/merge-tree-settings" target="_blank">MergeTree Settings</a></li>
+<li><a href="https://clickhouse.com/docs/en/operations/monitoring" target="_blank">Monitoring &amp; Profiling</a></li>
+</ul>
+</div>
+<div class="card">
+<h4>🎓 Learning &amp; Blogs</h4>
+<ul>
+<li><a href="https://clickhouse.com/blog" target="_blank">ClickHouse Blog</a></li>
+<li><a href="https://clickhouse.com/learn" target="_blank">Learn ClickHouse</a></li>
+<li><a href="https://github.com/ClickHouse/ClickHouse" target="_blank">GitHub Repository</a></li>
+</ul>
+</div>
+</div>
+<div class="highlight-box">
+<h4>🎯 Key Takeaways</h4>
+<ul>
+<li>✅ Use EXPLAIN to understand query execution</li>
+<li>✅ Design primary keys for your access patterns</li>
+<li>✅ Add skipping indexes for common filter columns</li>
+<li>✅ Denormalize data to eliminate JOINs</li>
+<li>✅ Use materialized views for pre-aggregation</li>
+<li>✅ Monitor system tables to identify bottlenecks</li>
+<li>✅ Rewrite queries using PREWHERE and SAMPLE</li>
+<li>✅ Control memory usage with settings</li>
+</ul>
+</div>
+<div class="highlight-box" style="background: #e6f7ed; border-left-color: #27ae60;">
+<h4>🎯 Next Steps</h4>
+<p>After mastering query optimization, you should be able to:</p>
+<ul>
+<li>✅ Analyze query execution plans</li>
+<li>✅ Design optimal primary and secondary indexes</li>
+<li>✅ Create materialized views for pre-aggregation</li>
+<li>✅ Optimize JOIN queries or eliminate them</li>
+<li>✅ Manage memory and CPU resources effectively</li>
+<li>✅ Implement performance monitoring</li>
+<li>✅ Achieve 100-1000x query speedups</li>
+</ul>
+<p><strong>Ready for Module 7?</strong> Next we'll explore Backup &amp; Recovery!</p>
+</div>
+</div>
+</div>
+</div>
 <div style="background: #333; color: white; padding: 40px 20px; text-align: center; margin-top: 40px;">
-    <h3>📊 ClickHouse Knowledge Transfer</h3>
-    <p>Module 6 of 10 | Duration: 6-8 weeks total</p>
-    <p style="margin-top: 20px; opacity: 0.8;">Created for comprehensive ClickHouse training | 2026</p>
+<h3>📊 ClickHouse Knowledge Transfer</h3>
+<p>Module 6 of 10 | Duration: 6-8 weeks total</p>
+<p style="margin-top: 20px; opacity: 0.8;">Created for comprehensive ClickHouse training | 2026</p>
 </div>
-
 <div class="module-nav" style="border-bottom: none; border-top: 2px solid #ff6b35;">
-    <a href="module-5-cluster-deployment.html" class="nav-btn-module">← Previous: Module 5 - Cluster Deployment</a>
-    <a href="../index.html" class="nav-btn-module nav-home">🏠 Home</a>
-    <a href="module-7-backup-recovery.html" class="nav-btn-module">Next: Module 7 - Backup & Recovery →</a>
+<a class="nav-btn-module" href="module-5-cluster-deployment.html">← Previous: Module 5 - Cluster Deployment</a>
+<a class="nav-btn-module nav-home" href="../index.html">🏠 Home</a>
+<a class="nav-btn-module" href="module-7-backup-recovery.html">Next: Module 7 - Backup &amp; Recovery →</a>
 </div>
-
 <script>
 hljs.highlightAll();
 </script>
-</body>
+<script>
+// Copy code functionality
+document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const code = this.parentElement.querySelector('code').textContent;
+        navigator.clipboard.writeText(code).then(() => {
+            const originalText = this.textContent;
+            this.textContent = '✓ Copied!';
+            this.classList.add('copied');
+            setTimeout(() => {
+                this.textContent = originalText;
+                this.classList.remove('copied');
+            },2000);
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+            this.textContent = '✗ Failed';
+            setTimeout(() => {
+                this.textContent = 'Copy';
+            },2000);
+        });
+    });
+});
+
+// Show more/less functionality
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const content = this.parentElement.querySelector('.code-content');
+        const overlay = content.querySelector('.fade-overlay');
+        
+        if (content.classList.contains('collapsed')) {
+            content.classList.remove('collapsed');
+            content.classList.add('expanded');
+            this.textContent = 'Show Less';
+            if (overlay) overlay.style.display = 'none';
+        } else {
+            content.classList.add('collapsed');
+            content.classList.remove('expanded');
+            this.textContent = 'Show More';
+            if (overlay) overlay.style.display = 'block';
+        }
+    });
+});
+</script></body>
 </html>

@@ -1,14 +1,15 @@
 <!DOCTYPE html>
+
 <html lang="en" style="scroll-behavior: smooth;">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Module 9: Kafka-Based Real-Time Ingestion</title>
-    <link rel="icon" type="image/x-icon" href="../favicon.ico">
-    <link rel="icon" type="image/png" href="../favicon.png">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
-    <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Module 9: Kafka-Based Real-Time Ingestion</title>
+<link href="../favicon.ico" rel="icon" type="image/x-icon"/>
+<link href="../favicon.png" rel="icon" type="image/png"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
             margin: 0;
@@ -250,240 +251,295 @@
                 grid-template-columns: 1fr;
             }
         }
-    </style>
+    
+        .code-wrapper {
+            position: relative;
+            margin: 15px 0;
+        }
+        .code-wrapper pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px 20px 50px 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+        }
+        .code-wrapper .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255,255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+        .code-wrapper .copy-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        .code-wrapper .copy-btn.copied {
+            background: rgba(39, 174, 96, 0.8);
+            border-color: #27ae60;
+        }
+        .code-wrapper .code-content {
+            transition: max-height 0.3s ease-out;
+            overflow: hidden;
+        }
+        .code-wrapper .code-content.expanded {
+            max-height: none !important;
+        }
+        .code-wrapper .code-content.collapsed {
+            max-height: 120px;
+        }
+        .code-wrapper .toggle-btn {
+            display: none;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: -40px;
+            margin-bottom: 20px;
+            transition: transform 0.2s;
+        }
+        .code-wrapper .toggle-btn:hover {
+            transform: translateY(-2px);
+        }
+        .code-wrapper .toggle-btn.visible {
+            display: inline-block;
+        }
+        .code-wrapper .fade-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(transparent, #1e1e1e);
+            pointer-events: none;
+            display: none;
+        }
+        .code-wrapper .code-content.collapsed .fade-overlay {
+            display: block;
+        }
+</style>
 </head>
 <body>
-
 <div class="module-nav">
-    <a href="module-8-disaster-recovery.html" class="nav-btn-module">← Previous: Module 8 - Disaster Recovery</a>
-    <a href="../index.html" class="nav-btn-module nav-home">🏠 Home</a>
-    <a href="module-10-migration.html" class="nav-btn-module">Next: Module 10 - Migration →</a>
+<a class="nav-btn-module" href="module-8-disaster-recovery.html">← Previous: Module 8 - Disaster Recovery</a>
+<a class="nav-btn-module nav-home" href="../index.html">🏠 Home</a>
+<a class="nav-btn-module" href="module-10-migration.html">Next: Module 10 - Migration →</a>
 </div>
-
 <div class="header">
-    <h1>📊 MODULE 9</h1>
-    <div class="subtitle">Kafka-Based Real-Time Ingestion</div>
-    <div class="subtitle" style="font-size: 1em; margin-top: 20px;">Duration: 4-6 hours | Week 9</div>
+<h1>📊 MODULE 9</h1>
+<div class="subtitle">Kafka-Based Real-Time Ingestion</div>
+<div class="subtitle" style="font-size: 1em; margin-top: 20px;">Duration: 4-6 hours | Week 9</div>
 </div>
-
 <div style="background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);">
-    <div class="nav-buttons">
-        <div class="nav-btn">📖 What is it?</div>
-        <div class="nav-btn">🚀 Quick Start</div>
-        <div class="nav-btn">💻 Commands</div>
-        <div class="nav-btn">✨ Best Practices</div>
-        <div class="nav-btn">🎯 When to Use</div>
-        <div class="nav-btn">🏆 Real-World Results</div>
-        <div class="nav-btn">📋 Templates</div>
-        <div class="nav-btn">🔥 Advanced</div>
-        <div class="nav-btn">📚 Resources</div>
-    </div>
+<div class="nav-buttons">
+<div class="nav-btn">📖 What is it?</div>
+<div class="nav-btn">🚀 Quick Start</div>
+<div class="nav-btn">💻 Commands</div>
+<div class="nav-btn">✨ Best Practices</div>
+<div class="nav-btn">🎯 When to Use</div>
+<div class="nav-btn">🏆 Real-World Results</div>
+<div class="nav-btn">📋 Templates</div>
+<div class="nav-btn">🔥 Advanced</div>
+<div class="nav-btn">📚 Resources</div>
 </div>
-
+</div>
 <div class="container">
-
-    <!-- What is Kafka-Based Ingestion Section -->
-    <div class="section" id="what-is">
-        <div class="section-header">📖 What is Kafka-Based Real-Time Ingestion?</div>
-        <div class="section-content">
-            <div class="highlight-box">
-                <h4 style="margin-top: 0;">Kafka Engine in ClickHouse</h4>
-                <p><strong>The Kafka table engine allows ClickHouse to consume messages directly from Apache Kafka topics in real-time.</strong> It provides a bridge between Kafka streams and ClickHouse's analytical processing capabilities, enabling sub-second latency data ingestion at scale.</p>
-            </div>
-
-            <h3>Key Components</h3>
-            <div class="icon-grid">
-                <div class="icon-card">
-                    <div class="icon">📨</div>
-                    <h4>Kafka Engine</h4>
-                    <p>Native ClickHouse engine that consumes from Kafka without external tools</p>
-                </div>
-                <div class="icon-card">
-                    <div class="icon">🔄</div>
-                    <h4>Materialized Views</h4>
-                    <p>Automatically transform and persist messages to MergeTree tables</p>
-                </div>
-                <div class="icon-card">
-                    <div class="icon">👥</div>
-                    <h4>Consumer Groups</h4>
-                    <p>Distribute load across multiple ClickHouse instances</p>
-                </div>
-                <div class="icon-card">
-                    <div class="icon">📝</div>
-                    <h4>Message Formats</h4>
-                    <p>Support JSON, Avro, Protobuf, CSV and more formats</p>
-                </div>
-            </div>
-
-            <h3>Kafka Engine vs Kafka Connect Sink</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Feature</th>
-                        <th>Kafka Engine (Native)</th>
-                        <th>Kafka Connect Sink</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>Architecture</strong></td>
-                        <td>Built-in ClickHouse engine</td>
-                        <td>Separate connector service</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Latency</strong></td>
-                        <td>Lower (direct consumption)</td>
-                        <td>Higher (extra hop)</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Complexity</strong></td>
-                        <td>Simpler setup</td>
-                        <td>More operational overhead</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Scaling</strong></td>
-                        <td>Leverages ClickHouse cluster</td>
-                        <td>Requires separate connector cluster</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Monitoring</strong></td>
-                        <td>Built-in ClickHouse metrics</td>
-                        <td>Separate monitoring needed</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Best For</strong></td>
-                        <td>Direct Kafka → ClickHouse flows</td>
-                        <td>Multi-destination data pipelines</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Recommended</strong></td>
-                        <td>✅ For most use cases</td>
-                        <td>When you need multi-sink architecture</td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <h3>Kafka → ClickHouse Pipeline Architecture</h3>
-            <div class="diagram">
-                <h4 style="text-align: center; color: #ff6b35; margin-top: 0;">End-to-End Streaming Pipeline</h4>
-
-                <div class="pipeline-step">
-                    <strong>1. Producer Layer</strong><br>
-                    <div style="background: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
+<!-- What is Kafka-Based Ingestion Section -->
+<div class="section" id="what-is">
+<div class="section-header">📖 What is Kafka-Based Real-Time Ingestion?</div>
+<div class="section-content">
+<div class="highlight-box">
+<h4 style="margin-top: 0;">Kafka Engine in ClickHouse</h4>
+<p><strong>The Kafka table engine allows ClickHouse to consume messages directly from Apache Kafka topics in real-time.</strong> It provides a bridge between Kafka streams and ClickHouse's analytical processing capabilities, enabling sub-second latency data ingestion at scale.</p>
+</div>
+<h3>Key Components</h3>
+<div class="icon-grid">
+<div class="icon-card">
+<div class="icon">📨</div>
+<h4>Kafka Engine</h4>
+<p>Native ClickHouse engine that consumes from Kafka without external tools</p>
+</div>
+<div class="icon-card">
+<div class="icon">🔄</div>
+<h4>Materialized Views</h4>
+<p>Automatically transform and persist messages to MergeTree tables</p>
+</div>
+<div class="icon-card">
+<div class="icon">👥</div>
+<h4>Consumer Groups</h4>
+<p>Distribute load across multiple ClickHouse instances</p>
+</div>
+<div class="icon-card">
+<div class="icon">📝</div>
+<h4>Message Formats</h4>
+<p>Support JSON, Avro, Protobuf, CSV and more formats</p>
+</div>
+</div>
+<h3>Kafka Engine vs Kafka Connect Sink</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Kafka Engine (Native)</th>
+<th>Kafka Connect Sink</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Architecture</strong></td>
+<td>Built-in ClickHouse engine</td>
+<td>Separate connector service</td>
+</tr>
+<tr>
+<td><strong>Latency</strong></td>
+<td>Lower (direct consumption)</td>
+<td>Higher (extra hop)</td>
+</tr>
+<tr>
+<td><strong>Complexity</strong></td>
+<td>Simpler setup</td>
+<td>More operational overhead</td>
+</tr>
+<tr>
+<td><strong>Scaling</strong></td>
+<td>Leverages ClickHouse cluster</td>
+<td>Requires separate connector cluster</td>
+</tr>
+<tr>
+<td><strong>Monitoring</strong></td>
+<td>Built-in ClickHouse metrics</td>
+<td>Separate monitoring needed</td>
+</tr>
+<tr>
+<td><strong>Best For</strong></td>
+<td>Direct Kafka → ClickHouse flows</td>
+<td>Multi-destination data pipelines</td>
+</tr>
+<tr>
+<td><strong>Recommended</strong></td>
+<td>✅ For most use cases</td>
+<td>When you need multi-sink architecture</td>
+</tr>
+</tbody>
+</table>
+<h3>Kafka → ClickHouse Pipeline Architecture</h3>
+<div class="diagram">
+<h4 style="text-align: center; color: #ff6b35; margin-top: 0;">End-to-End Streaming Pipeline</h4>
+<div class="pipeline-step">
+<strong>1. Producer Layer</strong><br/>
+<div style="background: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
                         Application / Microservices / IoT Devices
                     </div>
-                </div>
-
-                <div style="text-align: center; font-size: 1.5em; color: #ff6b35;">↓ Publish Messages ↓</div>
-
-                <div class="pipeline-step" style="background: linear-gradient(135deg, #fff9e6 0%, #ffe6cc 100%); border-color: #ffb82e;">
-                    <strong>2. Kafka Topic</strong><br>
-                    <div style="display: flex; justify-content: space-around; margin-top: 10px;">
-                        <div style="background: white; padding: 10px; border-radius: 5px; flex: 1; margin: 0 5px;">
-                            Partition 0<br><small>Offset: 12,450</small>
-                        </div>
-                        <div style="background: white; padding: 10px; border-radius: 5px; flex: 1; margin: 0 5px;">
-                            Partition 1<br><small>Offset: 12,389</small>
-                        </div>
-                        <div style="background: white; padding: 10px; border-radius: 5px; flex: 1; margin: 0 5px;">
-                            Partition 2<br><small>Offset: 12,501</small>
-                        </div>
+</div>
+<div style="text-align: center; font-size: 1.5em; color: #ff6b35;">↓ Publish Messages ↓</div>
+<div class="pipeline-step" style="background: linear-gradient(135deg, #fff9e6 0%, #ffe6cc 100%); border-color: #ffb82e;">
+<strong>2. Kafka Topic</strong><br/>
+<div style="display: flex; justify-content: space-around; margin-top: 10px;">
+<div style="background: white; padding: 10px; border-radius: 5px; flex: 1; margin: 0 5px;">
+                            Partition 0<br/><small>Offset: 12,450</small>
+</div>
+<div style="background: white; padding: 10px; border-radius: 5px; flex: 1; margin: 0 5px;">
+                            Partition 1<br/><small>Offset: 12,389</small>
+</div>
+<div style="background: white; padding: 10px; border-radius: 5px; flex: 1; margin: 0 5px;">
+                            Partition 2<br/><small>Offset: 12,501</small>
+</div>
+</div>
+</div>
+<div style="text-align: center; font-size: 1.5em; color: #ff6b35;">↓ Consume ↓</div>
+<div class="pipeline-step" style="background: linear-gradient(135deg, #e6f2ff 0%, #cce0ff 100%); border-color: #3498db;">
+<strong>3. Kafka Engine (ClickHouse)</strong><br/>
+<div style="background: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                        Consumer Group: clickhouse-events<br/>Consumers: 3 (parallel consumption)
                     </div>
-                </div>
-
-                <div style="text-align: center; font-size: 1.5em; color: #ff6b35;">↓ Consume ↓</div>
-
-                <div class="pipeline-step" style="background: linear-gradient(135deg, #e6f2ff 0%, #cce0ff 100%); border-color: #3498db;">
-                    <strong>3. Kafka Engine (ClickHouse)</strong><br>
-                    <div style="background: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
-                        Consumer Group: clickhouse-events<br>Consumers: 3 (parallel consumption)
-                    </div>
-                </div>
-
-                <div style="text-align: center; font-size: 1.5em; color: #ff6b35;">↓ Transform ↓</div>
-
-                <div class="pipeline-step" style="background: linear-gradient(135deg, #f0e6ff 0%, #e0ccff 100%); border-color: #9b59b6;">
-                    <strong>4. Materialized View</strong><br>
-                    <div style="background: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
+</div>
+<div style="text-align: center; font-size: 1.5em; color: #ff6b35;">↓ Transform ↓</div>
+<div class="pipeline-step" style="background: linear-gradient(135deg, #f0e6ff 0%, #e0ccff 100%); border-color: #9b59b6;">
+<strong>4. Materialized View</strong><br/>
+<div style="background: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
                         Parse JSON → Extract fields → Enrich data → Filter
                     </div>
-                </div>
-
-                <div style="text-align: center; font-size: 1.5em; color: #ff6b35;">↓ Persist ↓</div>
-
-                <div class="pipeline-step">
-                    <strong>5. MergeTree Table (Storage)</strong><br>
-                    <div style="background: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
+</div>
+<div style="text-align: center; font-size: 1.5em; color: #ff6b35;">↓ Persist ↓</div>
+<div class="pipeline-step">
+<strong>5. MergeTree Table (Storage)</strong><br/>
+<div style="background: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
                         Compressed, Indexed, Partitioned, Query-ready
                     </div>
-                </div>
-
-                <div style="text-align: center; font-size: 1.5em; color: #ff6b35;">↓ Analyze ↓</div>
-
-                <div class="pipeline-step" style="background: linear-gradient(135deg, #ffe6e6 0%, #ffcccc 100%); border-color: #e74c3c;">
-                    <strong>6. SQL Queries</strong><br>
-                    <div style="background: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
+</div>
+<div style="text-align: center; font-size: 1.5em; color: #ff6b35;">↓ Analyze ↓</div>
+<div class="pipeline-step" style="background: linear-gradient(135deg, #ffe6e6 0%, #ffcccc 100%); border-color: #e74c3c;">
+<strong>6. SQL Queries</strong><br/>
+<div style="background: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
                         Real-time Analytics / Dashboards / Reports
                     </div>
-                </div>
-            </div>
-
-            <h3>Architecture Overview</h3>
-            <div class="card">
-                <p><strong>Typical Data Flow:</strong></p>
-                <pre><code class="hljs">Application/Producer → Kafka Topic ↓ Kafka Engine (Reads Topic) ↓ Materialized View (Transform) ↓ MergeTree Table (Persist) ↓ SELECT Queries (Analyze)</code></pre>
-                <p><strong>Key Advantage:</strong> Everything happens within ClickHouse - no external dependencies for the core ingestion pipeline.</p>
-            </div>
-
-            <h3>How Kafka Engine Works</h3>
-            <div class="grid-2">
-                <div class="card">
-                    <h4>Message Consumption</h4>
-                    <ul>
-                        <li>Reads from Kafka topics as a virtual table</li>
-                        <li>Supports multiple partitions</li>
-                        <li>Manages consumer group offsets</li>
-                        <li>Can handle backpressure</li>
-                        <li>Supports exactly-once semantics</li>
-                    </ul>
-                </div>
-                <div class="card">
-                    <h4>Offset Management</h4>
-                    <ul>
-                        <li>Kafka stores offset state</li>
-                        <li>ClickHouse can resume from last offset</li>
-                        <li>Supports offset reset strategies</li>
-                        <li>Manual offset management possible</li>
-                        <li>No duplicate handling by default</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Quick Start Section -->
-    <div class="section" id="quick-start">
-        <div class="section-header">🚀 Quick Start: Kafka Engine Setup</div>
-        <div class="section-content">
-            <h3>1. Prerequisites</h3>
-            <div class="card">
-                <ul>
-                    <li>Apache Kafka 0.9+ (installed and running)</li>
-                    <li>ClickHouse 20.7+</li>
-                    <li>Network connectivity between ClickHouse and Kafka brokers</li>
-                </ul>
-                <pre><code class="hljs"># Verify Kafka is running
+</div>
+</div>
+<h3>Architecture Overview</h3>
+<div class="card">
+<p><strong>Typical Data Flow:</strong></p>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content"><pre><code class="hljs">Application/Producer → Kafka Topic ↓ Kafka Engine (Reads Topic) ↓ Materialized View (Transform) ↓ MergeTree Table (Persist) ↓ SELECT Queries (Analyze)</code></pre></div><button class="toggle-btn"></button></div>
+<p><strong>Key Advantage:</strong> Everything happens within ClickHouse - no external dependencies for the core ingestion pipeline.</p>
+</div>
+<h3>How Kafka Engine Works</h3>
+<div class="grid-2">
+<div class="card">
+<h4>Message Consumption</h4>
+<ul>
+<li>Reads from Kafka topics as a virtual table</li>
+<li>Supports multiple partitions</li>
+<li>Manages consumer group offsets</li>
+<li>Can handle backpressure</li>
+<li>Supports exactly-once semantics</li>
+</ul>
+</div>
+<div class="card">
+<h4>Offset Management</h4>
+<ul>
+<li>Kafka stores offset state</li>
+<li>ClickHouse can resume from last offset</li>
+<li>Supports offset reset strategies</li>
+<li>Manual offset management possible</li>
+<li>No duplicate handling by default</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Start Section -->
+<div class="section" id="quick-start">
+<div class="section-header">🚀 Quick Start: Kafka Engine Setup</div>
+<div class="section-content">
+<h3>1. Prerequisites</h3>
+<div class="card">
+<ul>
+<li>Apache Kafka 0.9+ (installed and running)</li>
+<li>ClickHouse 20.7+</li>
+<li>Network connectivity between ClickHouse and Kafka brokers</li>
+</ul>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># Verify Kafka is running
 kafka-topics.sh --list --bootstrap-server localhost:9092
 
 # Create a test Kafka topic
 kafka-topics.sh --create --topic events \
   --bootstrap-server localhost:9092 \
   --partitions 3 \
-  --replication-factor 1</code></pre>
-            </div>
-
-            <h3>2. Create Kafka Table</h3>
-            <pre><code class="hljs">-- Create a simple Kafka table for consuming JSON messages
+  --replication-factor 1</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+</div>
+<h3>2. Create Kafka Table</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Create a simple Kafka table for consuming JSON messages
 CREATE TABLE kafka_events (
     event_id String,
     user_id UInt64,
@@ -502,10 +558,9 @@ SETTINGS
 SHOW CREATE TABLE kafka_events;
 
 -- Check table exists
-SELECT * FROM kafka_events LIMIT 0;</code></pre>
-
-            <h3>3. Create Materialized View for Persistence</h3>
-            <pre><code class="hljs">-- First, create the target MergeTree table
+SELECT * FROM kafka_events LIMIT 0;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>3. Create Materialized View for Persistence</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- First, create the target MergeTree table
 CREATE TABLE events_persistent (
     event_id String,
     user_id UInt64,
@@ -530,10 +585,9 @@ SELECT
 FROM kafka_events;
 
 -- Verify the materialized view
-SHOW MATERIALIZED VIEWS;</code></pre>
-
-            <h3>4. Test with Sample Data</h3>
-            <pre><code class="hljs"># Send test messages to Kafka
+SHOW MATERIALIZED VIEWS;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>4. Test with Sample Data</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># Send test messages to Kafka
 echo '{"event_id":"evt-001","user_id":1001,"event_type":"click","timestamp":1642772400,"properties":"{}"}' | \
   kafka-console-producer.sh --broker-list localhost:9092 --topic events
 
@@ -544,10 +598,9 @@ echo '{"event_id":"evt-002","user_id":1002,"event_type":"purchase","timestamp":1
 SELECT * FROM events_persistent LIMIT 10;
 
 -- Check ingestion rate
-SELECT COUNT(*) as total_events FROM events_persistent;</code></pre>
-
-            <h3>5. Verify Setup</h3>
-            <pre><code class="hljs">-- Check Kafka table status
+SELECT COUNT(*) as total_events FROM events_persistent;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>5. Verify Setup</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Check Kafka table status
 SELECT * FROM system.tables WHERE table = 'kafka_events';
 
 -- Monitor materialized view processing
@@ -559,16 +612,15 @@ WHERE table = 'kafka_events_consumer';
 SELECT * FROM system.query_log
 WHERE query_kind = 'Select'
 ORDER BY event_time DESC
-LIMIT 5;</code></pre>
-        </div>
-    </div>
-
-    <!-- Commands Reference Section -->
-    <div class="section" id="commands">
-        <div class="section-header">💻 Kafka Engine Commands & Configuration</div>
-        <div class="section-content">
-            <h3>Basic Kafka Table Creation</h3>
-            <pre><code class="hljs">-- Minimal Kafka table (JSON format)
+LIMIT 5;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+</div>
+</div>
+<!-- Commands Reference Section -->
+<div class="section" id="commands">
+<div class="section-header">💻 Kafka Engine Commands &amp; Configuration</div>
+<div class="section-content">
+<h3>Basic Kafka Table Creation</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Minimal Kafka table (JSON format)
 CREATE TABLE kafka_json (
     id String,
     name String,
@@ -590,34 +642,32 @@ SETTINGS
     kafka_topic_list = 'topic1,topic2,topic3',
     kafka_group_id = 'my-consumer-group',
     kafka_format = 'JSONEachRow',
-    kafka_num_consumers = 4;  -- Parallelism</code></pre>
-
-            <h3>Message Format Handlers</h3>
-            <div class="grid-2">
-                <div class="card">
-                    <h4>JSON Format</h4>
-                    <pre><code class="hljs">kafka_format = 'JSONEachRow'
--- Each Kafka message: one JSON object</code></pre>
-                </div>
-                <div class="card">
-                    <h4>CSV Format</h4>
-                    <pre><code class="hljs">kafka_format = 'CSV'
-kafka_skip_broken_messages = 1</code></pre>
-                </div>
-                <div class="card">
-                    <h4>Avro Format</h4>
-                    <pre><code class="hljs">kafka_format = 'Avro'
-kafka_schema = 'schema_registry_url'</code></pre>
-                </div>
-                <div class="card">
-                    <h4>Protobuf Format</h4>
-                    <pre><code class="hljs">kafka_format = 'Protobuf'
-kafka_schema_registry_url = 'http://...'</code></pre>
-                </div>
-            </div>
-
-            <h3>Consumer Group Configuration</h3>
-            <pre><code class="hljs">-- Configure consumer group and offset handling
+    kafka_num_consumers = 4;  -- Parallelism</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>Message Format Handlers</h3>
+<div class="grid-2">
+<div class="card">
+<h4>JSON Format</h4>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content"><pre><code class="hljs">kafka_format = 'JSONEachRow'
+-- Each Kafka message: one JSON object</code></pre></div><button class="toggle-btn"></button></div>
+</div>
+<div class="card">
+<h4>CSV Format</h4>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content"><pre><code class="hljs">kafka_format = 'CSV'
+kafka_skip_broken_messages = 1</code></pre></div><button class="toggle-btn"></button></div>
+</div>
+<div class="card">
+<h4>Avro Format</h4>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content"><pre><code class="hljs">kafka_format = 'Avro'
+kafka_schema = 'schema_registry_url'</code></pre></div><button class="toggle-btn"></button></div>
+</div>
+<div class="card">
+<h4>Protobuf Format</h4>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content"><pre><code class="hljs">kafka_format = 'Protobuf'
+kafka_schema_registry_url = 'http://...'</code></pre></div><button class="toggle-btn"></button></div>
+</div>
+</div>
+<h3>Consumer Group Configuration</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Configure consumer group and offset handling
 CREATE TABLE kafka_advanced (
     id UInt64,
     data String
@@ -647,10 +697,9 @@ SETTINGS
     -- Security (if needed)
     kafka_sasl_mechanism = 'PLAIN',
     kafka_sasl_username = 'user',
-    kafka_sasl_password = 'password';</code></pre>
-
-            <h3>Monitoring Kafka Engine</h3>
-            <pre><code class="hljs">-- Check Kafka engine status
+    kafka_sasl_password = 'password';</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>Monitoring Kafka Engine</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Check Kafka engine status
 SELECT
     table,
     engine,
@@ -683,63 +732,60 @@ FROM system.text_log
 WHERE level &gt;= 'Warning'
   AND message LIKE '%Kafka%'
 ORDER BY event_time DESC
-LIMIT 50;</code></pre>
-        </div>
-    </div>
-
-    <!-- Best Practices Section -->
-    <div class="section" id="best-practices">
-        <div class="section-header">✨ Kafka Ingestion Best Practices</div>
-        <div class="section-content">
-            <h3>1. Materialized Views Design</h3>
-            <div class="comparison">
-                <div class="bad">
-                    <div class="badge badge-bad">❌ Bad: Direct Kafka Queries</div>
-                    <pre><code class="hljs">-- DON'T query Kafka table directly
+LIMIT 50;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+</div>
+</div>
+<!-- Best Practices Section -->
+<div class="section" id="best-practices">
+<div class="section-header">✨ Kafka Ingestion Best Practices</div>
+<div class="section-content">
+<h3>1. Materialized Views Design</h3>
+<div class="comparison">
+<div class="bad">
+<div class="badge badge-bad">❌ Bad: Direct Kafka Queries</div>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content"><pre><code class="hljs">-- DON'T query Kafka table directly
 SELECT * FROM kafka_events LIMIT 1000;
 
 -- Problem: Messages are consumed &amp;
--- won't be replayed. Lost data!</code></pre>
-                </div>
-                <div class="good">
-                    <div class="badge badge-good">✅ Good: Use Materialized Views</div>
-                    <pre><code class="hljs">-- DO use materialized view
+-- won't be replayed. Lost data!</code></pre></div><button class="toggle-btn"></button></div>
+</div>
+<div class="good">
+<div class="badge badge-good">✅ Good: Use Materialized Views</div>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- DO use materialized view
 CREATE MATERIALIZED VIEW kafka_mv
 TO target_table AS
 SELECT * FROM kafka_events;
 
 -- Messages consumed once, persisted,
--- and replayed for all queries</code></pre>
-                </div>
-            </div>
-
-            <h3>2. Consumer Group Strategy</h3>
-            <div class="card">
-                <h4>Single Consumer Group per Table</h4>
-                <ul>
-                    <li><strong>Recommended:</strong> One consumer group per table/topic pair</li>
-                    <li>Avoids offset conflicts between different pipelines</li>
-                    <li>Simplifies monitoring and debugging</li>
-                    <li>Each consumer group tracks its own offset</li>
-                </ul>
-                <pre><code class="hljs">-- Good: Separate consumer groups
+-- and replayed for all queries</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+</div>
+</div>
+<h3>2. Consumer Group Strategy</h3>
+<div class="card">
+<h4>Single Consumer Group per Table</h4>
+<ul>
+<li><strong>Recommended:</strong> One consumer group per table/topic pair</li>
+<li>Avoids offset conflicts between different pipelines</li>
+<li>Simplifies monitoring and debugging</li>
+<li>Each consumer group tracks its own offset</li>
+</ul>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Good: Separate consumer groups
 CREATE TABLE kafka_events
 SETTINGS kafka_group_id = 'clickhouse-events-consumer';
 
 CREATE TABLE kafka_logs
-SETTINGS kafka_group_id = 'clickhouse-logs-consumer';</code></pre>
-            </div>
-
-            <h3>3. Backpressure & Throughput Tuning</h3>
-            <div class="card">
-                <h4>Handle High Message Rates</h4>
-                <ul>
-                    <li>Increase <code>kafka_num_consumers</code> for parallelism</li>
-                    <li>Adjust <code>kafka_max_block_size</code> for batching</li>
-                    <li>Tune <code>kafka_poll_timeout_ms</code> to balance latency vs throughput</li>
-                    <li>Monitor ClickHouse resource usage (CPU, memory, disk I/O)</li>
-                </ul>
-                <pre><code class="hljs">-- Tuned for high throughput
+SETTINGS kafka_group_id = 'clickhouse-logs-consumer';</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+</div>
+<h3>3. Backpressure &amp; Throughput Tuning</h3>
+<div class="card">
+<h4>Handle High Message Rates</h4>
+<ul>
+<li>Increase <code>kafka_num_consumers</code> for parallelism</li>
+<li>Adjust <code>kafka_max_block_size</code> for batching</li>
+<li>Tune <code>kafka_poll_timeout_ms</code> to balance latency vs throughput</li>
+<li>Monitor ClickHouse resource usage (CPU, memory, disk I/O)</li>
+</ul>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Tuned for high throughput
 CREATE TABLE kafka_hpt (
     data String
 ) ENGINE = Kafka()
@@ -749,13 +795,12 @@ SETTINGS
     kafka_num_consumers = 16,  -- More parallelism
     kafka_max_block_size = 524288,  -- 512KB blocks
     kafka_poll_timeout_ms = 1000,  -- Balance latency
-    kafka_poll_max_batch_size = 1000;  -- Larger batches</code></pre>
-            </div>
-
-            <h3>4. Error Handling & Dead Letter Queues</h3>
-            <div class="card">
-                <h4>Graceful Error Handling</h4>
-                <pre><code class="hljs">-- Create a DLQ table for failed messages
+    kafka_poll_max_batch_size = 1000;  -- Larger batches</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+</div>
+<h3>4. Error Handling &amp; Dead Letter Queues</h3>
+<div class="card">
+<h4>Graceful Error Handling</h4>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Create a DLQ table for failed messages
 CREATE TABLE kafka_dlq (
     failed_at DateTime,
     error_message String,
@@ -780,40 +825,38 @@ SELECT
     now() as processed_time,
     *
 FROM kafka_events
-WHERE 1=1;  -- Can add validation here</code></pre>
-            </div>
-
-            <h3>5. Offset Management Strategies</h3>
-            <div class="grid-2">
-                <div class="card">
-                    <h4>Offset Reset Strategies</h4>
-                    <ul>
-                        <li><code>smallest</code>: Start from beginning (replay all)</li>
-                        <li><code>largest</code>: Start from end (only new messages)</li>
-                        <li><code>offset</code>: Specify exact offset</li>
-                    </ul>
-                    <pre><code class="hljs">kafka_auto_offset_reset = 'smallest'</code></pre>
-                </div>
-                <div class="card">
-                    <h4>Resuming from Offset</h4>
-                    <ul>
-                        <li>ClickHouse auto-manages offsets in Kafka</li>
-                        <li>Restart automatically resumes from last committed offset</li>
-                        <li>No duplicate handling: setup application-level deduplication</li>
-                    </ul>
-                </div>
-            </div>
-
-            <h3>6. Message Format Best Practices</h3>
-            <div class="card">
-                <h4>Choosing the Right Format</h4>
-                <ul>
-                    <li><strong>JSON:</strong> Simple, human-readable, good for flexible schemas</li>
-                    <li><strong>Avro:</strong> Efficient, schema evolution, binary format</li>
-                    <li><strong>Protobuf:</strong> Compact, strongly typed, version-safe</li>
-                    <li><strong>CSV:</strong> Lightweight, fixed schema</li>
-                </ul>
-                <pre><code class="hljs">-- Handle nested JSON with proper types
+WHERE 1=1;  -- Can add validation here</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+</div>
+<h3>5. Offset Management Strategies</h3>
+<div class="grid-2">
+<div class="card">
+<h4>Offset Reset Strategies</h4>
+<ul>
+<li><code>smallest</code>: Start from beginning (replay all)</li>
+<li><code>largest</code>: Start from end (only new messages)</li>
+<li><code>offset</code>: Specify exact offset</li>
+</ul>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content"><pre><code class="hljs">kafka_auto_offset_reset = 'smallest'</code></pre></div><button class="toggle-btn"></button></div>
+</div>
+<div class="card">
+<h4>Resuming from Offset</h4>
+<ul>
+<li>ClickHouse auto-manages offsets in Kafka</li>
+<li>Restart automatically resumes from last committed offset</li>
+<li>No duplicate handling: setup application-level deduplication</li>
+</ul>
+</div>
+</div>
+<h3>6. Message Format Best Practices</h3>
+<div class="card">
+<h4>Choosing the Right Format</h4>
+<ul>
+<li><strong>JSON:</strong> Simple, human-readable, good for flexible schemas</li>
+<li><strong>Avro:</strong> Efficient, schema evolution, binary format</li>
+<li><strong>Protobuf:</strong> Compact, strongly typed, version-safe</li>
+<li><strong>CSV:</strong> Lightweight, fixed schema</li>
+</ul>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Handle nested JSON with proper types
 CREATE TABLE kafka_nested (
     id UInt64,
     user_data String  -- Store complex object as string
@@ -825,18 +868,17 @@ CREATE TABLE kafka_json_native (
     id UInt64,
     data JSON
 ) ENGINE = Kafka()
-SETTINGS kafka_format = 'JSONEachRow';</code></pre>
-            </div>
-
-            <h3>7. Scaling Kafka Ingestion</h3>
-            <div class="card">
-                <h4>Horizontal Scaling Patterns</h4>
-                <ul>
-                    <li><strong>Multiple ClickHouse consumers:</strong> Same consumer group spreads load</li>
-                    <li><strong>Multiple Kafka partitions:</strong> Match partitions to consumer count</li>
-                    <li><strong>Distributed tables:</strong> Scale across cluster with Distributed engine</li>
-                </ul>
-                <pre><code class="hljs">-- Create distributed Kafka table for cluster
+SETTINGS kafka_format = 'JSONEachRow';</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+</div>
+<h3>7. Scaling Kafka Ingestion</h3>
+<div class="card">
+<h4>Horizontal Scaling Patterns</h4>
+<ul>
+<li><strong>Multiple ClickHouse consumers:</strong> Same consumer group spreads load</li>
+<li><strong>Multiple Kafka partitions:</strong> Match partitions to consumer count</li>
+<li><strong>Distributed tables:</strong> Scale across cluster with Distributed engine</li>
+</ul>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Create distributed Kafka table for cluster
 CREATE TABLE kafka_dist (
     id UInt64,
     data String
@@ -852,191 +894,184 @@ CREATE TABLE events_persistent_dist AS events_persistent
 ENGINE = Distributed('my_cluster', 'default', 'events_persistent', rand());
 
 CREATE MATERIALIZED VIEW kafka_to_dist TO events_persistent_dist AS
-SELECT * FROM kafka_dist;</code></pre>
-            </div>
-        </div>
-    </div>
-
-    <!-- When to Use Section -->
-    <div class="section" id="when-to-use">
-        <div class="section-header">🎯 When to Use Kafka Engine</div>
-        <div class="section-content">
-            <div class="grid-2">
-                <div class="card" style="background: #e6f7ed;">
-                    <h4>✅ Ideal For</h4>
-                    <ul>
-                        <li>Real-time streaming analytics</li>
-                        <li>Event sourcing systems</li>
-                        <li>High-volume event ingestion (millions/sec)</li>
-                        <li>Applications with Kafka infrastructure</li>
-                        <li>Multi-source data consolidation</li>
-                        <li>Continuous data pipelines</li>
-                        <li>IoT sensor data streams</li>
-                        <li>Log aggregation and analysis</li>
-                        <li>Real-time monitoring dashboards</li>
-                    </ul>
-                </div>
-                <div class="card" style="background: #ffe6e6;">
-                    <h4>❌ Not Ideal For</h4>
-                    <ul>
-                        <li>Batch imports (use INSERT INTO)</li>
-                        <li>One-time data migrations</li>
-                        <li>Low-volume infrequent events</li>
-                        <li>When you don't have Kafka</li>
-                        <li>Exactly-once delivery requirements (use ACID DB)</li>
-                        <li>Complex multi-step transformations</li>
-                        <li>Transactional workloads</li>
-                    </ul>
-                </div>
-            </div>
-
-            <h3>Comparison with Alternatives</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Method</th>
-                        <th>Latency</th>
-                        <th>Throughput</th>
-                        <th>Complexity</th>
-                        <th>Best For</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>Kafka Engine</strong></td>
-                        <td>Sub-second</td>
-                        <td>Millions/sec</td>
-                        <td>Medium</td>
-                        <td>Real-time streaming</td>
-                    </tr>
-                    <tr>
-                        <td><strong>INSERT INTO</strong></td>
-                        <td>Depends</td>
-                        <td>Thousands/sec</td>
-                        <td>Low</td>
-                        <td>Batch loading</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Kafka Connect</strong></td>
-                        <td>Seconds</td>
-                        <td>Millions/sec</td>
-                        <td>High</td>
-                        <td>Multi-destination pipelines</td>
-                    </tr>
-                    <tr>
-                        <td><strong>S3 Import</strong></td>
-                        <td>Minutes</td>
-                        <td>High</td>
-                        <td>Low</td>
-                        <td>Batch from cloud storage</td>
-                    </tr>
-                    <tr>
-                        <td><strong>JDBC/ODBC</strong></td>
-                        <td>Seconds</td>
-                        <td>Thousands/sec</td>
-                        <td>Low</td>
-                        <td>Pull from external DB</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Real-World Results Section -->
-    <div class="section" id="real-world">
-        <div class="section-header">🏆 Real-World Results & Case Studies</div>
-        <div class="section-content">
-            <div class="icon-grid">
-                <div class="icon-card" style="background: #fff9e6;">
-                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">10M+</div>
-                    <h4>Events/Second</h4>
-                    <p>Sustained ingestion from Kafka with single cluster</p>
-                </div>
-                <div class="icon-card" style="background: #e6f7ed;">
-                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">< 500ms</div>
-                    <h4>End-to-End Latency</h4>
-                    <p>From Kafka to query-ready in ClickHouse</p>
-                </div>
-                <div class="icon-card" style="background: #e6f2ff;">
-                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">99.9%</div>
-                    <h4>Uptime</h4>
-                    <p>Reliable ingestion with minimal operational overhead</p>
-                </div>
-                <div class="icon-card" style="background: #f0e6ff;">
-                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">10-50x</div>
-                    <h4>Cost Reduction</h4>
-                    <p>vs traditional data warehouses with Kafka ingestion</p>
-                </div>
-            </div>
-
-            <h3>Case Study 1: E-Commerce Event Analytics</h3>
-            <div class="card">
-                <h4>Challenge</h4>
-                <p>Process 5 million user events/day from mobile apps, web, backend services. Provide real-time dashboards with <1s query latency.</p>
-                <h4>Solution</h4>
-                <ul>
-                    <li>7 Kafka topics (one per event type)</li>
-                    <li>ClickHouse 3-node cluster (3 shards, 2 replicas each)</li>
-                    <li>Kafka Engine with materialized views</li>
-                    <li>TTL for data retention (90 days)</li>
-                </ul>
-                <h4>Results</h4>
-                <ul>
-                    <li>Ingestion latency: 200-500ms p99</li>
-                    <li>Query latency: 100-300ms for dashboard queries</li>
-                    <li>Storage: 50TB raw compressed to 2TB</li>
-                    <li>Cost: 70% reduction vs previous Elasticsearch stack</li>
-                </ul>
-            </div>
-
-            <h3>Case Study 2: Real-Time Monitoring System</h3>
-            <div class="card">
-                <h4>Challenge</h4>
-                <p>Monitor 10,000 servers generating 2M metrics/second. Alert on anomalies in real-time.</p>
-                <h4>Solution</h4>
-                <ul>
-                    <li>Custom metrics producer → Kafka topic</li>
-                    <li>5-node ClickHouse cluster</li>
-                    <li>Separate consumer groups per metric type</li>
-                    <li>ReplacingMergeTree for latest metric state</li>
-                </ul>
-                <h4>Results</h4>
-                <ul>
-                    <li>Ingestion: 2M events/sec (within SLA)</li>
-                    <li>Alert latency: 5-10 seconds</li>
-                    <li>Data retention: 30 days (automatic TTL)</li>
-                    <li>Operational cost: $50K/month (vs $300K+ for commercial TSDB)</li>
-                </ul>
-            </div>
-
-            <h3>Case Study 3: User Behavior Analytics</h3>
-            <div class="card">
-                <h4>Challenge</h4>
-                <p>Analyze 100M user interactions/day. Support ad-hoc exploration with complex queries.</p>
-                <h4>Solution</h4>
-                <ul>
-                    <li>Multiple Kafka topics for different event types</li>
-                    <li>Data enrichment via materialized view joins</li>
-                    <li>Distributed ClickHouse cluster (6 nodes)</li>
-                    <li>ReplicatedMergeTree for fault tolerance</li>
-                </ul>
-                <h4>Results</h4>
-                <ul>
-                    <li>Query performance: 0.5-2s for any analysis</li>
-                    <li>Data freshness: ~1 minute from event to query</li>
-                    <li>Enabled new self-service analytics platform</li>
-                    <li>Reduced dependency on data scientists for ad-hoc queries</li>
-                </ul>
-            </div>
-        </div>
-    </div>
-
-    <!-- Templates Section -->
-    <div class="section" id="templates">
-        <div class="section-header">📋 Production-Ready Templates</div>
-        <div class="section-content">
-            <h3>Template 1: JSON Event Streaming</h3>
-            <pre><code class="hljs">-- Kafka table for JSON events
+SELECT * FROM kafka_dist;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+</div>
+</div>
+</div>
+<!-- When to Use Section -->
+<div class="section" id="when-to-use">
+<div class="section-header">🎯 When to Use Kafka Engine</div>
+<div class="section-content">
+<div class="grid-2">
+<div class="card" style="background: #e6f7ed;">
+<h4>✅ Ideal For</h4>
+<ul>
+<li>Real-time streaming analytics</li>
+<li>Event sourcing systems</li>
+<li>High-volume event ingestion (millions/sec)</li>
+<li>Applications with Kafka infrastructure</li>
+<li>Multi-source data consolidation</li>
+<li>Continuous data pipelines</li>
+<li>IoT sensor data streams</li>
+<li>Log aggregation and analysis</li>
+<li>Real-time monitoring dashboards</li>
+</ul>
+</div>
+<div class="card" style="background: #ffe6e6;">
+<h4>❌ Not Ideal For</h4>
+<ul>
+<li>Batch imports (use INSERT INTO)</li>
+<li>One-time data migrations</li>
+<li>Low-volume infrequent events</li>
+<li>When you don't have Kafka</li>
+<li>Exactly-once delivery requirements (use ACID DB)</li>
+<li>Complex multi-step transformations</li>
+<li>Transactional workloads</li>
+</ul>
+</div>
+</div>
+<h3>Comparison with Alternatives</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Latency</th>
+<th>Throughput</th>
+<th>Complexity</th>
+<th>Best For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Kafka Engine</strong></td>
+<td>Sub-second</td>
+<td>Millions/sec</td>
+<td>Medium</td>
+<td>Real-time streaming</td>
+</tr>
+<tr>
+<td><strong>INSERT INTO</strong></td>
+<td>Depends</td>
+<td>Thousands/sec</td>
+<td>Low</td>
+<td>Batch loading</td>
+</tr>
+<tr>
+<td><strong>Kafka Connect</strong></td>
+<td>Seconds</td>
+<td>Millions/sec</td>
+<td>High</td>
+<td>Multi-destination pipelines</td>
+</tr>
+<tr>
+<td><strong>S3 Import</strong></td>
+<td>Minutes</td>
+<td>High</td>
+<td>Low</td>
+<td>Batch from cloud storage</td>
+</tr>
+<tr>
+<td><strong>JDBC/ODBC</strong></td>
+<td>Seconds</td>
+<td>Thousands/sec</td>
+<td>Low</td>
+<td>Pull from external DB</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Real-World Results Section -->
+<div class="section" id="real-world">
+<div class="section-header">🏆 Real-World Results &amp; Case Studies</div>
+<div class="section-content">
+<div class="icon-grid">
+<div class="icon-card" style="background: #fff9e6;">
+<div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">10M+</div>
+<h4>Events/Second</h4>
+<p>Sustained ingestion from Kafka with single cluster</p>
+</div>
+<div class="icon-card" style="background: #e6f7ed;">
+<div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">&lt; 500ms</div>
+<h4>End-to-End Latency</h4>
+<p>From Kafka to query-ready in ClickHouse</p>
+</div>
+<div class="icon-card" style="background: #e6f2ff;">
+<div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">99.9%</div>
+<h4>Uptime</h4>
+<p>Reliable ingestion with minimal operational overhead</p>
+</div>
+<div class="icon-card" style="background: #f0e6ff;">
+<div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">10-50x</div>
+<h4>Cost Reduction</h4>
+<p>vs traditional data warehouses with Kafka ingestion</p>
+</div>
+</div>
+<h3>Case Study 1: E-Commerce Event Analytics</h3>
+<div class="card">
+<h4>Challenge</h4>
+<p>Process 5 million user events/day from mobile apps, web, backend services. Provide real-time dashboards with &lt;1s query latency.</p>
+<h4>Solution</h4>
+<ul>
+<li>7 Kafka topics (one per event type)</li>
+<li>ClickHouse 3-node cluster (3 shards, 2 replicas each)</li>
+<li>Kafka Engine with materialized views</li>
+<li>TTL for data retention (90 days)</li>
+</ul>
+<h4>Results</h4>
+<ul>
+<li>Ingestion latency: 200-500ms p99</li>
+<li>Query latency: 100-300ms for dashboard queries</li>
+<li>Storage: 50TB raw compressed to 2TB</li>
+<li>Cost: 70% reduction vs previous Elasticsearch stack</li>
+</ul>
+</div>
+<h3>Case Study 2: Real-Time Monitoring System</h3>
+<div class="card">
+<h4>Challenge</h4>
+<p>Monitor 10,000 servers generating 2M metrics/second. Alert on anomalies in real-time.</p>
+<h4>Solution</h4>
+<ul>
+<li>Custom metrics producer → Kafka topic</li>
+<li>5-node ClickHouse cluster</li>
+<li>Separate consumer groups per metric type</li>
+<li>ReplacingMergeTree for latest metric state</li>
+</ul>
+<h4>Results</h4>
+<ul>
+<li>Ingestion: 2M events/sec (within SLA)</li>
+<li>Alert latency: 5-10 seconds</li>
+<li>Data retention: 30 days (automatic TTL)</li>
+<li>Operational cost: $50K/month (vs $300K+ for commercial TSDB)</li>
+</ul>
+</div>
+<h3>Case Study 3: User Behavior Analytics</h3>
+<div class="card">
+<h4>Challenge</h4>
+<p>Analyze 100M user interactions/day. Support ad-hoc exploration with complex queries.</p>
+<h4>Solution</h4>
+<ul>
+<li>Multiple Kafka topics for different event types</li>
+<li>Data enrichment via materialized view joins</li>
+<li>Distributed ClickHouse cluster (6 nodes)</li>
+<li>ReplicatedMergeTree for fault tolerance</li>
+</ul>
+<h4>Results</h4>
+<ul>
+<li>Query performance: 0.5-2s for any analysis</li>
+<li>Data freshness: ~1 minute from event to query</li>
+<li>Enabled new self-service analytics platform</li>
+<li>Reduced dependency on data scientists for ad-hoc queries</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- Templates Section -->
+<div class="section" id="templates">
+<div class="section-header">📋 Production-Ready Templates</div>
+<div class="section-content">
+<h3>Template 1: JSON Event Streaming</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Kafka table for JSON events
 CREATE TABLE kafka_raw_events (
     event_id String,
     user_id UInt64,
@@ -1083,10 +1118,9 @@ SELECT
     properties,
     platform,
     now() as ingestion_time
-FROM kafka_raw_events;</code></pre>
-
-            <h3>Template 2: Metrics/Time-Series from Kafka</h3>
-            <pre><code class="hljs">-- Kafka table for metrics
+FROM kafka_raw_events;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>Template 2: Metrics/Time-Series from Kafka</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Kafka table for metrics
 CREATE TABLE kafka_metrics (
     metric_name String,
     metric_value Float64,
@@ -1125,10 +1159,9 @@ SELECT
     JSONExtractString(tags, 'service') as service,
     JSONExtractString(tags, 'region') as region,
     tags
-FROM kafka_metrics;</code></pre>
-
-            <h3>Template 3: Logs Aggregation from Kafka</h3>
-            <pre><code class="hljs">-- Kafka table for log events
+FROM kafka_metrics;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>Template 3: Logs Aggregation from Kafka</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Kafka table for log events
 CREATE TABLE kafka_logs (
     timestamp UInt64,
     level String,
@@ -1173,16 +1206,15 @@ SELECT
     host,
     trace_id,
     extra_fields
-FROM kafka_logs;</code></pre>
-        </div>
-    </div>
-
-    <!-- Advanced Patterns Section -->
-    <div class="section" id="advanced">
-        <div class="section-header">🔥 Advanced Patterns</div>
-        <div class="section-content">
-            <h3>1. Data Enrichment with Materialized Views</h3>
-            <pre><code class="hljs">-- Raw Kafka table with minimal data
+FROM kafka_logs;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+</div>
+</div>
+<!-- Advanced Patterns Section -->
+<div class="section" id="advanced">
+<div class="section-header">🔥 Advanced Patterns</div>
+<div class="section-content">
+<h3>1. Data Enrichment with Materialized Views</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Raw Kafka table with minimal data
 CREATE TABLE kafka_raw (
     user_id UInt64,
     product_id UInt32,
@@ -1235,10 +1267,9 @@ SELECT
     u.vip_status
 FROM kafka_raw kr
 LEFT JOIN users u ON kr.user_id = u.user_id
-LEFT JOIN products p ON kr.product_id = p.product_id;</code></pre>
-
-            <h3>2. Real-Time Aggregation with SummingMergeTree</h3>
-            <pre><code class="hljs">-- Kafka raw events
+LEFT JOIN products p ON kr.product_id = p.product_id;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>2. Real-Time Aggregation with SummingMergeTree</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Kafka raw events
 CREATE TABLE kafka_events_raw (
     timestamp UInt64,
     event_type String,
@@ -1271,10 +1302,9 @@ SELECT
     COUNT(*) as event_count,
     SUM(revenue) as revenue
 FROM kafka_events_raw
-GROUP BY hour, event_type;</code></pre>
-
-            <h3>3. Deduplication with ReplacingMergeTree</h3>
-            <pre><code class="hljs">-- Kafka events (may contain duplicates)
+GROUP BY hour, event_type;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>3. Deduplication with ReplacingMergeTree</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Kafka events (may contain duplicates)
 CREATE TABLE kafka_orders (
     order_id String,
     user_id UInt64,
@@ -1310,10 +1340,9 @@ SELECT
     status,
     fromUnixTimestamp(timestamp) as timestamp,
     version
-FROM kafka_orders;</code></pre>
-
-            <h3>4. Distributed Kafka Ingestion Across Cluster</h3>
-            <pre><code class="hljs">-- On each ClickHouse node: local Kafka table
+FROM kafka_orders;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>4. Distributed Kafka Ingestion Across Cluster</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- On each ClickHouse node: local Kafka table
 CREATE TABLE kafka_local (
     id UInt64,
     data String
@@ -1342,90 +1371,122 @@ CREATE TABLE events_distributed AS events_local
 ENGINE = Distributed('my_cluster', 'default', 'events_local', rand());
 
 -- Query combines data from all nodes
-SELECT COUNT(*) as total_events FROM events_distributed;</code></pre>
-        </div>
-    </div>
-
-    <!-- Resources Section -->
-    <div class="section" id="resources">
-        <div class="section-header">📚 Resources & References</div>
-        <div class="section-content">
-            <div class="grid-2">
-                <div class="card">
-                    <h4>📘 View in Notion</h4>
-                    <p style="margin: 10px 0;">Access this module in your Notion workspace for note-taking and tracking your progress.</p>
-                    <a href="https://www.notion.so/Module-9-Kafka-Based-Real-Time-Ingestion-2f1bb896952b813cba5cc03d243929c4" target="_blank" rel="noopener noreferrer" style="color: #ff6b35; font-weight: 600; text-decoration: none;">Open in Notion →</a>
-                </div>
-
-                <div class="card">
-                    <h4>📖 Official Documentation</h4>
-                    <ul>
-                        <li><a href="https://clickhouse.com/docs/en/engines/table-engines/integrations/kafka" target="_blank">Kafka Engine Docs</a></li>
-                        <li><a href="https://clickhouse.com/docs/en/sql-reference/statements/create/view#materialized" target="_blank">Materialized Views</a></li>
-                        <li><a href="https://clickhouse.com/docs/en/sql-reference/statements/create/table" target="_blank">CREATE TABLE Reference</a></li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <h4>🛠️ Tools & Integrations</h4>
-                    <ul>
-                        <li><a href="https://kafka.apache.org/" target="_blank">Apache Kafka</a></li>
-                        <li><a href="https://github.com/ClickHouse/kafka-connect-clickhouse" target="_blank">Kafka Connect ClickHouse</a></li>
-                        <li><a href="https://vectordev.io/" target="_blank">Vector (log aggregator)</a></li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <h4>🎓 Learning Resources</h4>
-                    <ul>
-                        <li><a href="https://clickhouse.com/learn" target="_blank">ClickHouse Learn Portal</a></li>
-                        <li><a href="https://clickhouse.com/blog" target="_blank">ClickHouse Blog</a></li>
-                        <li><a href="https://kafka.apache.org/quickstart" target="_blank">Kafka Quick Start</a></li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <h4>💬 Community</h4>
-                    <ul>
-                        <li><a href="https://clickhouse.com/slack" target="_blank">ClickHouse Slack</a></li>
-                        <li><a href="https://stackoverflow.com/questions/tagged/clickhouse" target="_blank">Stack Overflow</a></li>
-                        <li><a href="https://github.com/ClickHouse/ClickHouse/discussions" target="_blank">GitHub Discussions</a></li>
-                    </ul>
-                </div>
-            </div>
-
-            <div class="highlight-box">
-                <h4>🎯 Next Steps</h4>
-                <p>After completing Module 9, you should be comfortable with:</p>
-                <ul>
-                    <li>✅ Understanding Kafka Engine architecture and setup</li>
-                    <li>✅ Creating Kafka tables and materialized views</li>
-                    <li>✅ Configuring consumer groups and offset management</li>
-                    <li>✅ Handling different message formats (JSON, Avro, Protobuf)</li>
-                    <li>✅ Implementing error handling and monitoring</li>
-                    <li>✅ Optimizing for high throughput and low latency</li>
-                </ul>
-                <p><strong>Ready for Module 10?</strong> Next, we'll explore Data Migration Strategies!</p>
-            </div>
-        </div>
-    </div>
-
+SELECT COUNT(*) as total_events FROM events_distributed;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 </div>
-
+</div>
+<!-- Resources Section -->
+<div class="section" id="resources">
+<div class="section-header">📚 Resources &amp; References</div>
+<div class="section-content">
+<div class="grid-2">
+<div class="card">
+<h4>📘 View in Notion</h4>
+<p style="margin: 10px 0;">Access this module in your Notion workspace for note-taking and tracking your progress.</p>
+<a href="https://www.notion.so/Module-9-Kafka-Based-Real-Time-Ingestion-2f1bb896952b813cba5cc03d243929c4" rel="noopener noreferrer" style="color: #ff6b35; font-weight: 600; text-decoration: none;" target="_blank">Open in Notion →</a>
+</div>
+<div class="card">
+<h4>📖 Official Documentation</h4>
+<ul>
+<li><a href="https://clickhouse.com/docs/en/engines/table-engines/integrations/kafka" target="_blank">Kafka Engine Docs</a></li>
+<li><a href="https://clickhouse.com/docs/en/sql-reference/statements/create/view#materialized" target="_blank">Materialized Views</a></li>
+<li><a href="https://clickhouse.com/docs/en/sql-reference/statements/create/table" target="_blank">CREATE TABLE Reference</a></li>
+</ul>
+</div>
+<div class="card">
+<h4>🛠️ Tools &amp; Integrations</h4>
+<ul>
+<li><a href="https://kafka.apache.org/" target="_blank">Apache Kafka</a></li>
+<li><a href="https://github.com/ClickHouse/kafka-connect-clickhouse" target="_blank">Kafka Connect ClickHouse</a></li>
+<li><a href="https://vectordev.io/" target="_blank">Vector (log aggregator)</a></li>
+</ul>
+</div>
+<div class="card">
+<h4>🎓 Learning Resources</h4>
+<ul>
+<li><a href="https://clickhouse.com/learn" target="_blank">ClickHouse Learn Portal</a></li>
+<li><a href="https://clickhouse.com/blog" target="_blank">ClickHouse Blog</a></li>
+<li><a href="https://kafka.apache.org/quickstart" target="_blank">Kafka Quick Start</a></li>
+</ul>
+</div>
+<div class="card">
+<h4>💬 Community</h4>
+<ul>
+<li><a href="https://clickhouse.com/slack" target="_blank">ClickHouse Slack</a></li>
+<li><a href="https://stackoverflow.com/questions/tagged/clickhouse" target="_blank">Stack Overflow</a></li>
+<li><a href="https://github.com/ClickHouse/ClickHouse/discussions" target="_blank">GitHub Discussions</a></li>
+</ul>
+</div>
+</div>
+<div class="highlight-box">
+<h4>🎯 Next Steps</h4>
+<p>After completing Module 9, you should be comfortable with:</p>
+<ul>
+<li>✅ Understanding Kafka Engine architecture and setup</li>
+<li>✅ Creating Kafka tables and materialized views</li>
+<li>✅ Configuring consumer groups and offset management</li>
+<li>✅ Handling different message formats (JSON, Avro, Protobuf)</li>
+<li>✅ Implementing error handling and monitoring</li>
+<li>✅ Optimizing for high throughput and low latency</li>
+</ul>
+<p><strong>Ready for Module 10?</strong> Next, we'll explore Data Migration Strategies!</p>
+</div>
+</div>
+</div>
+</div>
 <div style="background: #333; color: white; padding: 40px 20px; text-align: center; margin-top: 40px;">
-    <h3>📊 ClickHouse Knowledge Transfer</h3>
-    <p>Module 9 of 10 | Duration: 6-8 weeks total</p>
-    <p style="margin-top: 20px; opacity: 0.8;">Created for comprehensive ClickHouse training | 2026</p>
+<h3>📊 ClickHouse Knowledge Transfer</h3>
+<p>Module 9 of 10 | Duration: 6-8 weeks total</p>
+<p style="margin-top: 20px; opacity: 0.8;">Created for comprehensive ClickHouse training | 2026</p>
 </div>
-
 <div class="module-nav" style="border-bottom: none; border-top: 2px solid #ff6b35;">
-    <a href="module-8-disaster-recovery.html" class="nav-btn-module">← Previous: Module 8 - Disaster Recovery</a>
-    <a href="../index.html" class="nav-btn-module nav-home">🏠 Home</a>
-    <a href="module-10-migration.html" class="nav-btn-module">Next: Module 10 - Migration →</a>
+<a class="nav-btn-module" href="module-8-disaster-recovery.html">← Previous: Module 8 - Disaster Recovery</a>
+<a class="nav-btn-module nav-home" href="../index.html">🏠 Home</a>
+<a class="nav-btn-module" href="module-10-migration.html">Next: Module 10 - Migration →</a>
 </div>
-
 <script>
 hljs.highlightAll();
 </script>
-</body>
+<script>
+// Copy code functionality
+document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const code = this.parentElement.querySelector('code').textContent;
+        navigator.clipboard.writeText(code).then(() => {
+            const originalText = this.textContent;
+            this.textContent = '✓ Copied!';
+            this.classList.add('copied');
+            setTimeout(() => {
+                this.textContent = originalText;
+                this.classList.remove('copied');
+            },2000);
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+            this.textContent = '✗ Failed';
+            setTimeout(() => {
+                this.textContent = 'Copy';
+            },2000);
+        });
+    });
+});
+
+// Show more/less functionality
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const content = this.parentElement.querySelector('.code-content');
+        const overlay = content.querySelector('.fade-overlay');
+        
+        if (content.classList.contains('collapsed')) {
+            content.classList.remove('collapsed');
+            content.classList.add('expanded');
+            this.textContent = 'Show Less';
+            if (overlay) overlay.style.display = 'none';
+        } else {
+            content.classList.add('collapsed');
+            content.classList.remove('expanded');
+            this.textContent = 'Show More';
+            if (overlay) overlay.style.display = 'block';
+        }
+    });
+});
+</script></body>
 </html>

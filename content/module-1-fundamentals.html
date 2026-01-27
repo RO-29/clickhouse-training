@@ -1,14 +1,15 @@
 <!DOCTYPE html>
+
 <html lang="en" style="scroll-behavior: smooth;">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Module 1: ClickHouse Fundamentals & Architecture</title>
-    <link rel="icon" type="image/x-icon" href="../favicon.ico">
-    <link rel="icon" type="image/png" href="../favicon.png">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
-    <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Module 1: ClickHouse Fundamentals &amp; Architecture</title>
+<link href="../favicon.ico" rel="icon" type="image/x-icon"/>
+<link href="../favicon.png" rel="icon" type="image/png"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
             margin: 0;
@@ -208,247 +209,311 @@
                 min-width: 100%;
             }
         }
-    </style>
+    
+        .code-wrapper {
+            position: relative;
+            margin: 15px 0;
+        }
+        .code-wrapper pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px 20px 50px 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+        }
+        .code-wrapper .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255,255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+        .code-wrapper .copy-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        .code-wrapper .copy-btn.copied {
+            background: rgba(39, 174, 96, 0.8);
+            border-color: #27ae60;
+        }
+        .code-wrapper .code-content {
+            transition: max-height 0.3s ease-out;
+            overflow: hidden;
+        }
+        .code-wrapper .code-content.expanded {
+            max-height: none !important;
+        }
+        .code-wrapper .code-content.collapsed {
+            max-height: 120px;
+        }
+        .code-wrapper .toggle-btn {
+            display: none;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: -40px;
+            margin-bottom: 20px;
+            transition: transform 0.2s;
+        }
+        .code-wrapper .toggle-btn:hover {
+            transform: translateY(-2px);
+        }
+        .code-wrapper .toggle-btn.visible {
+            display: inline-block;
+        }
+        .code-wrapper .fade-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(transparent, #1e1e1e);
+            pointer-events: none;
+            display: none;
+        }
+        .code-wrapper .code-content.collapsed .fade-overlay {
+            display: block;
+        }
+</style>
 </head>
 <body>
-
 <div class="module-nav">
-    <span class="nav-btn-module disabled">← Previous Module</span>
-    <a href="../index.html" class="nav-btn-module nav-home">🏠 Home</a>
-    <a href="module-2-table-engines.html" class="nav-btn-module">Next: Module 2 - Table Engines →</a>
+<span class="nav-btn-module disabled">← Previous Module</span>
+<a class="nav-btn-module nav-home" href="../index.html">🏠 Home</a>
+<a class="nav-btn-module" href="module-2-table-engines.html">Next: Module 2 - Table Engines →</a>
 </div>
-
 <div class="header">
-    <h1>📊 MODULE 1</h1>
-    <div class="subtitle">ClickHouse Fundamentals & Architecture</div>
-    <div class="subtitle" style="font-size: 1em; margin-top: 20px;">Duration: 4-6 hours | Week 1</div>
+<h1>📊 MODULE 1</h1>
+<div class="subtitle">ClickHouse Fundamentals &amp; Architecture</div>
+<div class="subtitle" style="font-size: 1em; margin-top: 20px;">Duration: 4-6 hours | Week 1</div>
 </div>
-
 <div style="background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);">
-    <div class="nav-buttons">
-        <div class="nav-btn">📖 What is ClickHouse?</div>
-        <div class="nav-btn">🚀 Quick Start</div>
-        <div class="nav-btn">💻 Commands</div>
-        <div class="nav-btn">✨ Best Practices</div>
-        <div class="nav-btn">🎯 When to Use</div>
-        <div class="nav-btn">🏆 Real-World Results</div>
-        <div class="nav-btn">📋 Templates</div>
-        <div class="nav-btn">🔥 Advanced</div>
-        <div class="nav-btn">📚 Resources</div>
-    </div>
+<div class="nav-buttons">
+<div class="nav-btn">📖 What is ClickHouse?</div>
+<div class="nav-btn">🚀 Quick Start</div>
+<div class="nav-btn">💻 Commands</div>
+<div class="nav-btn">✨ Best Practices</div>
+<div class="nav-btn">🎯 When to Use</div>
+<div class="nav-btn">🏆 Real-World Results</div>
+<div class="nav-btn">📋 Templates</div>
+<div class="nav-btn">🔥 Advanced</div>
+<div class="nav-btn">📚 Resources</div>
 </div>
-
+</div>
 <div class="container">
-
-    <!-- What is ClickHouse Section -->
-    <div class="section" id="what-is"><div class="section-header">📖 What is ClickHouse?</div>
-        <div class="section-content">
-            <div class="highlight-box">
-                <h4 style="margin-top: 0;">ClickHouse in a Nutshell</h4>
-                <p><strong>ClickHouse is a column-oriented database management system (DBMS) for online analytical processing (OLAP).</strong> It's designed to handle massive volumes of data and execute complex analytical queries with sub-second response times. Think of it as a high-performance analytics engine that excels at aggregating, filtering, and analyzing billions of rows in real-time.</p>
-            </div>
-
-            <div class="icon-grid">
-                <div class="icon-card">
-                    <div class="icon">🏛️</div>
-                    <h4>Column-Oriented Storage</h4>
-                    <p>Data is stored by columns, not rows, enabling incredible compression and query speed for analytical workloads.</p>
-                </div>
-                <div class="icon-card">
-                    <div class="icon">⚡</div>
-                    <h4>Blazing Fast</h4>
-                    <p>Process billions of rows per second. Queries that take minutes in traditional databases run in milliseconds.</p>
-                </div>
-                <div class="icon-card">
-                    <div class="icon">📈</div>
-                    <h4>Horizontally Scalable</h4>
-                    <p>Scale out by adding more nodes. Handle petabytes of data across distributed clusters.</p>
-                </div>
-                <div class="icon-card">
-                    <div class="icon">🔄</div>
-                    <h4>Real-Time Analytics</h4>
-                    <p>Ingest and query data simultaneously. Perfect for real-time dashboards and monitoring.</p>
-                </div>
-            </div>
-
-            <h3>ClickHouse Architecture Diagram</h3>
-            <div style="background: #f9f9f9; padding: 30px; border-radius: 8px; margin: 20px 0;">
-                <div style="display: flex; flex-direction: column; gap: 10px; max-width: 800px; margin: 0 auto;">
-                    <div style="background: #e3f2fd; padding: 15px; border-radius: 6px; text-align: center; border: 2px solid #1976d2;">
-                        <strong style="color: #1565c0;">Client Application</strong>
-                    </div>
-                    <div style="text-align: center; font-size: 24px; color: #666;">↓</div>
-                    <div style="background: #fff3e0; padding: 15px; border-radius: 6px; text-align: center; border: 2px solid #f57c00;">
-                        <strong style="color: #e65100;">HTTP (8123) / TCP (9000)</strong>
-                    </div>
-                    <div style="text-align: center; font-size: 24px; color: #666;">↓</div>
-                    <div style="background: #f3e5f5; padding: 15px; border-radius: 6px; text-align: center; border: 2px solid #7b1fa2;">
-                        <strong style="color: #6a1b9a;">Query Processing Layer</strong>
-                        <div style="font-size: 0.9em; color: #555; margin-top: 5px;">Parser → Optimizer → Executor</div>
-                    </div>
-                    <div style="text-align: center; font-size: 24px; color: #666;">↓</div>
-                    <div style="background: #e8f5e9; padding: 15px; border-radius: 6px; text-align: center; border: 2px solid #388e3c;">
-                        <strong style="color: #2e7d32;">Storage Engine (MergeTree)</strong>
-                        <div style="font-size: 0.9em; color: #555; margin-top: 5px;">Column-Oriented Storage</div>
-                    </div>
-                    <div style="text-align: center; font-size: 24px; color: #666;">↓</div>
-                    <div style="background: #fce4ec; padding: 15px; border-radius: 6px; text-align: center; border: 2px solid #c2185b;">
-                        <strong style="color: #ad1457;">Disk Storage</strong>
-                        <div style="font-size: 0.9em; color: #555; margin-top: 5px;">SSD / NVMe / Distributed Storage</div>
-                    </div>
-                </div>
-            </div>
-
-            <h3>Column-Oriented vs Row-Oriented Storage</h3>
-            <div style="background: #f9f9f9; padding: 30px; border-radius: 8px; margin: 20px 0;">
-                <div class="grid-2" style="gap: 30px;">
-                    <div>
-                        <h4 style="color: #333; text-align: center; margin-bottom: 20px;">Row-Oriented Storage</h4>
-                        <div style="display: flex; flex-direction: column; gap: 8px;">
-                            <div style="background: #ffebee; padding: 12px; border-radius: 4px; border-left: 4px solid #e53935;">
-                                <span style="color: #333; font-weight: bold;">Row 1:</span>
-                                <span style="color: #555;"> [1, Alice, 25, NYC, 50000]</span>
-                            </div>
-                            <div style="background: #ffebee; padding: 12px; border-radius: 4px; border-left: 4px solid #e53935;">
-                                <span style="color: #333; font-weight: bold;">Row 2:</span>
-                                <span style="color: #555;"> [2, Bob, 30, LA, 60000]</span>
-                            </div>
-                            <div style="background: #ffebee; padding: 12px; border-radius: 4px; border-left: 4px solid #e53935;">
-                                <span style="color: #333; font-weight: bold;">Row 3:</span>
-                                <span style="color: #555;"> [3, Carol, 35, SF, 70000]</span>
-                            </div>
-                        </div>
-                        <div style="margin-top: 20px; padding: 15px; background: #fff; border-radius: 4px; border: 2px solid #ddd;">
-                            <div style="color: #333; font-weight: bold; margin-bottom: 5px;">Query: SELECT AVG(Salary)</div>
-                            <div style="color: #d32f2f; font-weight: bold;">❌ Reads ALL columns for ALL rows</div>
-                            <div style="color: #555; margin-top: 8px; font-size: 0.9em;">Problem: Wastes I/O on unnecessary data</div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <h4 style="color: #333; text-align: center; margin-bottom: 20px;">Column-Oriented Storage</h4>
-                        <div style="display: flex; flex-direction: column; gap: 8px;">
-                            <div style="background: #e8f5e9; padding: 12px; border-radius: 4px; border-left: 4px solid #43a047;">
-                                <span style="color: #333; font-weight: bold;">Salary Column:</span>
-                                <span style="color: #555;"> [50000, 60000, 70000]</span>
-                            </div>
-                            <div style="background: #f5f5f5; padding: 12px; border-radius: 4px; border-left: 4px solid #999;">
-                                <span style="color: #333; font-weight: bold;">Age Column:</span>
-                                <span style="color: #888;"> [25, 30, 35]</span>
-                            </div>
-                            <div style="background: #f5f5f5; padding: 12px; border-radius: 4px; border-left: 4px solid #999;">
-                                <span style="color: #333; font-weight: bold;">Name Column:</span>
-                                <span style="color: #888;"> [Alice, Bob, Carol]</span>
-                            </div>
-                        </div>
-                        <div style="margin-top: 20px; padding: 15px; background: #fff; border-radius: 4px; border: 2px solid #ddd;">
-                            <div style="color: #333; font-weight: bold; margin-bottom: 5px;">Query: SELECT AVG(Salary)</div>
-                            <div style="color: #388e3c; font-weight: bold;">✅ Reads ONLY Salary column</div>
-                            <div style="color: #555; margin-top: 8px; font-size: 0.9em;">Advantage: 10-100x less I/O, incredibly fast!</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <h3>MergeTree Architecture</h3>
-            <div style="background: #f9f9f9; padding: 30px; border-radius: 8px; margin: 20px 0;">
-                <div style="max-width: 900px; margin: 0 auto;">
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px;">
-                        <div style="background: #e1f5fe; padding: 20px; border-radius: 6px; border: 2px solid #0288d1; text-align: center;">
-                            <div style="font-weight: bold; color: #01579b; margin-bottom: 10px;">Data Part 1</div>
-                            <div style="font-size: 0.85em; color: #333;">Partition: 202601</div>
-                            <div style="font-size: 0.85em; color: #555; margin-top: 5px;">Primary Index</div>
-                            <div style="font-size: 0.85em; color: #555;">Data Blocks</div>
-                        </div>
-                        <div style="background: #e1f5fe; padding: 20px; border-radius: 6px; border: 2px solid #0288d1; text-align: center;">
-                            <div style="font-weight: bold; color: #01579b; margin-bottom: 10px;">Data Part 2</div>
-                            <div style="font-size: 0.85em; color: #333;">Partition: 202601</div>
-                            <div style="font-size: 0.85em; color: #555; margin-top: 5px;">Primary Index</div>
-                            <div style="font-size: 0.85em; color: #555;">Data Blocks</div>
-                        </div>
-                        <div style="background: #fff3e0; padding: 20px; border-radius: 6px; border: 2px solid #f57c00; text-align: center;">
-                            <div style="font-weight: bold; color: #e65100; margin-bottom: 10px;">Data Part 3</div>
-                            <div style="font-size: 0.85em; color: #333;">Partition: 202602</div>
-                            <div style="font-size: 0.85em; color: #555; margin-top: 5px;">Primary Index</div>
-                            <div style="font-size: 0.85em; color: #555;">Data Blocks</div>
-                        </div>
-                    </div>
-                    <div style="text-align: center; margin: 20px 0;">
-                        <div style="display: inline-block; background: #f3e5f5; padding: 15px 30px; border-radius: 6px; border: 2px solid #7b1fa2;">
-                            <div style="font-weight: bold; color: #6a1b9a; font-size: 1.1em;">Background Merge Process</div>
-                            <div style="color: #555; margin-top: 5px;">Automatically combines parts for optimization</div>
-                        </div>
-                    </div>
-                    <div style="text-align: center; font-size: 24px; color: #666;">↓</div>
-                    <div style="background: #e8f5e9; padding: 20px; border-radius: 6px; border: 2px solid #388e3c; text-align: center;">
-                        <div style="font-weight: bold; color: #2e7d32; font-size: 1.1em;">Merged Part (Optimized)</div>
-                        <div style="color: #555; margin-top: 5px;">Fewer parts = faster queries</div>
-                    </div>
-                </div>
-            </div>
-
-            <h3>ClickHouse vs Traditional Databases</h3>
-            <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-                <thead>
-                    <tr style="background: #ff6b35; color: white;">
-                        <th style="padding: 12px; text-align: left;">Feature</th>
-                        <th style="padding: 12px; text-align: left;">MySQL/PostgreSQL</th>
-                        <th style="padding: 12px; text-align: left;">MongoDB</th>
-                        <th style="padding: 12px; text-align: left;">ClickHouse</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr style="background: #f9f9f9;">
-                        <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Storage Model</strong></td>
-                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Row-oriented</td>
-                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Document-oriented</td>
-                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Column-oriented</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Best For</strong></td>
-                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">OLTP, transactions</td>
-                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Document storage, CRUD</td>
-                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">OLAP, analytics</td>
-                    </tr>
-                    <tr style="background: #f9f9f9;">
-                        <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Query Speed</strong></td>
-                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Slow on big datasets</td>
-                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Moderate</td>
-                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Extremely fast</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Updates/Deletes</strong></td>
-                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Fast & frequent</td>
-                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Fast & frequent</td>
-                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Slow, avoid if possible</td>
-                    </tr>
-                    <tr style="background: #f9f9f9;">
-                        <td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Compression</strong></td>
-                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Limited</td>
-                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Limited</td>
-                        <td style="padding: 12px; border-bottom: 1px solid #ddd;">Excellent (10-100x)</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 12px;"><strong>Joins</strong></td>
-                        <td style="padding: 12px;">Excellent</td>
-                        <td style="padding: 12px;">Limited</td>
-                        <td style="padding: 12px;">Good (but prefer denormalization)</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Quick Start Section -->
-    <div class="section" id="quick-start"><div class="section-header">🚀 Quick Start</div>
-        <div class="section-content">
-
-            <h3>1. Installation (Single Node)</h3>
-
-            <div class="grid-2">
-                <div class="card">
-                    <h4>🐧 Ubuntu/Debian</h4>
-                    <pre><code class="hljs">sudo apt-get install -y apt-transport-https ca-certificates
+<!-- What is ClickHouse Section -->
+<div class="section" id="what-is"><div class="section-header">📖 What is ClickHouse?</div>
+<div class="section-content">
+<div class="highlight-box">
+<h4 style="margin-top: 0;">ClickHouse in a Nutshell</h4>
+<p><strong>ClickHouse is a column-oriented database management system (DBMS) for online analytical processing (OLAP).</strong> It's designed to handle massive volumes of data and execute complex analytical queries with sub-second response times. Think of it as a high-performance analytics engine that excels at aggregating, filtering, and analyzing billions of rows in real-time.</p>
+</div>
+<div class="icon-grid">
+<div class="icon-card">
+<div class="icon">🏛️</div>
+<h4>Column-Oriented Storage</h4>
+<p>Data is stored by columns, not rows, enabling incredible compression and query speed for analytical workloads.</p>
+</div>
+<div class="icon-card">
+<div class="icon">⚡</div>
+<h4>Blazing Fast</h4>
+<p>Process billions of rows per second. Queries that take minutes in traditional databases run in milliseconds.</p>
+</div>
+<div class="icon-card">
+<div class="icon">📈</div>
+<h4>Horizontally Scalable</h4>
+<p>Scale out by adding more nodes. Handle petabytes of data across distributed clusters.</p>
+</div>
+<div class="icon-card">
+<div class="icon">🔄</div>
+<h4>Real-Time Analytics</h4>
+<p>Ingest and query data simultaneously. Perfect for real-time dashboards and monitoring.</p>
+</div>
+</div>
+<h3>ClickHouse Architecture Diagram</h3>
+<div style="background: #f9f9f9; padding: 30px; border-radius: 8px; margin: 20px 0;">
+<div style="display: flex; flex-direction: column; gap: 10px; max-width: 800px; margin: 0 auto;">
+<div style="background: #e3f2fd; padding: 15px; border-radius: 6px; text-align: center; border: 2px solid #1976d2;">
+<strong style="color: #1565c0;">Client Application</strong>
+</div>
+<div style="text-align: center; font-size: 24px; color: #666;">↓</div>
+<div style="background: #fff3e0; padding: 15px; border-radius: 6px; text-align: center; border: 2px solid #f57c00;">
+<strong style="color: #e65100;">HTTP (8123) / TCP (9000)</strong>
+</div>
+<div style="text-align: center; font-size: 24px; color: #666;">↓</div>
+<div style="background: #f3e5f5; padding: 15px; border-radius: 6px; text-align: center; border: 2px solid #7b1fa2;">
+<strong style="color: #6a1b9a;">Query Processing Layer</strong>
+<div style="font-size: 0.9em; color: #555; margin-top: 5px;">Parser → Optimizer → Executor</div>
+</div>
+<div style="text-align: center; font-size: 24px; color: #666;">↓</div>
+<div style="background: #e8f5e9; padding: 15px; border-radius: 6px; text-align: center; border: 2px solid #388e3c;">
+<strong style="color: #2e7d32;">Storage Engine (MergeTree)</strong>
+<div style="font-size: 0.9em; color: #555; margin-top: 5px;">Column-Oriented Storage</div>
+</div>
+<div style="text-align: center; font-size: 24px; color: #666;">↓</div>
+<div style="background: #fce4ec; padding: 15px; border-radius: 6px; text-align: center; border: 2px solid #c2185b;">
+<strong style="color: #ad1457;">Disk Storage</strong>
+<div style="font-size: 0.9em; color: #555; margin-top: 5px;">SSD / NVMe / Distributed Storage</div>
+</div>
+</div>
+</div>
+<h3>Column-Oriented vs Row-Oriented Storage</h3>
+<div style="background: #f9f9f9; padding: 30px; border-radius: 8px; margin: 20px 0;">
+<div class="grid-2" style="gap: 30px;">
+<div>
+<h4 style="color: #333; text-align: center; margin-bottom: 20px;">Row-Oriented Storage</h4>
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<div style="background: #ffebee; padding: 12px; border-radius: 4px; border-left: 4px solid #e53935;">
+<span style="color: #333; font-weight: bold;">Row 1:</span>
+<span style="color: #555;"> [1, Alice, 25, NYC, 50000]</span>
+</div>
+<div style="background: #ffebee; padding: 12px; border-radius: 4px; border-left: 4px solid #e53935;">
+<span style="color: #333; font-weight: bold;">Row 2:</span>
+<span style="color: #555;"> [2, Bob, 30, LA, 60000]</span>
+</div>
+<div style="background: #ffebee; padding: 12px; border-radius: 4px; border-left: 4px solid #e53935;">
+<span style="color: #333; font-weight: bold;">Row 3:</span>
+<span style="color: #555;"> [3, Carol, 35, SF, 70000]</span>
+</div>
+</div>
+<div style="margin-top: 20px; padding: 15px; background: #fff; border-radius: 4px; border: 2px solid #ddd;">
+<div style="color: #333; font-weight: bold; margin-bottom: 5px;">Query: SELECT AVG(Salary)</div>
+<div style="color: #d32f2f; font-weight: bold;">❌ Reads ALL columns for ALL rows</div>
+<div style="color: #555; margin-top: 8px; font-size: 0.9em;">Problem: Wastes I/O on unnecessary data</div>
+</div>
+</div>
+<div>
+<h4 style="color: #333; text-align: center; margin-bottom: 20px;">Column-Oriented Storage</h4>
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<div style="background: #e8f5e9; padding: 12px; border-radius: 4px; border-left: 4px solid #43a047;">
+<span style="color: #333; font-weight: bold;">Salary Column:</span>
+<span style="color: #555;"> [50000, 60000, 70000]</span>
+</div>
+<div style="background: #f5f5f5; padding: 12px; border-radius: 4px; border-left: 4px solid #999;">
+<span style="color: #333; font-weight: bold;">Age Column:</span>
+<span style="color: #888;"> [25, 30, 35]</span>
+</div>
+<div style="background: #f5f5f5; padding: 12px; border-radius: 4px; border-left: 4px solid #999;">
+<span style="color: #333; font-weight: bold;">Name Column:</span>
+<span style="color: #888;"> [Alice, Bob, Carol]</span>
+</div>
+</div>
+<div style="margin-top: 20px; padding: 15px; background: #fff; border-radius: 4px; border: 2px solid #ddd;">
+<div style="color: #333; font-weight: bold; margin-bottom: 5px;">Query: SELECT AVG(Salary)</div>
+<div style="color: #388e3c; font-weight: bold;">✅ Reads ONLY Salary column</div>
+<div style="color: #555; margin-top: 8px; font-size: 0.9em;">Advantage: 10-100x less I/O, incredibly fast!</div>
+</div>
+</div>
+</div>
+</div>
+<h3>MergeTree Architecture</h3>
+<div style="background: #f9f9f9; padding: 30px; border-radius: 8px; margin: 20px 0;">
+<div style="max-width: 900px; margin: 0 auto;">
+<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px;">
+<div style="background: #e1f5fe; padding: 20px; border-radius: 6px; border: 2px solid #0288d1; text-align: center;">
+<div style="font-weight: bold; color: #01579b; margin-bottom: 10px;">Data Part 1</div>
+<div style="font-size: 0.85em; color: #333;">Partition: 202601</div>
+<div style="font-size: 0.85em; color: #555; margin-top: 5px;">Primary Index</div>
+<div style="font-size: 0.85em; color: #555;">Data Blocks</div>
+</div>
+<div style="background: #e1f5fe; padding: 20px; border-radius: 6px; border: 2px solid #0288d1; text-align: center;">
+<div style="font-weight: bold; color: #01579b; margin-bottom: 10px;">Data Part 2</div>
+<div style="font-size: 0.85em; color: #333;">Partition: 202601</div>
+<div style="font-size: 0.85em; color: #555; margin-top: 5px;">Primary Index</div>
+<div style="font-size: 0.85em; color: #555;">Data Blocks</div>
+</div>
+<div style="background: #fff3e0; padding: 20px; border-radius: 6px; border: 2px solid #f57c00; text-align: center;">
+<div style="font-weight: bold; color: #e65100; margin-bottom: 10px;">Data Part 3</div>
+<div style="font-size: 0.85em; color: #333;">Partition: 202602</div>
+<div style="font-size: 0.85em; color: #555; margin-top: 5px;">Primary Index</div>
+<div style="font-size: 0.85em; color: #555;">Data Blocks</div>
+</div>
+</div>
+<div style="text-align: center; margin: 20px 0;">
+<div style="display: inline-block; background: #f3e5f5; padding: 15px 30px; border-radius: 6px; border: 2px solid #7b1fa2;">
+<div style="font-weight: bold; color: #6a1b9a; font-size: 1.1em;">Background Merge Process</div>
+<div style="color: #555; margin-top: 5px;">Automatically combines parts for optimization</div>
+</div>
+</div>
+<div style="text-align: center; font-size: 24px; color: #666;">↓</div>
+<div style="background: #e8f5e9; padding: 20px; border-radius: 6px; border: 2px solid #388e3c; text-align: center;">
+<div style="font-weight: bold; color: #2e7d32; font-size: 1.1em;">Merged Part (Optimized)</div>
+<div style="color: #555; margin-top: 5px;">Fewer parts = faster queries</div>
+</div>
+</div>
+</div>
+<h3>ClickHouse vs Traditional Databases</h3>
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+<thead>
+<tr style="background: #ff6b35; color: white;">
+<th style="padding: 12px; text-align: left;">Feature</th>
+<th style="padding: 12px; text-align: left;">MySQL/PostgreSQL</th>
+<th style="padding: 12px; text-align: left;">MongoDB</th>
+<th style="padding: 12px; text-align: left;">ClickHouse</th>
+</tr>
+</thead>
+<tbody>
+<tr style="background: #f9f9f9;">
+<td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Storage Model</strong></td>
+<td style="padding: 12px; border-bottom: 1px solid #ddd;">Row-oriented</td>
+<td style="padding: 12px; border-bottom: 1px solid #ddd;">Document-oriented</td>
+<td style="padding: 12px; border-bottom: 1px solid #ddd;">Column-oriented</td>
+</tr>
+<tr>
+<td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Best For</strong></td>
+<td style="padding: 12px; border-bottom: 1px solid #ddd;">OLTP, transactions</td>
+<td style="padding: 12px; border-bottom: 1px solid #ddd;">Document storage, CRUD</td>
+<td style="padding: 12px; border-bottom: 1px solid #ddd;">OLAP, analytics</td>
+</tr>
+<tr style="background: #f9f9f9;">
+<td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Query Speed</strong></td>
+<td style="padding: 12px; border-bottom: 1px solid #ddd;">Slow on big datasets</td>
+<td style="padding: 12px; border-bottom: 1px solid #ddd;">Moderate</td>
+<td style="padding: 12px; border-bottom: 1px solid #ddd;">Extremely fast</td>
+</tr>
+<tr>
+<td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Updates/Deletes</strong></td>
+<td style="padding: 12px; border-bottom: 1px solid #ddd;">Fast &amp; frequent</td>
+<td style="padding: 12px; border-bottom: 1px solid #ddd;">Fast &amp; frequent</td>
+<td style="padding: 12px; border-bottom: 1px solid #ddd;">Slow, avoid if possible</td>
+</tr>
+<tr style="background: #f9f9f9;">
+<td style="padding: 12px; border-bottom: 1px solid #ddd;"><strong>Compression</strong></td>
+<td style="padding: 12px; border-bottom: 1px solid #ddd;">Limited</td>
+<td style="padding: 12px; border-bottom: 1px solid #ddd;">Limited</td>
+<td style="padding: 12px; border-bottom: 1px solid #ddd;">Excellent (10-100x)</td>
+</tr>
+<tr>
+<td style="padding: 12px;"><strong>Joins</strong></td>
+<td style="padding: 12px;">Excellent</td>
+<td style="padding: 12px;">Limited</td>
+<td style="padding: 12px;">Good (but prefer denormalization)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Quick Start Section -->
+<div class="section" id="quick-start"><div class="section-header">🚀 Quick Start</div>
+<div class="section-content">
+<h3>1. Installation (Single Node)</h3>
+<div class="grid-2">
+<div class="card">
+<h4>🐧 Ubuntu/Debian</h4>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">sudo apt-get install -y apt-transport-https ca-certificates
 curl -fsSL 'https://packages.clickhouse.com/rpm/lts/repodata/repomd.xml.key' | sudo gpg --dearmor -o /usr/share/keyrings/clickhouse-keyring.gpg
 
 echo "deb [signed-by=/usr/share/keyrings/clickhouse-keyring.gpg] https://packages.clickhouse.com/deb stable main" | sudo tee /etc/apt/sources.list.d/clickhouse.list
@@ -457,35 +522,32 @@ sudo apt-get update
 sudo apt-get install -y clickhouse-server clickhouse-client
 
 # Start the server
-sudo service clickhouse-server start</code></pre>
-                </div>
-
-                <div class="card">
-                    <h4>🍎 macOS</h4>
-                    <pre><code class="hljs">brew install clickhouse
+sudo service clickhouse-server start</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+</div>
+<div class="card">
+<h4>🍎 macOS</h4>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">brew install clickhouse
 
 # Start the server
 clickhouse server
 
 # In another terminal, connect
-clickhouse-client</code></pre>
-                </div>
-            </div>
-
-            <div class="card">
-                <h4>🐳 Docker (Fastest Way to Test)</h4>
-                <pre><code class="hljs">docker run -d --name clickhouse-server \
+clickhouse-client</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+</div>
+</div>
+<div class="card">
+<h4>🐳 Docker (Fastest Way to Test)</h4>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">docker run -d --name clickhouse-server \
   -p 8123:8123 \
   -p 9000:9000 \
   --ulimit nofile=262144:262144 \
   clickhouse/clickhouse-server
 
 # Connect to the server
-docker exec -it clickhouse-server clickhouse-client</code></pre>
-            </div>
-
-            <h3>2. First Steps - Create Database and Table</h3>
-            <pre><code class="hljs">-- Connect to ClickHouse
+docker exec -it clickhouse-server clickhouse-client</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+</div>
+<h3>2. First Steps - Create Database and Table</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Connect to ClickHouse
 clickhouse-client
 
 -- Create a database
@@ -520,10 +582,9 @@ SELECT
 FROM events
 WHERE event_type = 'purchase'
 GROUP BY country
-ORDER BY total_revenue DESC;</code></pre>
-
-            <h3>3. Verify Installation</h3>
-            <pre><code class="hljs">-- Check server version
+ORDER BY total_revenue DESC;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>3. Verify Installation</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Check server version
 SELECT version();
 
 -- Check server uptime
@@ -533,35 +594,31 @@ SELECT uptime();
 SHOW DATABASES;
 
 -- Show current system tables
-SELECT table, engine FROM system.tables WHERE database = 'system' LIMIT 5;</code></pre>
-
-        </div>
-    </div>
-
-    <!-- Commands Reference Section -->
-    <div class="section" id="commands"><div class="section-header">💻 Commands Reference</div>
-        <div class="section-content">
-
-            <h3>Database Operations</h3>
-            <div class="grid-2">
-                <div class="card">
-                    <pre><code class="hljs">-- Create database
+SELECT table, engine FROM system.tables WHERE database = 'system' LIMIT 5;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+</div>
+</div>
+<!-- Commands Reference Section -->
+<div class="section" id="commands"><div class="section-header">💻 Commands Reference</div>
+<div class="section-content">
+<h3>Database Operations</h3>
+<div class="grid-2">
+<div class="card">
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content"><pre><code class="hljs">-- Create database
 CREATE DATABASE my_db;
 
 -- Create database with engine
-CREATE DATABASE my_db ENGINE = Atomic;</code></pre>
-                </div>
-                <div class="card">
-                    <pre><code class="hljs">-- Drop database
+CREATE DATABASE my_db ENGINE = Atomic;</code></pre></div><button class="toggle-btn"></button></div>
+</div>
+<div class="card">
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content"><pre><code class="hljs">-- Drop database
 DROP DATABASE my_db;
 
 -- Show all databases
-SHOW DATABASES;</code></pre>
-                </div>
-            </div>
-
-            <h3>Table Operations (MergeTree Family)</h3>
-            <pre><code class="hljs">-- Basic MergeTree table
+SHOW DATABASES;</code></pre></div><button class="toggle-btn"></button></div>
+</div>
+</div>
+<h3>Table Operations (MergeTree Family)</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Basic MergeTree table
 CREATE TABLE logs (
     timestamp DateTime,
     level String,
@@ -589,10 +646,9 @@ DROP TABLE logs;
 DESCRIBE TABLE logs;
 
 -- Show create statement
-SHOW CREATE TABLE logs;</code></pre>
-
-            <h3>Data Insertion</h3>
-            <pre><code class="hljs">-- Insert single row
+SHOW CREATE TABLE logs;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>Data Insertion</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Insert single row
 INSERT INTO logs VALUES ('2026-01-22 10:00:00', 'INFO', 'User logged in', 1001);
 
 -- Insert multiple rows
@@ -607,10 +663,9 @@ INSERT INTO logs SELECT * FROM logs_temp WHERE level = 'ERROR';
 clickhouse-client --query="INSERT INTO logs FORMAT CSV" &lt; data.csv
 
 -- Insert from JSON
-cat data.json | clickhouse-client --query="INSERT INTO logs FORMAT JSONEachRow"</code></pre>
-
-            <h3>Query Operations</h3>
-            <pre><code class="hljs">-- Basic SELECT
+cat data.json | clickhouse-client --query="INSERT INTO logs FORMAT JSONEachRow"</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>Query Operations</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Basic SELECT
 SELECT * FROM logs WHERE level = 'ERROR' LIMIT 10;
 
 -- Aggregation
@@ -640,10 +695,9 @@ WITH top_users AS (
 )
 SELECT l.*
 FROM logs l
-JOIN top_users t ON l.user_id = t.user_id;</code></pre>
-
-            <h3>System & Monitoring Commands</h3>
-            <pre><code class="hljs">-- Check disk usage
+JOIN top_users t ON l.user_id = t.user_id;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>System &amp; Monitoring Commands</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Check disk usage
 SELECT
     database,
     table,
@@ -673,20 +727,17 @@ SELECT
 FROM system.processes;
 
 -- Kill a query
-KILL QUERY WHERE query_id = 'xxx-xxx-xxx';</code></pre>
-
-        </div>
-    </div>
-
-    <!-- Best Practices Section -->
-    <div class="section" id="best-practices"><div class="section-header">✨ Best Practices</div>
-        <div class="section-content">
-
-            <h3>1. Data Modeling</h3>
-            <div class="comparison">
-                <div class="bad">
-                    <div class="badge badge-bad">❌ Bad</div>
-                    <pre><code class="hljs">-- Normalized schema (like MySQL)
+KILL QUERY WHERE query_id = 'xxx-xxx-xxx';</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+</div>
+</div>
+<!-- Best Practices Section -->
+<div class="section" id="best-practices"><div class="section-header">✨ Best Practices</div>
+<div class="section-content">
+<h3>1. Data Modeling</h3>
+<div class="comparison">
+<div class="bad">
+<div class="badge badge-bad">❌ Bad</div>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Normalized schema (like MySQL)
 CREATE TABLE users (
     user_id UInt32,
     name String
@@ -702,13 +753,12 @@ CREATE TABLE events (
 SELECT u.name, COUNT(*)
 FROM events e
 JOIN users u ON e.user_id = u.user_id
-GROUP BY u.name;</code></pre>
-                    <p><strong>Problem:</strong> JOINs are expensive in ClickHouse</p>
-                </div>
-
-                <div class="good">
-                    <div class="badge badge-good">✅ Good</div>
-                    <pre><code class="hljs">-- Denormalized schema
+GROUP BY u.name;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<p><strong>Problem:</strong> JOINs are expensive in ClickHouse</p>
+</div>
+<div class="good">
+<div class="badge badge-good">✅ Good</div>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Denormalized schema
 CREATE TABLE events (
     event_id UInt64,
     user_id UInt32,
@@ -722,235 +772,212 @@ SELECT
     user_name,
     COUNT(*)
 FROM events
-GROUP BY user_name;</code></pre>
-                    <p><strong>Benefit:</strong> 10-100x faster queries, no JOINs</p>
-                </div>
-            </div>
-
-            <h3>2. Partition Key Selection</h3>
-            <div class="comparison">
-                <div class="bad">
-                    <div class="badge badge-bad">❌ Bad</div>
-                    <pre><code class="hljs">-- Too many partitions (by day)
+GROUP BY user_name;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<p><strong>Benefit:</strong> 10-100x faster queries, no JOINs</p>
+</div>
+</div>
+<h3>2. Partition Key Selection</h3>
+<div class="comparison">
+<div class="bad">
+<div class="badge badge-bad">❌ Bad</div>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Too many partitions (by day)
 CREATE TABLE logs (
     timestamp DateTime,
     message String
 ) ENGINE = MergeTree()
 PARTITION BY toDate(timestamp)
-ORDER BY timestamp;</code></pre>
-                    <p><strong>Problem:</strong> Creates 365+ partitions per year, degrades performance</p>
-                </div>
-
-                <div class="good">
-                    <div class="badge badge-good">✅ Good</div>
-                    <pre><code class="hljs">-- Reasonable partitions (by month)
+ORDER BY timestamp;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<p><strong>Problem:</strong> Creates 365+ partitions per year, degrades performance</p>
+</div>
+<div class="good">
+<div class="badge badge-good">✅ Good</div>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Reasonable partitions (by month)
 CREATE TABLE logs (
     timestamp DateTime,
     message String
 ) ENGINE = MergeTree()
 PARTITION BY toYYYYMM(timestamp)
-ORDER BY timestamp;</code></pre>
-                    <p><strong>Benefit:</strong> Only 12 partitions per year, better performance, easier to drop old data</p>
-                </div>
-            </div>
-
-            <h3>3. Ordering Key Selection</h3>
-            <div class="comparison">
-                <div class="bad">
-                    <div class="badge badge-bad">❌ Bad</div>
-                    <pre><code class="hljs">-- High cardinality first
+ORDER BY timestamp;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<p><strong>Benefit:</strong> Only 12 partitions per year, better performance, easier to drop old data</p>
+</div>
+</div>
+<h3>3. Ordering Key Selection</h3>
+<div class="comparison">
+<div class="bad">
+<div class="badge badge-bad">❌ Bad</div>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- High cardinality first
 CREATE TABLE events (
     event_id UUID,
     user_id UInt32,
     country String,
     timestamp DateTime
 ) ENGINE = MergeTree()
-ORDER BY (event_id, timestamp);  -- UUID first!</code></pre>
-                    <p><strong>Problem:</strong> Poor data compression, inefficient queries</p>
-                </div>
-
-                <div class="good">
-                    <div class="badge badge-good">✅ Good</div>
-                    <pre><code class="hljs">-- Low cardinality first
+ORDER BY (event_id, timestamp);  -- UUID first!</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<p><strong>Problem:</strong> Poor data compression, inefficient queries</p>
+</div>
+<div class="good">
+<div class="badge badge-good">✅ Good</div>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Low cardinality first
 CREATE TABLE events (
     event_id UUID,
     user_id UInt32,
     country String,
     timestamp DateTime
 ) ENGINE = MergeTree()
-ORDER BY (country, timestamp, user_id);  -- Low to high cardinality!</code></pre>
-                    <p><strong>Benefit:</strong> Better compression, faster queries on country and time ranges</p>
-                </div>
-            </div>
-
-            <h3>4. Avoid Frequent Updates/Deletes</h3>
-            <div class="highlight-box">
-                <h4>⚠️ Important: ClickHouse is NOT designed for OLTP workloads</h4>
-                <ul>
-                    <li><strong>Inserts:</strong> Batch them! Insert 10,000+ rows at once, not one by one</li>
-                    <li><strong>Updates:</strong> Very slow. Use ReplacingMergeTree if you must update</li>
-                    <li><strong>Deletes:</strong> Very slow. Use TTL for automatic deletion or ALTER DELETE for rare cases</li>
-                </ul>
-            </div>
-
-            <h3>5. Hardware Considerations</h3>
-            <div class="grid-2">
-                <div class="card">
-                    <h4>💾 Storage</h4>
-                    <ul>
-                        <li><strong>SSD is mandatory</strong> for good performance</li>
-                        <li>NVMe SSDs are ideal for hot data</li>
-                        <li>Plan for 10-100x compression ratio</li>
-                    </ul>
-                </div>
-                <div class="card">
-                    <h4>🧠 Memory</h4>
-                    <ul>
-                        <li>Minimum: 8GB per server</li>
-                        <li>Recommended: 64-256GB for production</li>
-                        <li>More RAM = better query performance</li>
-                    </ul>
-                </div>
-            </div>
-            <div class="grid-2">
-                <div class="card">
-                    <h4>⚙️ CPU</h4>
-                    <ul>
-                        <li>More cores = better parallelization</li>
-                        <li>Minimum: 8 cores</li>
-                        <li>Recommended: 16-64 cores for production</li>
-                    </ul>
-                </div>
-                <div class="card">
-                    <h4>🌐 Network</h4>
-                    <ul>
-                        <li>10 Gbps network for distributed clusters</li>
-                        <li>Low latency between nodes is critical</li>
-                        <li>Use dedicated network for replication</li>
-                    </ul>
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- When to Use Section -->
-    <div class="section" id="when-to-use"><div class="section-header">🎯 When to Use ClickHouse</div>
-        <div class="section-content">
-
-            <div class="grid-2">
-                <div class="card" style="background: #e6f7ed;">
-                    <h4>✅ Good For</h4>
-                    <ul>
-                        <li>Real-time analytics and dashboards</li>
-                        <li>Time-series data (logs, metrics, events)</li>
-                        <li>Business intelligence and reporting</li>
-                        <li>Click-stream and web analytics</li>
-                        <li>IoT sensor data analysis</li>
-                        <li>Financial market data</li>
-                        <li>Monitoring and observability (like Grafana)</li>
-                        <li>Data warehousing for analytical queries</li>
-                        <li>Large-scale aggregations (billions of rows)</li>
-                        <li>Append-only workloads</li>
-                    </ul>
-                </div>
-
-                <div class="card" style="background: #ffe6e6;">
-                    <h4>❌ Not Good For</h4>
-                    <ul>
-                        <li>Transactional workloads (use MySQL/PostgreSQL)</li>
-                        <li>Frequent updates/deletes (use OLTP databases)</li>
-                        <li>Key-value lookups (use Redis/DynamoDB)</li>
-                        <li>Document storage (use MongoDB/Elasticsearch)</li>
-                        <li>Full-text search (use Elasticsearch/Meilisearch)</li>
-                        <li>Small datasets (< 100 million rows)</li>
-                        <li>Complex transactions with ACID guarantees</li>
-                        <li>Graph databases (use Neo4j)</li>
-                        <li>Real-time row-by-row processing</li>
-                    </ul>
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- Real-World Results Section -->
-    <div class="section" id="real-world"><div class="section-header">🏆 Real-World Results</div>
-        <div class="section-content">
-
-            <div class="icon-grid">
-                <div class="icon-card" style="background: #fff9e6;">
-                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">100-1000x</div>
-                    <h4>Faster Than MySQL</h4>
-                    <p>Analytical queries on large datasets run 100-1000x faster than traditional row-oriented databases</p>
-                </div>
-
-                <div class="icon-card" style="background: #e6f7ed;">
-                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">Billions/sec</div>
-                    <h4>Row Processing Speed</h4>
-                    <p>ClickHouse can process billions of rows per second on modern hardware</p>
-                </div>
-
-                <div class="icon-card" style="background: #e6f2ff;">
-                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">10-100x</div>
-                    <h4>Compression Ratio</h4>
-                    <p>Achieve 10-100x compression ratios with column-oriented storage and codecs</p>
-                </div>
-
-                <div class="icon-card" style="background: #f0e6ff;">
-                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">< 1 sec</div>
-                    <h4>Query Response Time</h4>
-                    <p>Sub-second response times for complex aggregations on billions of rows</p>
-                </div>
-            </div>
-
-            <h3>Use Case Examples</h3>
-
-            <div class="card">
-                <h4>📊 Web Analytics Platform</h4>
-                <p><strong>Challenge:</strong> Process 10 billion events per day, provide real-time dashboards</p>
-                <p><strong>Solution:</strong> ClickHouse with Kafka streaming</p>
-                <p><strong>Results:</strong></p>
-                <ul>
-                    <li>Query response time: < 500ms for complex aggregations</li>
-                    <li>Storage: 10TB raw data compressed to 500GB (20x compression)</li>
-                    <li>Infrastructure cost reduced by 70% vs traditional data warehouse</li>
-                </ul>
-            </div>
-
-            <div class="card">
-                <h4>📈 Real-Time Monitoring System</h4>
-                <p><strong>Challenge:</strong> Monitor 100,000 servers generating 1 million metrics/sec</p>
-                <p><strong>Solution:</strong> ClickHouse cluster with 3 shards × 2 replicas</p>
-                <p><strong>Results:</strong></p>
-                <ul>
-                    <li>Ingestion rate: 1M events/sec sustained</li>
-                    <li>Query latency: 200-500ms for real-time alerts</li>
-                    <li>Data retention: 90 days with automatic TTL cleanup</li>
-                </ul>
-            </div>
-
-            <div class="card">
-                <h4>💳 Financial Transaction Analytics</h4>
-                <p><strong>Challenge:</strong> Analyze 500 million transactions per day for fraud detection</p>
-                <p><strong>Solution:</strong> ClickHouse with ReplacingMergeTree for deduplication</p>
-                <p><strong>Results:</strong></p>
-                <ul>
-                    <li>Fraud detection queries: < 1 second on 6 months of data</li>
-                    <li>Report generation time reduced from 2 hours to 5 minutes</li>
-                    <li>Compliance reporting automated with materialized views</li>
-                </ul>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- Templates Section -->
-    <div class="section" id="templates"><div class="section-header">📋 Ready-to-Use Templates</div>
-        <div class="section-content">
-
-            <h3>Template 1: Event Tracking Table</h3>
-            <pre><code class="hljs">-- Perfect for web/app analytics, user behavior tracking
+ORDER BY (country, timestamp, user_id);  -- Low to high cardinality!</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<p><strong>Benefit:</strong> Better compression, faster queries on country and time ranges</p>
+</div>
+</div>
+<h3>4. Avoid Frequent Updates/Deletes</h3>
+<div class="highlight-box">
+<h4>⚠️ Important: ClickHouse is NOT designed for OLTP workloads</h4>
+<ul>
+<li><strong>Inserts:</strong> Batch them! Insert 10,000+ rows at once, not one by one</li>
+<li><strong>Updates:</strong> Very slow. Use ReplacingMergeTree if you must update</li>
+<li><strong>Deletes:</strong> Very slow. Use TTL for automatic deletion or ALTER DELETE for rare cases</li>
+</ul>
+</div>
+<h3>5. Hardware Considerations</h3>
+<div class="grid-2">
+<div class="card">
+<h4>💾 Storage</h4>
+<ul>
+<li><strong>SSD is mandatory</strong> for good performance</li>
+<li>NVMe SSDs are ideal for hot data</li>
+<li>Plan for 10-100x compression ratio</li>
+</ul>
+</div>
+<div class="card">
+<h4>🧠 Memory</h4>
+<ul>
+<li>Minimum: 8GB per server</li>
+<li>Recommended: 64-256GB for production</li>
+<li>More RAM = better query performance</li>
+</ul>
+</div>
+</div>
+<div class="grid-2">
+<div class="card">
+<h4>⚙️ CPU</h4>
+<ul>
+<li>More cores = better parallelization</li>
+<li>Minimum: 8 cores</li>
+<li>Recommended: 16-64 cores for production</li>
+</ul>
+</div>
+<div class="card">
+<h4>🌐 Network</h4>
+<ul>
+<li>10 Gbps network for distributed clusters</li>
+<li>Low latency between nodes is critical</li>
+<li>Use dedicated network for replication</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<!-- When to Use Section -->
+<div class="section" id="when-to-use"><div class="section-header">🎯 When to Use ClickHouse</div>
+<div class="section-content">
+<div class="grid-2">
+<div class="card" style="background: #e6f7ed;">
+<h4>✅ Good For</h4>
+<ul>
+<li>Real-time analytics and dashboards</li>
+<li>Time-series data (logs, metrics, events)</li>
+<li>Business intelligence and reporting</li>
+<li>Click-stream and web analytics</li>
+<li>IoT sensor data analysis</li>
+<li>Financial market data</li>
+<li>Monitoring and observability (like Grafana)</li>
+<li>Data warehousing for analytical queries</li>
+<li>Large-scale aggregations (billions of rows)</li>
+<li>Append-only workloads</li>
+</ul>
+</div>
+<div class="card" style="background: #ffe6e6;">
+<h4>❌ Not Good For</h4>
+<ul>
+<li>Transactional workloads (use MySQL/PostgreSQL)</li>
+<li>Frequent updates/deletes (use OLTP databases)</li>
+<li>Key-value lookups (use Redis/DynamoDB)</li>
+<li>Document storage (use MongoDB/Elasticsearch)</li>
+<li>Full-text search (use Elasticsearch/Meilisearch)</li>
+<li>Small datasets (&lt; 100 million rows)</li>
+<li>Complex transactions with ACID guarantees</li>
+<li>Graph databases (use Neo4j)</li>
+<li>Real-time row-by-row processing</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<!-- Real-World Results Section -->
+<div class="section" id="real-world"><div class="section-header">🏆 Real-World Results</div>
+<div class="section-content">
+<div class="icon-grid">
+<div class="icon-card" style="background: #fff9e6;">
+<div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">100-1000x</div>
+<h4>Faster Than MySQL</h4>
+<p>Analytical queries on large datasets run 100-1000x faster than traditional row-oriented databases</p>
+</div>
+<div class="icon-card" style="background: #e6f7ed;">
+<div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">Billions/sec</div>
+<h4>Row Processing Speed</h4>
+<p>ClickHouse can process billions of rows per second on modern hardware</p>
+</div>
+<div class="icon-card" style="background: #e6f2ff;">
+<div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">10-100x</div>
+<h4>Compression Ratio</h4>
+<p>Achieve 10-100x compression ratios with column-oriented storage and codecs</p>
+</div>
+<div class="icon-card" style="background: #f0e6ff;">
+<div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">&lt; 1 sec</div>
+<h4>Query Response Time</h4>
+<p>Sub-second response times for complex aggregations on billions of rows</p>
+</div>
+</div>
+<h3>Use Case Examples</h3>
+<div class="card">
+<h4>📊 Web Analytics Platform</h4>
+<p><strong>Challenge:</strong> Process 10 billion events per day, provide real-time dashboards</p>
+<p><strong>Solution:</strong> ClickHouse with Kafka streaming</p>
+<p><strong>Results:</strong></p>
+<ul>
+<li>Query response time: &lt; 500ms for complex aggregations</li>
+<li>Storage: 10TB raw data compressed to 500GB (20x compression)</li>
+<li>Infrastructure cost reduced by 70% vs traditional data warehouse</li>
+</ul>
+</div>
+<div class="card">
+<h4>📈 Real-Time Monitoring System</h4>
+<p><strong>Challenge:</strong> Monitor 100,000 servers generating 1 million metrics/sec</p>
+<p><strong>Solution:</strong> ClickHouse cluster with 3 shards × 2 replicas</p>
+<p><strong>Results:</strong></p>
+<ul>
+<li>Ingestion rate: 1M events/sec sustained</li>
+<li>Query latency: 200-500ms for real-time alerts</li>
+<li>Data retention: 90 days with automatic TTL cleanup</li>
+</ul>
+</div>
+<div class="card">
+<h4>💳 Financial Transaction Analytics</h4>
+<p><strong>Challenge:</strong> Analyze 500 million transactions per day for fraud detection</p>
+<p><strong>Solution:</strong> ClickHouse with ReplacingMergeTree for deduplication</p>
+<p><strong>Results:</strong></p>
+<ul>
+<li>Fraud detection queries: &lt; 1 second on 6 months of data</li>
+<li>Report generation time reduced from 2 hours to 5 minutes</li>
+<li>Compliance reporting automated with materialized views</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- Templates Section -->
+<div class="section" id="templates"><div class="section-header">📋 Ready-to-Use Templates</div>
+<div class="section-content">
+<h3>Template 1: Event Tracking Table</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Perfect for web/app analytics, user behavior tracking
 CREATE TABLE events (
     -- Time dimension
     event_date Date,
@@ -989,10 +1016,9 @@ GROUP BY date ORDER BY date;
 SELECT event_type, COUNT(*) as count
 FROM events
 WHERE event_date = today()
-GROUP BY event_type ORDER BY count DESC LIMIT 10;</code></pre>
-
-            <h3>Template 2: Application Logs Table</h3>
-            <pre><code class="hljs">-- Perfect for centralized logging, debugging, monitoring
+GROUP BY event_type ORDER BY count DESC LIMIT 10;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>Template 2: Application Logs Table</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Perfect for centralized logging, debugging, monitoring
 CREATE TABLE logs (
     -- Timestamp
     timestamp DateTime,
@@ -1043,10 +1069,9 @@ WHERE level = 'ERROR'
   AND exception != ''
   AND timestamp &gt;= now() - INTERVAL 24 HOUR
 ORDER BY timestamp DESC
-LIMIT 100;</code></pre>
-
-            <h3>Template 3: Metrics/Time-Series Table</h3>
-            <pre><code class="hljs">-- Perfect for system metrics, IoT sensors, monitoring
+LIMIT 100;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>Template 3: Metrics/Time-Series Table</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Perfect for system metrics, IoT sensors, monitoring
 CREATE TABLE metrics (
     -- Time dimension
     timestamp DateTime,
@@ -1089,10 +1114,9 @@ FROM metrics
 WHERE metric_name = 'http.response_time'
   AND timestamp &gt;= now() - INTERVAL 24 HOUR
 GROUP BY minute
-ORDER BY minute;</code></pre>
-
-            <h3>Template 4: User Sessions Table</h3>
-            <pre><code class="hljs">-- Perfect for session analytics, user journey tracking
+ORDER BY minute;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>Template 4: User Sessions Table</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Perfect for session analytics, user journey tracking
 CREATE TABLE sessions (
     -- Session info
     session_id String,
@@ -1153,17 +1177,14 @@ WHERE session_start &gt;= today() - 30
 GROUP BY landing_page
 HAVING sessions &gt; 100
 ORDER BY bounce_rate DESC
-LIMIT 20;</code></pre>
-
-        </div>
-    </div>
-
-    <!-- Advanced Section -->
-    <div class="section" id="advanced"><div class="section-header">🔥 Advanced Patterns</div>
-        <div class="section-content">
-
-            <h3>1. Using Materialized Views for Pre-Aggregation</h3>
-            <pre><code class="hljs">-- Source table
+LIMIT 20;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+</div>
+</div>
+<!-- Advanced Section -->
+<div class="section" id="advanced"><div class="section-header">🔥 Advanced Patterns</div>
+<div class="section-content">
+<h3>1. Using Materialized Views for Pre-Aggregation</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Source table
 CREATE TABLE events (
     event_time DateTime,
     user_id UInt64,
@@ -1187,10 +1208,9 @@ FROM events
 GROUP BY hour, event_type;
 
 -- Now queries on hourly data are instant!
-SELECT * FROM events_hourly_mv WHERE hour &gt;= today() - 7;</code></pre>
-
-            <h3>2. Optimizing with LowCardinality</h3>
-            <pre><code class="hljs">-- LowCardinality optimizes storage and query speed for columns with few unique values
+SELECT * FROM events_hourly_mv WHERE hour &gt;= today() - 7;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>2. Optimizing with LowCardinality</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- LowCardinality optimizes storage and query speed for columns with few unique values
 CREATE TABLE events (
     event_time DateTime,
     user_id UInt64,
@@ -1205,10 +1225,9 @@ CREATE TABLE events (
 ) ENGINE = MergeTree()
 ORDER BY (event_time, user_id);
 
--- Benefits: 2-10x better compression and query speed for GROUP BY operations</code></pre>
-
-            <h3>3. Using Codecs for Better Compression</h3>
-            <pre><code class="hljs">-- Different codecs for different data types
+-- Benefits: 2-10x better compression and query speed for GROUP BY operations</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>3. Using Codecs for Better Compression</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Different codecs for different data types
 CREATE TABLE metrics (
     timestamp DateTime CODEC(DoubleDelta, ZSTD),  -- Great for timestamps
     metric_name LowCardinality(String),
@@ -1218,10 +1237,9 @@ CREATE TABLE metrics (
 ) ENGINE = MergeTree()
 ORDER BY (metric_name, timestamp);
 
--- Result: 2-5x better compression than default!</code></pre>
-
-            <h3>4. Sampling for Faster Queries</h3>
-            <pre><code class="hljs">-- Add sampling key to table
+-- Result: 2-5x better compression than default!</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>4. Sampling for Faster Queries</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Add sampling key to table
 CREATE TABLE events (
     event_time DateTime,
     user_id UInt64,
@@ -1237,10 +1255,9 @@ SELECT
 FROM events
 SAMPLE 0.1  -- Sample 10% of data
 WHERE event_time &gt;= today() - 30
-GROUP BY event_type;</code></pre>
-
-            <h3>5. Distributed Queries Across Clusters</h3>
-            <pre><code class="hljs">-- Distributed table that queries all shards
+GROUP BY event_type;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>5. Distributed Queries Across Clusters</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Distributed table that queries all shards
 CREATE TABLE events_distributed AS events
 ENGINE = Distributed(
     'my_cluster',      -- Cluster name (defined in config)
@@ -1254,93 +1271,121 @@ INSERT INTO events_distributed VALUES (...);
 
 -- Read from distributed table (queries all shards in parallel)
 SELECT COUNT(*) FROM events_distributed;
--- ClickHouse automatically combines results from all shards!</code></pre>
-
-        </div>
-    </div>
-
-    <!-- Resources Section -->
-    <div class="section" id="resources"><div class="section-header">📚 Related Resources</div>
-        <div class="section-content">
-
-            <div class="grid-2">
-                <div class="card">
-                    <h4>📘 View in Notion</h4>
-                    <p style="margin: 10px 0;">Access this module in your Notion workspace for note-taking and tracking your progress.</p>
-                    <a href="https://www.notion.so/Module-1-Fundamentals-Architecture-2f1bb896952b81ec93c6f0cb4dc31acf" target="_blank" rel="noopener noreferrer" style="color: #ff6b35; font-weight: 600; text-decoration: none;">Open in Notion →</a>
-                </div>
-
-                <div class="card">
-                    <h4>📖 Official Documentation</h4>
-                    <ul>
-                        <li><a href="https://clickhouse.com/docs" target="_blank">ClickHouse Docs</a></li>
-                        <li><a href="https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/mergetree" target="_blank">MergeTree Engine</a></li>
-                        <li><a href="https://clickhouse.com/docs/en/sql-reference" target="_blank">SQL Reference</a></li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <h4>🎓 Learning Resources</h4>
-                    <ul>
-                        <li><a href="https://clickhouse.com/learn" target="_blank">ClickHouse Learn</a></li>
-                        <li><a href="https://clickhouse.com/blog" target="_blank">Official Blog</a></li>
-                        <li><a href="https://github.com/ClickHouse/ClickHouse" target="_blank">GitHub Repository</a></li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <h4>🛠️ Tools & Clients</h4>
-                    <ul>
-                        <li><a href="https://github.com/clickhouse/clickhouse-go" target="_blank">Go Client</a></li>
-                        <li><a href="https://github.com/ClickHouse/clickhouse-js" target="_blank">JavaScript/Node.js Client</a></li>
-                        <li><a href="https://github.com/ClickHouse/clickhouse-python" target="_blank">Python Client</a></li>
-                        <li><a href="https://github.com/ClickHouse/clickhouse-java" target="_blank">Java Client</a></li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <h4>💬 Community</h4>
-                    <ul>
-                        <li><a href="https://clickhouse.com/slack" target="_blank">Slack Community</a></li>
-                        <li><a href="https://stackoverflow.com/questions/tagged/clickhouse" target="_blank">Stack Overflow</a></li>
-                        <li><a href="https://github.com/ClickHouse/ClickHouse/discussions" target="_blank">GitHub Discussions</a></li>
-                    </ul>
-                </div>
-            </div>
-
-            <div class="highlight-box">
-                <h4>🎯 Next Steps</h4>
-                <p>After completing Module 1, you should be comfortable with:</p>
-                <ul>
-                    <li>✅ Understanding ClickHouse architecture and when to use it</li>
-                    <li>✅ Installing and running ClickHouse (single node)</li>
-                    <li>✅ Creating databases and basic MergeTree tables</li>
-                    <li>✅ Inserting data and running analytical queries</li>
-                    <li>✅ Understanding column-oriented storage benefits</li>
-                </ul>
-                <p><strong>Ready for Module 2?</strong> Next, we'll dive deep into Table Engines & Data Modeling!</p>
-            </div>
-
-        </div>
-    </div>
-
+-- ClickHouse automatically combines results from all shards!</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 </div>
-
+</div>
+<!-- Resources Section -->
+<div class="section" id="resources"><div class="section-header">📚 Related Resources</div>
+<div class="section-content">
+<div class="grid-2">
+<div class="card">
+<h4>📘 View in Notion</h4>
+<p style="margin: 10px 0;">Access this module in your Notion workspace for note-taking and tracking your progress.</p>
+<a href="https://www.notion.so/Module-1-Fundamentals-Architecture-2f1bb896952b81ec93c6f0cb4dc31acf" rel="noopener noreferrer" style="color: #ff6b35; font-weight: 600; text-decoration: none;" target="_blank">Open in Notion →</a>
+</div>
+<div class="card">
+<h4>📖 Official Documentation</h4>
+<ul>
+<li><a href="https://clickhouse.com/docs" target="_blank">ClickHouse Docs</a></li>
+<li><a href="https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/mergetree" target="_blank">MergeTree Engine</a></li>
+<li><a href="https://clickhouse.com/docs/en/sql-reference" target="_blank">SQL Reference</a></li>
+</ul>
+</div>
+<div class="card">
+<h4>🎓 Learning Resources</h4>
+<ul>
+<li><a href="https://clickhouse.com/learn" target="_blank">ClickHouse Learn</a></li>
+<li><a href="https://clickhouse.com/blog" target="_blank">Official Blog</a></li>
+<li><a href="https://github.com/ClickHouse/ClickHouse" target="_blank">GitHub Repository</a></li>
+</ul>
+</div>
+<div class="card">
+<h4>🛠️ Tools &amp; Clients</h4>
+<ul>
+<li><a href="https://github.com/clickhouse/clickhouse-go" target="_blank">Go Client</a></li>
+<li><a href="https://github.com/ClickHouse/clickhouse-js" target="_blank">JavaScript/Node.js Client</a></li>
+<li><a href="https://github.com/ClickHouse/clickhouse-python" target="_blank">Python Client</a></li>
+<li><a href="https://github.com/ClickHouse/clickhouse-java" target="_blank">Java Client</a></li>
+</ul>
+</div>
+<div class="card">
+<h4>💬 Community</h4>
+<ul>
+<li><a href="https://clickhouse.com/slack" target="_blank">Slack Community</a></li>
+<li><a href="https://stackoverflow.com/questions/tagged/clickhouse" target="_blank">Stack Overflow</a></li>
+<li><a href="https://github.com/ClickHouse/ClickHouse/discussions" target="_blank">GitHub Discussions</a></li>
+</ul>
+</div>
+</div>
+<div class="highlight-box">
+<h4>🎯 Next Steps</h4>
+<p>After completing Module 1, you should be comfortable with:</p>
+<ul>
+<li>✅ Understanding ClickHouse architecture and when to use it</li>
+<li>✅ Installing and running ClickHouse (single node)</li>
+<li>✅ Creating databases and basic MergeTree tables</li>
+<li>✅ Inserting data and running analytical queries</li>
+<li>✅ Understanding column-oriented storage benefits</li>
+</ul>
+<p><strong>Ready for Module 2?</strong> Next, we'll dive deep into Table Engines &amp; Data Modeling!</p>
+</div>
+</div>
+</div>
+</div>
 <div style="background: #333; color: white; padding: 40px 20px; text-align: center; margin-top: 40px;">
-    <h3>📊 ClickHouse Knowledge Transfer</h3>
-    <p>Module 1 of 10 | Duration: 6-8 weeks total</p>
-    <p style="margin-top: 20px; opacity: 0.8;">Created for comprehensive ClickHouse training | 2026</p>
+<h3>📊 ClickHouse Knowledge Transfer</h3>
+<p>Module 1 of 10 | Duration: 6-8 weeks total</p>
+<p style="margin-top: 20px; opacity: 0.8;">Created for comprehensive ClickHouse training | 2026</p>
 </div>
-
 <div class="module-nav" style="border-bottom: none; border-top: 2px solid #ff6b35;">
-    <span class="nav-btn-module disabled">← Previous Module</span>
-    <a href="../index.html" class="nav-btn-module nav-home">🏠 Home</a>
-    <a href="module-2-table-engines.html" class="nav-btn-module">Next: Module 2 - Table Engines →</a>
+<span class="nav-btn-module disabled">← Previous Module</span>
+<a class="nav-btn-module nav-home" href="../index.html">🏠 Home</a>
+<a class="nav-btn-module" href="module-2-table-engines.html">Next: Module 2 - Table Engines →</a>
 </div>
-
 <script>
 hljs.highlightAll();
 </script>
+<script>
+// Copy code functionality
+document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const code = this.parentElement.querySelector('code').textContent;
+        navigator.clipboard.writeText(code).then(() => {
+            const originalText = this.textContent;
+            this.textContent = '✓ Copied!';
+            this.classList.add('copied');
+            setTimeout(() => {
+                this.textContent = originalText;
+                this.classList.remove('copied');
+            },2000);
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+            this.textContent = '✗ Failed';
+            setTimeout(() => {
+                this.textContent = 'Copy';
+            },2000);
+        });
+    });
+});
 
-</body>
+// Show more/less functionality
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const content = this.parentElement.querySelector('.code-content');
+        const overlay = content.querySelector('.fade-overlay');
+        
+        if (content.classList.contains('collapsed')) {
+            content.classList.remove('collapsed');
+            content.classList.add('expanded');
+            this.textContent = 'Show Less';
+            if (overlay) overlay.style.display = 'none';
+        } else {
+            content.classList.add('collapsed');
+            content.classList.remove('expanded');
+            this.textContent = 'Show More';
+            if (overlay) overlay.style.display = 'block';
+        }
+    });
+});
+</script></body>
 </html>

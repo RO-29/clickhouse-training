@@ -1,14 +1,15 @@
 <!DOCTYPE html>
+
 <html lang="en" style="scroll-behavior: smooth;">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Module 10: Migration from MongoDB/MySQL</title>
-    <link rel="icon" type="image/x-icon" href="../favicon.ico">
-    <link rel="icon" type="image/png" href="../favicon.png">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
-    <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Module 10: Migration from MongoDB/MySQL</title>
+<link href="../favicon.ico" rel="icon" type="image/x-icon"/>
+<link href="../favicon.png" rel="icon" type="image/png"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
             margin: 0;
@@ -266,153 +267,221 @@
                 grid-template-columns: 1fr;
             }
         }
-    </style>
+    
+        .code-wrapper {
+            position: relative;
+            margin: 15px 0;
+        }
+        .code-wrapper pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px 20px 50px 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+        }
+        .code-wrapper .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255,255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+        .code-wrapper .copy-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        .code-wrapper .copy-btn.copied {
+            background: rgba(39, 174, 96, 0.8);
+            border-color: #27ae60;
+        }
+        .code-wrapper .code-content {
+            transition: max-height 0.3s ease-out;
+            overflow: hidden;
+        }
+        .code-wrapper .code-content.expanded {
+            max-height: none !important;
+        }
+        .code-wrapper .code-content.collapsed {
+            max-height: 120px;
+        }
+        .code-wrapper .toggle-btn {
+            display: none;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: -40px;
+            margin-bottom: 20px;
+            transition: transform 0.2s;
+        }
+        .code-wrapper .toggle-btn:hover {
+            transform: translateY(-2px);
+        }
+        .code-wrapper .toggle-btn.visible {
+            display: inline-block;
+        }
+        .code-wrapper .fade-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(transparent, #1e1e1e);
+            pointer-events: none;
+            display: none;
+        }
+        .code-wrapper .code-content.collapsed .fade-overlay {
+            display: block;
+        }
+</style>
 </head>
 <body>
-
 <div class="module-nav">
-    <a href="module-9-kafka-ingestion.html" class="nav-btn-module">← Previous: Module 9 - Kafka Ingestion</a>
-    <a href="../index.html" class="nav-btn-module nav-home">🏠 Home</a>
-    <span class="nav-btn-module disabled">Next Module →</span>
+<a class="nav-btn-module" href="module-9-kafka-ingestion.html">← Previous: Module 9 - Kafka Ingestion</a>
+<a class="nav-btn-module nav-home" href="../index.html">🏠 Home</a>
+<span class="nav-btn-module disabled">Next Module →</span>
 </div>
-
 <div class="header">
-    <h1>🔄 MODULE 10</h1>
-    <div class="subtitle">Migration from MongoDB/MySQL to ClickHouse</div>
-    <div class="subtitle" style="font-size: 1em; margin-top: 20px;">Duration: 8-12 hours | Week 10</div>
+<h1>🔄 MODULE 10</h1>
+<div class="subtitle">Migration from MongoDB/MySQL to ClickHouse</div>
+<div class="subtitle" style="font-size: 1em; margin-top: 20px;">Duration: 8-12 hours | Week 10</div>
 </div>
-
 <div style="background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);">
-    <div class="nav-buttons">
-        <div class="nav-btn">📖 What is Migration?</div>
-        <div class="nav-btn">🚀 Quick Start</div>
-        <div class="nav-btn">💻 Commands</div>
-        <div class="nav-btn">✨ Best Practices</div>
-        <div class="nav-btn">🎯 When to Use</div>
-        <div class="nav-btn">🏆 Real-World Results</div>
-        <div class="nav-btn">📋 Templates</div>
-        <div class="nav-btn">🔥 Advanced</div>
-        <div class="nav-btn">📚 Resources</div>
-    </div>
+<div class="nav-buttons">
+<div class="nav-btn">📖 What is Migration?</div>
+<div class="nav-btn">🚀 Quick Start</div>
+<div class="nav-btn">💻 Commands</div>
+<div class="nav-btn">✨ Best Practices</div>
+<div class="nav-btn">🎯 When to Use</div>
+<div class="nav-btn">🏆 Real-World Results</div>
+<div class="nav-btn">📋 Templates</div>
+<div class="nav-btn">🔥 Advanced</div>
+<div class="nav-btn">📚 Resources</div>
 </div>
-
+</div>
 <div class="container">
-
-    <!-- What is Migration Section -->
-    <div class="section" id="what-is-migration">
-        <div class="section-header">📖 What is Migration to ClickHouse?</div>
-        <div class="section-content">
-            <div class="highlight-box">
-                <h4 style="margin-top: 0;">Migration Overview</h4>
-                <p><strong>Migrating to ClickHouse means transferring data from traditional OLTP databases (MongoDB, MySQL, PostgreSQL) to ClickHouse's column-oriented architecture for analytics.</strong> This is a critical operation that requires careful planning, schema transformation, data validation, and often involves running both systems in parallel during transition.</p>
-            </div>
-
-            <div class="icon-grid">
-                <div class="icon-card">
-                    <div class="icon">🗺️</div>
-                    <h4>Schema Mapping</h4>
-                    <p>Transform document/relational schemas into columnar format optimized for analytics</p>
-                </div>
-                <div class="icon-card">
-                    <div class="icon">🔄</div>
-                    <h4>ETL Pipeline</h4>
-                    <p>Extract, transform, and load data with minimal downtime using streaming architecture</p>
-                </div>
-                <div class="icon-card">
-                    <div class="icon">📡</div>
-                    <h4>Change Data Capture</h4>
-                    <p>Sync real-time changes using Debezium CDC and Kafka streaming</p>
-                </div>
-                <div class="icon-card">
-                    <div class="icon">✅</div>
-                    <h4>Data Validation</h4>
-                    <p>Reconcile data integrity across source and target systems</p>
-                </div>
-            </div>
-
-            <h3>Key Challenges in Migration</h3>
-            <div class="grid-2">
-                <div class="card">
-                    <h4>From MongoDB (Document DB)</h4>
-                    <ul>
-                        <li>Flattening nested/embedded documents</li>
-                        <li>Handling schema variability (different documents have different fields)</li>
-                        <li>Converting ObjectId to standard types</li>
-                        <li>Handling arrays and complex types</li>
-                        <li>Preserving TTL and expiration logic</li>
-                    </ul>
-                </div>
-                <div class="card">
-                    <h4>From MySQL/PostgreSQL (Relational)</h4>
-                    <ul>
-                        <li>Denormalizing normalized schemas</li>
-                        <li>Handling large volumes efficiently</li>
-                        <li>Converting foreign key relationships</li>
-                        <li>Managing ACID transaction semantics</li>
-                        <li>Handling incremental updates and deletes</li>
-                    </ul>
-                </div>
-            </div>
-
-            <h3>Migration Architecture Diagram</h3>
-            <div class="diagram">
-                <h4 style="text-align: center; color: #ff6b35; margin-top: 0;">Complete Migration Pipeline</h4>
-                <div style="display: grid; grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr; gap: 15px; align-items: center;">
-                    <div class="diagram-box" style="background: #fff9e6; border-color: #ffb82e;">
-                        <strong>Source DB</strong><br>
-                        MongoDB<br>
-                        or<br>
+<!-- What is Migration Section -->
+<div class="section" id="what-is-migration">
+<div class="section-header">📖 What is Migration to ClickHouse?</div>
+<div class="section-content">
+<div class="highlight-box">
+<h4 style="margin-top: 0;">Migration Overview</h4>
+<p><strong>Migrating to ClickHouse means transferring data from traditional OLTP databases (MongoDB, MySQL, PostgreSQL) to ClickHouse's column-oriented architecture for analytics.</strong> This is a critical operation that requires careful planning, schema transformation, data validation, and often involves running both systems in parallel during transition.</p>
+</div>
+<div class="icon-grid">
+<div class="icon-card">
+<div class="icon">🗺️</div>
+<h4>Schema Mapping</h4>
+<p>Transform document/relational schemas into columnar format optimized for analytics</p>
+</div>
+<div class="icon-card">
+<div class="icon">🔄</div>
+<h4>ETL Pipeline</h4>
+<p>Extract, transform, and load data with minimal downtime using streaming architecture</p>
+</div>
+<div class="icon-card">
+<div class="icon">📡</div>
+<h4>Change Data Capture</h4>
+<p>Sync real-time changes using Debezium CDC and Kafka streaming</p>
+</div>
+<div class="icon-card">
+<div class="icon">✅</div>
+<h4>Data Validation</h4>
+<p>Reconcile data integrity across source and target systems</p>
+</div>
+</div>
+<h3>Key Challenges in Migration</h3>
+<div class="grid-2">
+<div class="card">
+<h4>From MongoDB (Document DB)</h4>
+<ul>
+<li>Flattening nested/embedded documents</li>
+<li>Handling schema variability (different documents have different fields)</li>
+<li>Converting ObjectId to standard types</li>
+<li>Handling arrays and complex types</li>
+<li>Preserving TTL and expiration logic</li>
+</ul>
+</div>
+<div class="card">
+<h4>From MySQL/PostgreSQL (Relational)</h4>
+<ul>
+<li>Denormalizing normalized schemas</li>
+<li>Handling large volumes efficiently</li>
+<li>Converting foreign key relationships</li>
+<li>Managing ACID transaction semantics</li>
+<li>Handling incremental updates and deletes</li>
+</ul>
+</div>
+</div>
+<h3>Migration Architecture Diagram</h3>
+<div class="diagram">
+<h4 style="text-align: center; color: #ff6b35; margin-top: 0;">Complete Migration Pipeline</h4>
+<div style="display: grid; grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr; gap: 15px; align-items: center;">
+<div class="diagram-box" style="background: #fff9e6; border-color: #ffb82e;">
+<strong>Source DB</strong><br/>
+                        MongoDB<br/>
+                        or<br/>
                         MySQL
                     </div>
-                    <div style="font-size: 1.5em; color: #ff6b35;">→</div>
-                    <div class="diagram-box" style="background: #e6f2ff; border-color: #3498db;">
-                        <strong>Debezium</strong><br>
-                        CDC<br>
+<div style="font-size: 1.5em; color: #ff6b35;">→</div>
+<div class="diagram-box" style="background: #e6f2ff; border-color: #3498db;">
+<strong>Debezium</strong><br/>
+                        CDC<br/>
                         Connector
                     </div>
-                    <div style="font-size: 1.5em; color: #ff6b35;">→</div>
-                    <div class="diagram-box" style="background: #f0e6ff; border-color: #9b59b6;">
-                        <strong>Kafka</strong><br>
-                        Topics<br>
+<div style="font-size: 1.5em; color: #ff6b35;">→</div>
+<div class="diagram-box" style="background: #f0e6ff; border-color: #9b59b6;">
+<strong>Kafka</strong><br/>
+                        Topics<br/>
                         (Streaming)
                     </div>
-                    <div style="font-size: 1.5em; color: #ff6b35;">→</div>
-                    <div class="diagram-box" style="background: #e6f7ed; border-color: #27ae60;">
-                        <strong>ClickHouse</strong><br>
-                        Kafka Engine<br>
+<div style="font-size: 1.5em; color: #ff6b35;">→</div>
+<div class="diagram-box" style="background: #e6f7ed; border-color: #27ae60;">
+<strong>ClickHouse</strong><br/>
+                        Kafka Engine<br/>
                         + MergeTree
                     </div>
-                </div>
-                <div style="margin-top: 25px; padding: 15px; background: #f8f9fa; border-radius: 6px;">
-                    <strong>Data Flow:</strong><br>
-                    1. Debezium captures changes from transaction logs (binlog/oplog)<br>
-                    2. Changes published to Kafka topics as events<br>
-                    3. ClickHouse Kafka Engine consumes in real-time<br>
+</div>
+<div style="margin-top: 25px; padding: 15px; background: #f8f9fa; border-radius: 6px;">
+<strong>Data Flow:</strong><br/>
+                    1. Debezium captures changes from transaction logs (binlog/oplog)<br/>
+                    2. Changes published to Kafka topics as events<br/>
+                    3. ClickHouse Kafka Engine consumes in real-time<br/>
                     4. Materialized views transform and persist to MergeTree
                 </div>
-            </div>
-
-            <h3>Migration Phases</h3>
-            <div class="pipeline-flow">
-                <div class="step"><strong>1. Assessment & Planning</strong> - Analyze data volume, schema complexity, dependencies</div>
-                <div class="step"><strong>2. Schema Design</strong> - Design ClickHouse schema, define transformations</div>
-                <div class="step"><strong>3. Setup CDC/Streaming</strong> - Configure Debezium, Kafka, ClickHouse Kafka Connect</div>
-                <div class="step"><strong>4. Historical Data Migration</strong> - Bulk load existing data</div>
-                <div class="step"><strong>5. Live Sync</strong> - Stream real-time changes from source</div>
-                <div class="step"><strong>6. Validation & Testing</strong> - Compare data, run integration tests</div>
-                <div class="step"><strong>7. Dual-Write Period</strong> - Run both systems in parallel</div>
-                <div class="step"><strong>8. Cutover</strong> - Switch to ClickHouse, monitor for issues</div>
-                <div class="step"><strong>9. Rollback Plan</strong> - Maintain ability to revert if needed</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Quick Start Section -->
-    <div class="section" id="quick-start">
-        <div class="section-header">🚀 Quick Start: MongoDB to ClickHouse</div>
-        <div class="section-content">
-            <h3>Step 1: Analyze MongoDB Schema</h3>
-            <pre><code class="hljs">// Sample MongoDB document
+</div>
+<h3>Migration Phases</h3>
+<div class="pipeline-flow">
+<div class="step"><strong>1. Assessment &amp; Planning</strong> - Analyze data volume, schema complexity, dependencies</div>
+<div class="step"><strong>2. Schema Design</strong> - Design ClickHouse schema, define transformations</div>
+<div class="step"><strong>3. Setup CDC/Streaming</strong> - Configure Debezium, Kafka, ClickHouse Kafka Connect</div>
+<div class="step"><strong>4. Historical Data Migration</strong> - Bulk load existing data</div>
+<div class="step"><strong>5. Live Sync</strong> - Stream real-time changes from source</div>
+<div class="step"><strong>6. Validation &amp; Testing</strong> - Compare data, run integration tests</div>
+<div class="step"><strong>7. Dual-Write Period</strong> - Run both systems in parallel</div>
+<div class="step"><strong>8. Cutover</strong> - Switch to ClickHouse, monitor for issues</div>
+<div class="step"><strong>9. Rollback Plan</strong> - Maintain ability to revert if needed</div>
+</div>
+</div>
+</div>
+<!-- Quick Start Section -->
+<div class="section" id="quick-start">
+<div class="section-header">🚀 Quick Start: MongoDB to ClickHouse</div>
+<div class="section-content">
+<h3>Step 1: Analyze MongoDB Schema</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">// Sample MongoDB document
 db.users.findOne()
 
 {
@@ -427,10 +496,9 @@ db.users.findOne()
   "created_at": ISODate("2024-01-15T10:00:00Z"),
   "updated_at": ISODate("2024-01-15T10:00:00Z"),
   "is_active": true
-}</code></pre>
-
-            <h3>Step 2: Design ClickHouse Schema</h3>
-            <pre><code class="hljs">-- Flattened, denormalized schema for ClickHouse
+}</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>Step 2: Design ClickHouse Schema</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Flattened, denormalized schema for ClickHouse
 CREATE TABLE users (
     user_id String,        -- MongoDB ObjectId as String
     name String,
@@ -443,10 +511,9 @@ CREATE TABLE users (
     updated_at DateTime
 ) ENGINE = ReplacingMergeTree(updated_at)
 ORDER BY user_id
-PARTITION BY toYYYYMM(created_at);</code></pre>
-
-            <h3>Step 3: Install & Configure Debezium</h3>
-            <pre><code class="hljs">#!/bin/bash
+PARTITION BY toYYYYMM(created_at);</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>Step 3: Install &amp; Configure Debezium</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">#!/bin/bash
 # Download Debezium Docker Compose
 wget https://raw.githubusercontent.com/debezium/debezium-examples/main/docker-compose.yml
 
@@ -466,10 +533,9 @@ curl -X POST http://localhost:8083/connectors \
       "publish.full.document.only": true,
       "output.format.value": "json"
     }
-  }'</code></pre>
-
-            <h3>Step 4: Configure ClickHouse Kafka Table</h3>
-            <pre><code class="hljs">-- Kafka table to receive streaming data
+  }'</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>Step 4: Configure ClickHouse Kafka Table</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Kafka table to receive streaming data
 CREATE TABLE users_kafka (
     user_id String,
     name String,
@@ -485,10 +551,9 @@ SETTINGS
     kafka_broker_list = 'kafka:9092',
     kafka_topic_list = 'my_source.mydb.users',
     kafka_group_id = 'clickhouse_users',
-    kafka_format = 'JSONEachRow';</code></pre>
-
-            <h3>Step 5: Create Materialized View to Sink Data</h3>
-            <pre><code class="hljs">-- Materialized view that reads from Kafka and writes to MergeTree
+    kafka_format = 'JSONEachRow';</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>Step 5: Create Materialized View to Sink Data</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Materialized view that reads from Kafka and writes to MergeTree
 CREATE MATERIALIZED VIEW users_mv TO users AS
 SELECT
     user_id,
@@ -500,36 +565,33 @@ SELECT
     is_active,
     created_at,
     updated_at
-FROM users_kafka;</code></pre>
-
-            <h3>Step 6: Bulk Load Historical Data</h3>
-            <pre><code class="hljs">#!/bin/bash
+FROM users_kafka;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>Step 6: Bulk Load Historical Data</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">#!/bin/bash
 # Export data from MongoDB
 mongoexport --db=mydb --collection=users --out=users.json
 
 # Transform and load to ClickHouse
 cat users.json | clickhouse-client \
   --query="INSERT INTO users FORMAT JSONEachRow" \
-  --input_format_json_try_infer_numbers_from_strings=1</code></pre>
-
-            <h3>Step 7: Validate Data</h3>
-            <pre><code class="hljs">-- Count records in source
+  --input_format_json_try_infer_numbers_from_strings=1</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>Step 7: Validate Data</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Count records in source
 db.users.countDocuments()  // MongoDB: 1,000,000
 
 -- Count records in ClickHouse
 SELECT COUNT(*) FROM users;  -- ClickHouse: 1,000,000
 
 -- Compare sample records
-SELECT * FROM users LIMIT 5;</code></pre>
-        </div>
-    </div>
-
-    <!-- Commands Reference Section -->
-    <div class="section" id="commands">
-        <div class="section-header">💻 Migration Commands & Tools</div>
-        <div class="section-content">
-            <h3>Debezium Setup Commands</h3>
-            <pre><code class="hljs">-- Create MongoDB connector
+SELECT * FROM users LIMIT 5;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+</div>
+</div>
+<!-- Commands Reference Section -->
+<div class="section" id="commands">
+<div class="section-header">💻 Migration Commands &amp; Tools</div>
+<div class="section-content">
+<h3>Debezium Setup Commands</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Create MongoDB connector
 curl -X POST http://localhost:8083/connectors \
   -H "Content-Type: application/json" \
   -d '{
@@ -571,10 +633,9 @@ curl http://localhost:8083/connectors/mongodb-source/status
 curl -X DELETE http://localhost:8083/connectors/mongodb-source
 
 -- List all connectors
-curl http://localhost:8083/connectors</code></pre>
-
-            <h3>ClickHouse Kafka Setup</h3>
-            <pre><code class="hljs">-- Create Kafka table for MongoDB changes
+curl http://localhost:8083/connectors</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>ClickHouse Kafka Setup</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Create Kafka table for MongoDB changes
 CREATE TABLE orders_kafka (
     _id String,
     order_id String,
@@ -617,10 +678,9 @@ SELECT
     created_at,
     updated_at
 FROM orders_kafka
-WHERE _op IN ('c', 'u');</code></pre>
-
-            <h3>Bulk Data Loading</h3>
-            <pre><code class="hljs">-- Load from CSV file
+WHERE _op IN ('c', 'u');</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>Bulk Data Loading</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Load from CSV file
 clickhouse-client --query="INSERT INTO users FORMAT CSV" &lt; users.csv
 
 -- Load from JSON Lines
@@ -637,10 +697,9 @@ SELECT
     max(modification_time) as last_modified
 FROM system.parts
 WHERE table = 'users'
-GROUP BY database, table;</code></pre>
-
-            <h3>Data Validation Commands</h3>
-            <pre><code class="hljs">-- Find missing records (source -&gt; target)
+GROUP BY database, table;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>Data Validation Commands</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Find missing records (source -&gt; target)
 SELECT user_id FROM source_table
 EXCEPT
 SELECT user_id FROM clickhouse_table;
@@ -665,32 +724,30 @@ SELECT
     name,
     type
 FROM system.columns
-WHERE table = 'users' AND database = 'default';</code></pre>
-        </div>
-    </div>
-
-    <!-- Best Practices Section -->
-    <div class="section" id="best-practices">
-        <div class="section-header">✨ Migration Best Practices</div>
-        <div class="section-content">
-            <h3>1. Schema Mapping Strategy</h3>
-            <div class="comparison">
-                <div class="bad">
-                    <div class="badge badge-bad">❌ Wrong</div>
-                    <pre><code class="hljs">-- Trying to preserve MongoDB schema 1-to-1
+WHERE table = 'users' AND database = 'default';</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+</div>
+</div>
+<!-- Best Practices Section -->
+<div class="section" id="best-practices">
+<div class="section-header">✨ Migration Best Practices</div>
+<div class="section-content">
+<h3>1. Schema Mapping Strategy</h3>
+<div class="comparison">
+<div class="bad">
+<div class="badge badge-bad">❌ Wrong</div>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Trying to preserve MongoDB schema 1-to-1
 CREATE TABLE user_docs (
     _id String,
     full_document String  -- Storing entire JSON
 ) ENGINE = MergeTree()
 ORDER BY _id;
 
--- Problem: Queries require JSON parsing</code></pre>
-                    <p><strong>Issue:</strong> Cannot efficiently query nested data</p>
-                </div>
-
-                <div class="good">
-                    <div class="badge badge-good">✅ Correct</div>
-                    <pre><code class="hljs">-- Flatten and denormalize
+-- Problem: Queries require JSON parsing</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<p><strong>Issue:</strong> Cannot efficiently query nested data</p>
+</div>
+<div class="good">
+<div class="badge badge-good">✅ Correct</div>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Flatten and denormalize
 CREATE TABLE users (
     user_id String,
     first_name String,
@@ -703,237 +760,228 @@ CREATE TABLE users (
 ) ENGINE = MergeTree()
 ORDER BY user_id;
 
--- Benefits: Fast queries, good compression</code></pre>
-                    <p><strong>Advantage:</strong> Optimal for ClickHouse analytics</p>
-                </div>
-            </div>
-
-            <h3>2. Historical Data vs Live CDC</h3>
-            <div class="grid-2">
-                <div class="card">
-                    <h4>Historical Data Migration</h4>
-                    <ul>
-                        <li>Use batch export tools (mongoexport, mysqldump)</li>
-                        <li>Transform data offline before loading</li>
-                        <li>Load in chunks to avoid memory issues</li>
-                        <li>Verify data before marking as complete</li>
-                        <li>Disable inserts during bulk load for speed</li>
-                    </ul>
-                </div>
-                <div class="card">
-                    <h4>Live CDC Streaming</h4>
-                    <ul>
-                        <li>Start BEFORE historical migration</li>
-                        <li>Capture all changes during migration window</li>
-                        <li>Use Kafka for reliable streaming</li>
-                        <li>Implement deduplication logic</li>
-                        <li>Monitor lag and throughput</li>
-                    </ul>
-                </div>
-            </div>
-
-            <h3>3. Data Validation Checklist</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Validation</th>
-                        <th>Method</th>
-                        <th>Acceptable Threshold</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Row count</td>
-                        <td>COUNT(*) comparison</td>
-                        <td>100% match</td>
-                    </tr>
-                    <tr>
-                        <td>Sample data</td>
-                        <td>MD5/SHA hash of sorted data</td>
-                        <td>100% match</td>
-                    </tr>
-                    <tr>
-                        <td>Aggregations</td>
-                        <td>SUM, AVG on numeric columns</td>
-                        <td>< 0.01% difference</td>
-                    </tr>
-                    <tr>
-                        <td>Distinct values</td>
-                        <td>COUNT(DISTINCT col)</td>
-                        <td>100% match</td>
-                    </tr>
-                    <tr>
-                        <td>Date ranges</td>
-                        <td>MIN, MAX on date columns</td>
-                        <td>100% match</td>
-                    </tr>
-                    <tr>
-                        <td>NULL handling</td>
-                        <td>COUNT where col IS NULL</td>
-                        <td>100% match</td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <h3>4. Cutover Planning</h3>
-            <div class="highlight-box">
-                <h4>Zero-Downtime Cutover Strategy</h4>
-                <ul>
-                    <li><strong>T-1 day:</strong> Final validation, sync CDC data</li>
-                    <li><strong>T hour:</strong> Pause new writes to source system</li>
-                    <li><strong>T+5 min:</strong> Drain all pending CDC changes</li>
-                    <li><strong>T+10 min:</strong> Update application connection strings</li>
-                    <li><strong>T+15 min:</strong> Resume application traffic to ClickHouse</li>
-                    <li><strong>T+1 hour:</strong> Monitor for errors and performance</li>
-                    <li><strong>Maintain rollback:</strong> Keep source active for 24 hours</li>
-                </ul>
-            </div>
-        </div>
-    </div>
-
-    <!-- When to Use Section -->
-    <div class="section" id="when-to-use">
-        <div class="section-header">🎯 When to Use Which Migration Approach</div>
-        <div class="section-content">
-            <div class="grid-2">
-                <div class="card" style="background: #e6f7ed;">
-                    <h4>Use Kafka + Debezium CDC When:</h4>
-                    <ul>
-                        <li>Data volume is massive (1TB+)</li>
-                        <li>Cannot afford downtime</li>
-                        <li>Continuous changes during migration</li>
-                        <li>Need real-time analytics post-migration</li>
-                        <li>Complex transformations needed</li>
-                    </ul>
-                </div>
-                <div class="card" style="background: #ffe6e6;">
-                    <h4>Use Simple Bulk Load When:</h4>
-                    <ul>
-                        <li>Data volume is small (< 100GB)</li>
-                        <li>Can afford brief downtime</li>
-                        <li>One-time migration</li>
-                        <li>Simple schema mapping</li>
-                        <li>No data changes during migration</li>
-                    </ul>
-                </div>
-            </div>
-
-            <h3>Migration Decision Matrix</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Scenario</th>
-                        <th>Recommended Approach</th>
-                        <th>Estimated Duration</th>
-                        <th>Risk Level</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>< 10GB, 1 table, no changes</td>
-                        <td>Direct bulk load</td>
-                        <td>1-2 hours</td>
-                        <td>Low</td>
-                    </tr>
-                    <tr>
-                        <td>10-100GB, few tables, manageable downtime</td>
-                        <td>Batch export + load</td>
-                        <td>4-8 hours</td>
-                        <td>Low</td>
-                    </tr>
-                    <tr>
-                        <td>100GB-1TB, multiple tables, continuous changes</td>
-                        <td>CDC + Kafka + bulk load</td>
-                        <td>24-48 hours</td>
-                        <td>Medium</td>
-                    </tr>
-                    <tr>
-                        <td>1TB+, complex transformations, zero downtime</td>
-                        <td>Full Debezium + dual-write</td>
-                        <td>1-2 weeks</td>
-                        <td>High</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Real-World Results Section -->
-    <div class="section" id="real-world">
-        <div class="section-header">🏆 Real-World Migration Results</div>
-        <div class="section-content">
-            <div class="icon-grid">
-                <div class="icon-card" style="background: #fff9e6;">
-                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">97%</div>
-                    <h4>Cost Reduction</h4>
-                    <p>Infrastructure costs reduced from $500K/month to $15K/month with ClickHouse</p>
-                </div>
-                <div class="icon-card" style="background: #e6f7ed;">
-                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">300x</div>
-                    <h4>Query Speedup</h4>
-                    <p>Analytics queries that took 30+ minutes now run in < 6 seconds</p>
-                </div>
-                <div class="icon-card" style="background: #e6f2ff;">
-                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">Zero</div>
-                    <h4>Downtime</h4>
-                    <p>Successfully migrated 500GB of data with dual-write strategy</p>
-                </div>
-                <div class="icon-card" style="background: #f0e6ff;">
-                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">5x</div>
-                    <h4>Compression</h4>
-                    <p>Database size reduced from 1TB to 200GB with better performance</p>
-                </div>
-            </div>
-
-            <h3>Case Study 1: E-Commerce Analytics Migration</h3>
-            <div class="card">
-                <h4>MongoDB → ClickHouse (500GB)</h4>
-                <p><strong>Challenge:</strong> Migrate 5 years of orders/users data without downtime during peak season</p>
-                <p><strong>Solution:</strong></p>
-                <ul>
-                    <li>Debezium MongoDB CDC → Kafka</li>
-                    <li>Parallel bulk load of historical data</li>
-                    <li>7-day dual-write testing period</li>
-                    <li>Gradual 10% → 50% → 100% traffic shift</li>
-                </ul>
-                <p><strong>Results:</strong></p>
-                <ul>
-                    <li>Migration completed in 6 days</li>
-                    <li>Zero customer-facing downtime</li>
-                    <li>Query latency: 45s → 2s (22.5x improvement)</li>
-                    <li>Storage: 500GB → 85GB (5.9x compression)</li>
-                    <li>Cost: $50K/month → $8K/month</li>
-                </ul>
-            </div>
-
-            <h3>Case Study 2: MySQL Analytics Data Warehouse</h3>
-            <div class="card">
-                <h4>MySQL → ClickHouse (200GB)</h4>
-                <p><strong>Challenge:</strong> ETL jobs taking 6+ hours daily, queries timing out</p>
-                <p><strong>Solution:</strong></p>
-                <ul>
-                    <li>Designed denormalized star schema in ClickHouse</li>
-                    <li>MySQL Debezium connector for real-time CDC</li>
-                    <li>Kafka topics for each table</li>
-                    <li>Materialized views for incremental aggregation</li>
-                </ul>
-                <p><strong>Results:</strong></p>
-                <ul>
-                    <li>ETL time: 6 hours → 5 minutes</li>
-                    <li>Report generation: 10 min → 2 sec</li>
-                    <li>Infrastructure: 15 servers → 3 servers</li>
-                    <li>ROI achieved in 3 months</li>
-                </ul>
-            </div>
-        </div>
-    </div>
-
-    <!-- Templates Section -->
-    <div class="section" id="templates">
-        <div class="section-header">📋 Migration Templates</div>
-        <div class="section-content">
-            <h3>Template 1: Complete Debezium + Kafka Setup</h3>
-            <pre><code class="hljs"># docker-compose.yml for full migration stack
+-- Benefits: Fast queries, good compression</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<p><strong>Advantage:</strong> Optimal for ClickHouse analytics</p>
+</div>
+</div>
+<h3>2. Historical Data vs Live CDC</h3>
+<div class="grid-2">
+<div class="card">
+<h4>Historical Data Migration</h4>
+<ul>
+<li>Use batch export tools (mongoexport, mysqldump)</li>
+<li>Transform data offline before loading</li>
+<li>Load in chunks to avoid memory issues</li>
+<li>Verify data before marking as complete</li>
+<li>Disable inserts during bulk load for speed</li>
+</ul>
+</div>
+<div class="card">
+<h4>Live CDC Streaming</h4>
+<ul>
+<li>Start BEFORE historical migration</li>
+<li>Capture all changes during migration window</li>
+<li>Use Kafka for reliable streaming</li>
+<li>Implement deduplication logic</li>
+<li>Monitor lag and throughput</li>
+</ul>
+</div>
+</div>
+<h3>3. Data Validation Checklist</h3>
+<table>
+<thead>
+<tr>
+<th>Validation</th>
+<th>Method</th>
+<th>Acceptable Threshold</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Row count</td>
+<td>COUNT(*) comparison</td>
+<td>100% match</td>
+</tr>
+<tr>
+<td>Sample data</td>
+<td>MD5/SHA hash of sorted data</td>
+<td>100% match</td>
+</tr>
+<tr>
+<td>Aggregations</td>
+<td>SUM, AVG on numeric columns</td>
+<td>&lt; 0.01% difference</td>
+</tr>
+<tr>
+<td>Distinct values</td>
+<td>COUNT(DISTINCT col)</td>
+<td>100% match</td>
+</tr>
+<tr>
+<td>Date ranges</td>
+<td>MIN, MAX on date columns</td>
+<td>100% match</td>
+</tr>
+<tr>
+<td>NULL handling</td>
+<td>COUNT where col IS NULL</td>
+<td>100% match</td>
+</tr>
+</tbody>
+</table>
+<h3>4. Cutover Planning</h3>
+<div class="highlight-box">
+<h4>Zero-Downtime Cutover Strategy</h4>
+<ul>
+<li><strong>T-1 day:</strong> Final validation, sync CDC data</li>
+<li><strong>T hour:</strong> Pause new writes to source system</li>
+<li><strong>T+5 min:</strong> Drain all pending CDC changes</li>
+<li><strong>T+10 min:</strong> Update application connection strings</li>
+<li><strong>T+15 min:</strong> Resume application traffic to ClickHouse</li>
+<li><strong>T+1 hour:</strong> Monitor for errors and performance</li>
+<li><strong>Maintain rollback:</strong> Keep source active for 24 hours</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- When to Use Section -->
+<div class="section" id="when-to-use">
+<div class="section-header">🎯 When to Use Which Migration Approach</div>
+<div class="section-content">
+<div class="grid-2">
+<div class="card" style="background: #e6f7ed;">
+<h4>Use Kafka + Debezium CDC When:</h4>
+<ul>
+<li>Data volume is massive (1TB+)</li>
+<li>Cannot afford downtime</li>
+<li>Continuous changes during migration</li>
+<li>Need real-time analytics post-migration</li>
+<li>Complex transformations needed</li>
+</ul>
+</div>
+<div class="card" style="background: #ffe6e6;">
+<h4>Use Simple Bulk Load When:</h4>
+<ul>
+<li>Data volume is small (&lt; 100GB)</li>
+<li>Can afford brief downtime</li>
+<li>One-time migration</li>
+<li>Simple schema mapping</li>
+<li>No data changes during migration</li>
+</ul>
+</div>
+</div>
+<h3>Migration Decision Matrix</h3>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Recommended Approach</th>
+<th>Estimated Duration</th>
+<th>Risk Level</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&lt; 10GB, 1 table, no changes</td>
+<td>Direct bulk load</td>
+<td>1-2 hours</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>10-100GB, few tables, manageable downtime</td>
+<td>Batch export + load</td>
+<td>4-8 hours</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>100GB-1TB, multiple tables, continuous changes</td>
+<td>CDC + Kafka + bulk load</td>
+<td>24-48 hours</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>1TB+, complex transformations, zero downtime</td>
+<td>Full Debezium + dual-write</td>
+<td>1-2 weeks</td>
+<td>High</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Real-World Results Section -->
+<div class="section" id="real-world">
+<div class="section-header">🏆 Real-World Migration Results</div>
+<div class="section-content">
+<div class="icon-grid">
+<div class="icon-card" style="background: #fff9e6;">
+<div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">97%</div>
+<h4>Cost Reduction</h4>
+<p>Infrastructure costs reduced from $500K/month to $15K/month with ClickHouse</p>
+</div>
+<div class="icon-card" style="background: #e6f7ed;">
+<div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">300x</div>
+<h4>Query Speedup</h4>
+<p>Analytics queries that took 30+ minutes now run in &lt; 6 seconds</p>
+</div>
+<div class="icon-card" style="background: #e6f2ff;">
+<div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">Zero</div>
+<h4>Downtime</h4>
+<p>Successfully migrated 500GB of data with dual-write strategy</p>
+</div>
+<div class="icon-card" style="background: #f0e6ff;">
+<div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">5x</div>
+<h4>Compression</h4>
+<p>Database size reduced from 1TB to 200GB with better performance</p>
+</div>
+</div>
+<h3>Case Study 1: E-Commerce Analytics Migration</h3>
+<div class="card">
+<h4>MongoDB → ClickHouse (500GB)</h4>
+<p><strong>Challenge:</strong> Migrate 5 years of orders/users data without downtime during peak season</p>
+<p><strong>Solution:</strong></p>
+<ul>
+<li>Debezium MongoDB CDC → Kafka</li>
+<li>Parallel bulk load of historical data</li>
+<li>7-day dual-write testing period</li>
+<li>Gradual 10% → 50% → 100% traffic shift</li>
+</ul>
+<p><strong>Results:</strong></p>
+<ul>
+<li>Migration completed in 6 days</li>
+<li>Zero customer-facing downtime</li>
+<li>Query latency: 45s → 2s (22.5x improvement)</li>
+<li>Storage: 500GB → 85GB (5.9x compression)</li>
+<li>Cost: $50K/month → $8K/month</li>
+</ul>
+</div>
+<h3>Case Study 2: MySQL Analytics Data Warehouse</h3>
+<div class="card">
+<h4>MySQL → ClickHouse (200GB)</h4>
+<p><strong>Challenge:</strong> ETL jobs taking 6+ hours daily, queries timing out</p>
+<p><strong>Solution:</strong></p>
+<ul>
+<li>Designed denormalized star schema in ClickHouse</li>
+<li>MySQL Debezium connector for real-time CDC</li>
+<li>Kafka topics for each table</li>
+<li>Materialized views for incremental aggregation</li>
+</ul>
+<p><strong>Results:</strong></p>
+<ul>
+<li>ETL time: 6 hours → 5 minutes</li>
+<li>Report generation: 10 min → 2 sec</li>
+<li>Infrastructure: 15 servers → 3 servers</li>
+<li>ROI achieved in 3 months</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- Templates Section -->
+<div class="section" id="templates">
+<div class="section-header">📋 Migration Templates</div>
+<div class="section-content">
+<h3>Template 1: Complete Debezium + Kafka Setup</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># docker-compose.yml for full migration stack
 version: '3.8'
 
 services:
@@ -976,10 +1024,9 @@ services:
       - ch_data:/var/lib/clickhouse/
 
 volumes:
-  ch_data:</code></pre>
-
-            <h3>Template 2: MongoDB Connector Configuration</h3>
-            <pre><code class="hljs">{
+  ch_data:</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>Template 2: MongoDB Connector Configuration</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">{
   "name": "mongo-cdc-connector",
   "config": {
     "connector.class": "io.debezium.connector.mongodb.MongoDbConnector",
@@ -1006,10 +1053,9 @@ volumes:
 # Create connector:
 curl -X POST http://localhost:8083/connectors \
   -H "Content-Type: application/json" \
-  -d @mongo-connector.json</code></pre>
-
-            <h3>Template 3: Data Validation Query</h3>
-            <pre><code class="hljs">-- Comprehensive validation across source and target
+  -d @mongo-connector.json</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>Template 3: Data Validation Query</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Comprehensive validation across source and target
 WITH counts AS (
     SELECT
         'total_rows' as metric,
@@ -1039,16 +1085,15 @@ SELECT metric, count, status FROM counts
 UNION ALL
 SELECT metric, count, status FROM null_checks
 UNION ALL
-SELECT metric, count, status FROM duplicates;</code></pre>
-        </div>
-    </div>
-
-    <!-- Advanced Patterns Section -->
-    <div class="section" id="advanced">
-        <div class="section-header">🔥 Advanced Migration Patterns</div>
-        <div class="section-content">
-            <h3>1. Gradual Read Migration Pattern</h3>
-            <pre><code class="hljs">-- Instead of hard cutover, gradually route traffic to ClickHouse
+SELECT metric, count, status FROM duplicates;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+</div>
+</div>
+<!-- Advanced Patterns Section -->
+<div class="section" id="advanced">
+<div class="section-header">🔥 Advanced Migration Patterns</div>
+<div class="section-content">
+<h3>1. Gradual Read Migration Pattern</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Instead of hard cutover, gradually route traffic to ClickHouse
 -- Using application-level routing (pseudo-code)
 
 if featureFlag("use_clickhouse_analytics", user_id) {
@@ -1067,10 +1112,9 @@ if featureFlag("use_clickhouse_analytics", user_id) {
 // This allows:
 // - Detection of any ClickHouse-specific issues
 // - A/B testing for performance
-// - Quick rollback by adjusting flag</code></pre>
-
-            <h3>2. Schema Evolution with ReplacingMergeTree</h3>
-            <pre><code class="hljs">-- Handle schema changes during migration
+// - Quick rollback by adjusting flag</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>2. Schema Evolution with ReplacingMergeTree</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Handle schema changes during migration
 -- MongoDB adds new field:
 db.users.updateMany({}, {$set: {new_field: ""}})
 
@@ -1095,10 +1139,9 @@ ALTER TABLE users DROP COLUMN old_field;
 SELECT name, type
 FROM system.columns
 WHERE table = 'users'
-ORDER BY name;</code></pre>
-
-            <h3>3. Handling Deletes with ReplacingMergeTree</h3>
-            <pre><code class="hljs">-- When source deletes records, mark them as deleted in ClickHouse
+ORDER BY name;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>3. Handling Deletes with ReplacingMergeTree</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- When source deletes records, mark them as deleted in ClickHouse
 -- Instead of physical deletion, use a flag
 
 CREATE TABLE users (
@@ -1121,10 +1164,9 @@ WHERE is_deleted = 0  -- Exclude deleted
 -- Keeping only latest version per key
 
 -- Query to see deleted records:
-SELECT * FROM users FINAL WHERE is_deleted = 1;</code></pre>
-
-            <h3>4. Monitoring Migration Progress</h3>
-            <pre><code class="hljs">-- Check Kafka lag
+SELECT * FROM users FINAL WHERE is_deleted = 1;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+<h3>4. Monitoring Migration Progress</h3>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Check Kafka lag
 kafka-consumer-groups --bootstrap-server kafka:9092 \
   --group clickhouse_users \
   --describe
@@ -1156,115 +1198,149 @@ ORDER BY event_time DESC
 LIMIT 20;
 
 -- Monitor Debezium lag
-curl http://localhost:8083/connectors/mongo-connector/status | jq '.tasks[].payload'</code></pre>
-        </div>
-    </div>
-
-    <!-- Resources Section -->
-    <div class="section" id="resources">
-        <div class="section-header">📚 Migration Resources & Tools</div>
-        <div class="section-content">
-            <h3>Migration Tools</h3>
-            <div class="grid-2">
-                <div class="card">
-                    <h4>📘 View in Notion</h4>
-                    <p style="margin: 10px 0;">Access this module in your Notion workspace for note-taking and tracking your progress.</p>
-                    <a href="https://www.notion.so/Module-10-Migration-from-MongoDB-MySQL-2f1bb896952b81aba733ca53e65826e3" target="_blank" rel="noopener noreferrer" style="color: #ff6b35; font-weight: 600; text-decoration: none;">Open in Notion →</a>
-                </div>
-
-                <div class="card">
-                    <h4>Data Export Tools</h4>
-                    <ul>
-                        <li><strong>mongoexport</strong> - Extract MongoDB data to JSON</li>
-                        <li><strong>mongodump</strong> - Full MongoDB backup</li>
-                        <li><strong>mysqldump</strong> - MySQL data export</li>
-                        <li><strong>pg_dump</strong> - PostgreSQL export</li>
-                        <li><strong>Parquet/Arrow tools</strong> - Columnar format conversion</li>
-                    </ul>
-                </div>
-                <div class="card">
-                    <h4>CDC & Streaming Tools</h4>
-                    <ul>
-                        <li><strong>Debezium</strong> - CDC platform for many sources</li>
-                        <li><strong>Kafka</strong> - Distributed event streaming</li>
-                        <li><strong>Redpanda</strong> - Kafka-compatible alternative</li>
-                        <li><strong>AWS DMS</strong> - Database Migration Service</li>
-                        <li><strong>Airbyte</strong> - Data integration platform</li>
-                    </ul>
-                </div>
-                <div class="card">
-                    <h4>Validation Tools</h4>
-                    <ul>
-                        <li><strong>data-diff</strong> - Data validation between databases</li>
-                        <li><strong>dbt</strong> - Data transformation and testing</li>
-                        <li><strong>Great Expectations</strong> - Data quality validation</li>
-                        <li><strong>Reconcile queries</strong> - Custom SQL comparison</li>
-                    </ul>
-                </div>
-            </div>
-
-            <h3>Official Documentation</h3>
-            <div class="grid-2">
-                <div class="card">
-                    <h4>Migration Guides</h4>
-                    <ul>
-                        <li><a href="https://clickhouse.com/docs" target="_blank">ClickHouse Documentation</a></li>
-                        <li><a href="https://debezium.io/documentation" target="_blank">Debezium CDC Guide</a></li>
-                        <li><a href="https://kafka.apache.org/documentation" target="_blank">Kafka Documentation</a></li>
-                        <li><a href="https://clickhouse.com/docs/en/integrations/kafka" target="_blank">ClickHouse Kafka Integration</a></li>
-                    </ul>
-                </div>
-                <div class="card">
-                    <h4>Learning Resources</h4>
-                    <ul>
-                        <li><a href="https://clickhouse.com/learn" target="_blank">ClickHouse Learn Platform</a></li>
-                        <li><a href="https://clickhouse.com/blog" target="_blank">ClickHouse Blog</a></li>
-                        <li><a href="https://www.youtube.com/@ClickHouseDBChannel" target="_blank">ClickHouse YouTube</a></li>
-                        <li><a href="https://github.com/ClickHouse/ClickHouse/tree/master/docs" target="_blank">GitHub Documentation</a></li>
-                    </ul>
-                </div>
-            </div>
-
-            <div class="highlight-box">
-                <h4>🎯 Next Steps After Module 10</h4>
-                <p>You've now completed the comprehensive ClickHouse Knowledge Transfer! You should be confident in:</p>
-                <ul>
-                    <li>✅ Understanding all ClickHouse fundamentals and architecture</li>
-                    <li>✅ Designing optimized schemas for analytics</li>
-                    <li>✅ Building distributed clusters with replication</li>
-                    <li>✅ Writing high-performance queries</li>
-                    <li>✅ Backing up and recovering data</li>
-                    <li>✅ Monitoring and troubleshooting systems</li>
-                    <li>✅ Migrating data from existing databases</li>
-                </ul>
-                <p><strong>Recommended next actions:</strong></p>
-                <ul>
-                    <li>Plan a pilot project with real data</li>
-                    <li>Build a POC (Proof of Concept) for your use case</li>
-                    <li>Set up a production cluster</li>
-                    <li>Migrate your first dataset</li>
-                    <li>Share learnings with your team</li>
-                </ul>
-            </div>
-        </div>
-    </div>
-
+curl http://localhost:8083/connectors/mongo-connector/status | jq '.tasks[].payload'</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 </div>
-
+</div>
+<!-- Resources Section -->
+<div class="section" id="resources">
+<div class="section-header">📚 Migration Resources &amp; Tools</div>
+<div class="section-content">
+<h3>Migration Tools</h3>
+<div class="grid-2">
+<div class="card">
+<h4>📘 View in Notion</h4>
+<p style="margin: 10px 0;">Access this module in your Notion workspace for note-taking and tracking your progress.</p>
+<a href="https://www.notion.so/Module-10-Migration-from-MongoDB-MySQL-2f1bb896952b81aba733ca53e65826e3" rel="noopener noreferrer" style="color: #ff6b35; font-weight: 600; text-decoration: none;" target="_blank">Open in Notion →</a>
+</div>
+<div class="card">
+<h4>Data Export Tools</h4>
+<ul>
+<li><strong>mongoexport</strong> - Extract MongoDB data to JSON</li>
+<li><strong>mongodump</strong> - Full MongoDB backup</li>
+<li><strong>mysqldump</strong> - MySQL data export</li>
+<li><strong>pg_dump</strong> - PostgreSQL export</li>
+<li><strong>Parquet/Arrow tools</strong> - Columnar format conversion</li>
+</ul>
+</div>
+<div class="card">
+<h4>CDC &amp; Streaming Tools</h4>
+<ul>
+<li><strong>Debezium</strong> - CDC platform for many sources</li>
+<li><strong>Kafka</strong> - Distributed event streaming</li>
+<li><strong>Redpanda</strong> - Kafka-compatible alternative</li>
+<li><strong>AWS DMS</strong> - Database Migration Service</li>
+<li><strong>Airbyte</strong> - Data integration platform</li>
+</ul>
+</div>
+<div class="card">
+<h4>Validation Tools</h4>
+<ul>
+<li><strong>data-diff</strong> - Data validation between databases</li>
+<li><strong>dbt</strong> - Data transformation and testing</li>
+<li><strong>Great Expectations</strong> - Data quality validation</li>
+<li><strong>Reconcile queries</strong> - Custom SQL comparison</li>
+</ul>
+</div>
+</div>
+<h3>Official Documentation</h3>
+<div class="grid-2">
+<div class="card">
+<h4>Migration Guides</h4>
+<ul>
+<li><a href="https://clickhouse.com/docs" target="_blank">ClickHouse Documentation</a></li>
+<li><a href="https://debezium.io/documentation" target="_blank">Debezium CDC Guide</a></li>
+<li><a href="https://kafka.apache.org/documentation" target="_blank">Kafka Documentation</a></li>
+<li><a href="https://clickhouse.com/docs/en/integrations/kafka" target="_blank">ClickHouse Kafka Integration</a></li>
+</ul>
+</div>
+<div class="card">
+<h4>Learning Resources</h4>
+<ul>
+<li><a href="https://clickhouse.com/learn" target="_blank">ClickHouse Learn Platform</a></li>
+<li><a href="https://clickhouse.com/blog" target="_blank">ClickHouse Blog</a></li>
+<li><a href="https://www.youtube.com/@ClickHouseDBChannel" target="_blank">ClickHouse YouTube</a></li>
+<li><a href="https://github.com/ClickHouse/ClickHouse/tree/master/docs" target="_blank">GitHub Documentation</a></li>
+</ul>
+</div>
+</div>
+<div class="highlight-box">
+<h4>🎯 Next Steps After Module 10</h4>
+<p>You've now completed the comprehensive ClickHouse Knowledge Transfer! You should be confident in:</p>
+<ul>
+<li>✅ Understanding all ClickHouse fundamentals and architecture</li>
+<li>✅ Designing optimized schemas for analytics</li>
+<li>✅ Building distributed clusters with replication</li>
+<li>✅ Writing high-performance queries</li>
+<li>✅ Backing up and recovering data</li>
+<li>✅ Monitoring and troubleshooting systems</li>
+<li>✅ Migrating data from existing databases</li>
+</ul>
+<p><strong>Recommended next actions:</strong></p>
+<ul>
+<li>Plan a pilot project with real data</li>
+<li>Build a POC (Proof of Concept) for your use case</li>
+<li>Set up a production cluster</li>
+<li>Migrate your first dataset</li>
+<li>Share learnings with your team</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
 <div style="background: #333; color: white; padding: 40px 20px; text-align: center; margin-top: 40px;">
-    <h3>🔄 ClickHouse Migration & Integration</h3>
-    <p>Module 10 of 10 | Complete ClickHouse Knowledge Transfer</p>
-    <p style="margin-top: 20px; opacity: 0.8;">Comprehensive training on migrating from MongoDB/MySQL to ClickHouse | 2026</p>
+<h3>🔄 ClickHouse Migration &amp; Integration</h3>
+<p>Module 10 of 10 | Complete ClickHouse Knowledge Transfer</p>
+<p style="margin-top: 20px; opacity: 0.8;">Comprehensive training on migrating from MongoDB/MySQL to ClickHouse | 2026</p>
 </div>
-
 <div class="module-nav" style="border-bottom: none; border-top: 2px solid #ff6b35;">
-    <a href="module-9-kafka-ingestion.html" class="nav-btn-module">← Previous: Module 9 - Kafka Ingestion</a>
-    <a href="../index.html" class="nav-btn-module nav-home">🏠 Home</a>
-    <span class="nav-btn-module disabled">Next Module →</span>
+<a class="nav-btn-module" href="module-9-kafka-ingestion.html">← Previous: Module 9 - Kafka Ingestion</a>
+<a class="nav-btn-module nav-home" href="../index.html">🏠 Home</a>
+<span class="nav-btn-module disabled">Next Module →</span>
 </div>
-
 <script>
 hljs.highlightAll();
 </script>
-</body>
+<script>
+// Copy code functionality
+document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const code = this.parentElement.querySelector('code').textContent;
+        navigator.clipboard.writeText(code).then(() => {
+            const originalText = this.textContent;
+            this.textContent = '✓ Copied!';
+            this.classList.add('copied');
+            setTimeout(() => {
+                this.textContent = originalText;
+                this.classList.remove('copied');
+            },2000);
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+            this.textContent = '✗ Failed';
+            setTimeout(() => {
+                this.textContent = 'Copy';
+            },2000);
+        });
+    });
+});
+
+// Show more/less functionality
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const content = this.parentElement.querySelector('.code-content');
+        const overlay = content.querySelector('.fade-overlay');
+        
+        if (content.classList.contains('collapsed')) {
+            content.classList.remove('collapsed');
+            content.classList.add('expanded');
+            this.textContent = 'Show Less';
+            if (overlay) overlay.style.display = 'none';
+        } else {
+            content.classList.add('collapsed');
+            content.classList.remove('expanded');
+            this.textContent = 'Show More';
+            if (overlay) overlay.style.display = 'block';
+        }
+    });
+});
+</script></body>
 </html>

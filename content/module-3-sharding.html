@@ -228,7 +228,85 @@
         table tbody tr:nth-child(odd) {
             background: #f9f9f9;
         }
-    </style>
+    
+        .code-wrapper {
+            position: relative;
+            margin: 15px 0;
+        }
+        .code-wrapper pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px 20px 50px 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+        }
+        .code-wrapper .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255,255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+        .code-wrapper .copy-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        .code-wrapper .copy-btn.copied {
+            background: rgba(39, 174, 96, 0.8);
+            border-color: #27ae60;
+        }
+        .code-wrapper .code-content {
+            transition: max-height 0.3s ease-out;
+            overflow: hidden;
+        }
+        .code-wrapper .code-content.expanded {
+            max-height: none !important;
+        }
+        .code-wrapper .code-content.collapsed {
+            max-height: 120px;
+        }
+        .code-wrapper .toggle-btn {
+            display: none;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: -40px;
+            margin-bottom: 20px;
+            transition: transform 0.2s;
+        }
+        .code-wrapper .toggle-btn:hover {
+            transform: translateY(-2px);
+        }
+        .code-wrapper .toggle-btn.visible {
+            display: inline-block;
+        }
+        .code-wrapper .fade-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(transparent, #1e1e1e);
+            pointer-events: none;
+            display: none;
+        }
+        .code-wrapper .code-content.collapsed .fade-overlay {
+            display: block;
+        }
+</style>
 </head>
 <body>
 <div class="module-nav">
@@ -501,7 +579,7 @@
 </div>
 </div>
 <h3>Cluster Architecture</h3>
-<pre><code class="hljs">Single Node:
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">Single Node:
   Node-1: Table with ALL data
 
 Sharded (3 shards):
@@ -518,7 +596,7 @@ Sharded + Replicated (3 shards × 2 replicas):
     Node-4: Replica-B
   Shard-3:
     Node-5: Replica-A
-    Node-6: Replica-B</code></pre>
+    Node-6: Replica-B</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 </div>
 </div>
 <!-- Quick Start Section -->
@@ -527,7 +605,7 @@ Sharded + Replicated (3 shards × 2 replicas):
 <h3>1. Setup a 2-Node ClickHouse Cluster</h3>
 <div class="card">
 <h4>Using Docker (Simplest for Testing)</h4>
-<pre><code class="hljs">docker-compose up -d
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">docker-compose up -d
 
 # After running docker-compose.yml with:
 # - clickhouse-node1 on port 9000
@@ -537,10 +615,10 @@ Sharded + Replicated (3 shards × 2 replicas):
 docker exec -it clickhouse-node1 clickhouse-client
 
 # Connect to node 2 in another terminal
-docker exec -it clickhouse-node2 clickhouse-client</code></pre>
+docker exec -it clickhouse-node2 clickhouse-client</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 </div>
 <h3>2. Create Local Tables on Each Node</h3>
-<pre><code class="hljs">-- Run on BOTH nodes (connect to each separately)
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Run on BOTH nodes (connect to each separately)
 
 CREATE DATABASE sharding_demo;
 
@@ -552,9 +630,9 @@ CREATE TABLE sharding_demo.events_local (
     value Float64
 ) ENGINE = MergeTree()
 PARTITION BY toYYYYMM(event_date)
-ORDER BY (event_date, user_id);</code></pre>
+ORDER BY (event_date, user_id);</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>3. Create Distributed Table (Query All Shards)</h3>
-<pre><code class="hljs">-- Run on ANY node (or all for convenience)
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Run on ANY node (or all for convenience)
 
 CREATE TABLE sharding_demo.events_distributed (
     event_date Date,
@@ -567,9 +645,9 @@ CREATE TABLE sharding_demo.events_distributed (
     'sharding_demo',                 -- Database name
     'events_local',                  -- Local table name
     rand()                           -- Sharding key (random)
-);</code></pre>
+);</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>4. Insert Data</h3>
-<pre><code class="hljs">-- Insert to distributed table (auto-distributed to shards)
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Insert to distributed table (auto-distributed to shards)
 INSERT INTO sharding_demo.events_distributed VALUES
     ('2026-01-22', '2026-01-22 10:00:00', 1001, 'click', 1.5),
     ('2026-01-22', '2026-01-22 10:01:00', 1002, 'purchase', 99.99),
@@ -577,32 +655,32 @@ INSERT INTO sharding_demo.events_distributed VALUES
 
 -- Verify data distributed
 SELECT COUNT(*) FROM sharding_demo.events_local;   -- Each node shows its partition
-SELECT COUNT(*) FROM sharding_demo.events_distributed;  -- Total across all nodes</code></pre>
+SELECT COUNT(*) FROM sharding_demo.events_distributed;  -- Total across all nodes</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>5. Query Across Shards</h3>
-<pre><code class="hljs">-- Queries automatically parallelize across shards
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Queries automatically parallelize across shards
 SELECT
     event_type,
     COUNT(*) as count,
     SUM(value) as total_value
 FROM sharding_demo.events_distributed
 GROUP BY event_type
-ORDER BY count DESC;</code></pre>
+ORDER BY count DESC;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 </div>
 </div>
 <!-- Commands Reference Section -->
 <div class="section" id="commands"><div class="section-header">💻 Commands Reference</div>
 <div class="section-content">
 <h3>Cluster Configuration</h3>
-<pre><code class="hljs">-- Check cluster nodes
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Check cluster nodes
 SELECT * FROM system.clusters;
 
 -- Get cluster info
 SELECT cluster, shard_num, replica_num, host_name, port, user
 FROM system.clusters
 WHERE cluster = 'my_cluster'
-ORDER BY shard_num, replica_num;</code></pre>
+ORDER BY shard_num, replica_num;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>Create Local Tables</h3>
-<pre><code class="hljs">-- Standard MergeTree table on each shard
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Standard MergeTree table on each shard
 CREATE TABLE events_local (
     event_date Date,
     event_time DateTime,
@@ -658,7 +736,7 @@ GROUP BY hostname;
 SELECT shard_num, replica_num, host_name, port
 FROM system.clusters
 WHERE cluster = 'my_cluster';
-</code></pre>
+</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 </div>
 </div>
 <!-- Best Practices Section -->
@@ -668,25 +746,25 @@ WHERE cluster = 'my_cluster';
 <div class="comparison">
 <div class="bad">
 <div class="badge badge-bad">❌ Bad</div>
-<pre><code class="hljs">-- High-cardinality key (millions of unique values)
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- High-cardinality key (millions of unique values)
 ENGINE = Distributed(
     'my_cluster',
     'db',
     'events_local',
     user_id  -- ClickHouse uses modulo
 )
--- Problem: Slow hash function, uneven distribution</code></pre>
+-- Problem: Slow hash function, uneven distribution</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 </div>
 <div class="good">
 <div class="badge badge-good">✅ Good</div>
-<pre><code class="hljs">-- Consistent hash key
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Consistent hash key
 ENGINE = Distributed(
     'my_cluster',
     'db',
     'events_local',
     cityHash64(user_id)  -- Fast hashing
 )
--- Benefit: Even distribution, better parallelization</code></pre>
+-- Benefit: Even distribution, better parallelization</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 </div>
 </div>
 <h3>2. Shard Key Selection Criteria</h3>
@@ -756,7 +834,7 @@ ENGINE = Distributed(
 <p><strong>Recommendation:</strong> Choose your sharding strategy carefully initially. If unsure, start with 4-8 shards (easy to grow, hard to shrink).</p>
 </div>
 <h3>5. Handling Uneven Distribution</h3>
-<pre><code class="hljs">-- Monitor data distribution across shards
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Monitor data distribution across shards
 SELECT
     database,
     table,
@@ -769,7 +847,7 @@ WHERE database = 'analytics' AND table LIKE 'events%'
 GROUP BY database, table, shard_num, replica_num
 ORDER BY database, table, shard_num;
 
-        </code></pre>
+        </code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 </div>
 </div>
 <!-- When to Use Section -->
@@ -857,7 +935,7 @@ ORDER BY database, table, shard_num;
 <div class="section" id="templates"><div class="section-header">📋 Ready-to-Use Templates</div>
 <div class="section-content">
 <h3>Template 1: Basic 3-Node Cluster Setup</h3>
-<pre><code class="hljs">-- config.xml on coordinator node (defines cluster)
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- config.xml on coordinator node (defines cluster)
 
 
 
@@ -960,14 +1038,14 @@ GROUP BY table;
        
     
 
-</code></pre>
+</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 </div>
 </div>
 <!-- Advanced Patterns Section -->
 <div class="section" id="advanced"><div class="section-header">🔥 Advanced Patterns</div>
 <div class="section-content">
 <h3>1. Asymmetric Sharding (Variable Shard Sizes)</h3>
-<pre><code class="hljs">-- Some shards larger than others (e.g., US data is 50% of total)
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Some shards larger than others (e.g., US data is 50% of total)
 -- Define multiple cluster configurations
 
 
@@ -1069,7 +1147,7 @@ ORDER
     
 
 
-</code></pre>
+</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
  BY query_duration_ms DESC;
 
         </div>
@@ -1150,5 +1228,47 @@ ORDER
 <a class="nav-btn-module nav-home" href="../index.html">🏠 Home</a>
 <a class="nav-btn-module" href="module-4-replication.html">Next: Module 4 - Replication →</a>
 </div>
-<script>hljs.highlightAll();</script></body>
+<script>hljs.highlightAll();</script><script>
+// Copy code functionality
+document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const code = this.parentElement.querySelector('code').textContent;
+        navigator.clipboard.writeText(code).then(() => {
+            const originalText = this.textContent;
+            this.textContent = '✓ Copied!';
+            this.classList.add('copied');
+            setTimeout(() => {
+                this.textContent = originalText;
+                this.classList.remove('copied');
+            },2000);
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+            this.textContent = '✗ Failed';
+            setTimeout(() => {
+                this.textContent = 'Copy';
+            },2000);
+        });
+    });
+});
+
+// Show more/less functionality
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const content = this.parentElement.querySelector('.code-content');
+        const overlay = content.querySelector('.fade-overlay');
+        
+        if (content.classList.contains('collapsed')) {
+            content.classList.remove('collapsed');
+            content.classList.add('expanded');
+            this.textContent = 'Show Less';
+            if (overlay) overlay.style.display = 'none';
+        } else {
+            content.classList.add('collapsed');
+            content.classList.remove('expanded');
+            this.textContent = 'Show More';
+            if (overlay) overlay.style.display = 'block';
+        }
+    });
+});
+</script></body>
 </html>

@@ -235,7 +235,85 @@
             margin: 20px 0;
             border-radius: 4px;
         }
-    </style>
+    
+        .code-wrapper {
+            position: relative;
+            margin: 15px 0;
+        }
+        .code-wrapper pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px 20px 50px 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+        }
+        .code-wrapper .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255,255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+        .code-wrapper .copy-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        .code-wrapper .copy-btn.copied {
+            background: rgba(39, 174, 96, 0.8);
+            border-color: #27ae60;
+        }
+        .code-wrapper .code-content {
+            transition: max-height 0.3s ease-out;
+            overflow: hidden;
+        }
+        .code-wrapper .code-content.expanded {
+            max-height: none !important;
+        }
+        .code-wrapper .code-content.collapsed {
+            max-height: 120px;
+        }
+        .code-wrapper .toggle-btn {
+            display: none;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: -40px;
+            margin-bottom: 20px;
+            transition: transform 0.2s;
+        }
+        .code-wrapper .toggle-btn:hover {
+            transform: translateY(-2px);
+        }
+        .code-wrapper .toggle-btn.visible {
+            display: inline-block;
+        }
+        .code-wrapper .fade-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(transparent, #1e1e1e);
+            pointer-events: none;
+            display: none;
+        }
+        .code-wrapper .code-content.collapsed .fade-overlay {
+            display: block;
+        }
+</style>
 </head>
 <body>
 <div class="module-nav">
@@ -529,7 +607,7 @@
 <div class="section" id="quick-start-single-shard-multi-replica-setup"><div class="section-header">🚀 Quick Start: Single-Shard Multi-Replica Setup</div>
 <div class="section-content">
 <h3>1. Set Up ClickHouse Keeper (3 nodes minimum)</h3>
-<pre><code class="hljs"># Install keeper on 3 nodes
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># Install keeper on 3 nodes
 sudo apt-get install clickhouse-keeper
 
 # Edit /etc/clickhouse-keeper/keeper_config.xml
@@ -562,9 +640,9 @@ keeper-3.example.com
 
 
 # Start keeper on all 3 nodes
-sudo service clickhouse-keeper start</code></pre>
+sudo service clickhouse-keeper start</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>2. Configure ClickHouse Replicated Table</h3>
-<pre><code class="hljs"># On Node 1
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># On Node 1
 CREATE TABLE events_replicated (
     event_date Date,
     event_time DateTime,
@@ -590,9 +668,9 @@ CREATE TABLE events_replicated (
     '2'                              -- Different replica name
 )
 PARTITION BY toYYYYMM(event_date)
-ORDER BY (event_date, user_id);</code></pre>
+ORDER BY (event_date, user_id);</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>3. Insert Data and Watch Replication</h3>
-<pre><code class="hljs"># Insert on Node 1
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># Insert on Node 1
 INSERT INTO events_replicated VALUES
     ('2026-01-22', '2026-01-22 10:00:00', 1001, 'purchase', 99.99),
     ('2026-01-22', '2026-01-22 11:30:00', 1002, 'click', 0.00);
@@ -609,9 +687,9 @@ FROM system.replication_queue
 WHERE table = 'events_replicated';
 
 # Query data on Node 2 (should see data immediately or shortly)
-SELECT COUNT(*) FROM events_replicated;  -- 2 rows</code></pre>
+SELECT COUNT(*) FROM events_replicated;  -- 2 rows</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>4. Set Up Distributed Table (Optional)</h3>
-<pre><code class="hljs"># Create on both nodes for simpler querying
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># Create on both nodes for simpler querying
 CREATE TABLE events_distributed AS events_replicated
 ENGINE = Distributed(
     'my_cluster',
@@ -621,16 +699,16 @@ ENGINE = Distributed(
 );
 
 # Query goes to all replicas automatically
-SELECT COUNT(*) FROM events_distributed;</code></pre>
+SELECT COUNT(*) FROM events_distributed;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>5. Enable Quorum Writes for Data Safety</h3>
-<pre><code class="hljs"># Add to ClickHouse config on each node
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># Add to ClickHouse config on each node
 
 2
 10000
 
 
 # Now writes wait until at least 2 replicas have the data
-# If you have only 1 replica alive, inserts will fail (safe!)</code></pre>
+# If you have only 1 replica alive, inserts will fail (safe!)</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 </div>
 </div>
 <!-- Commands Reference Section -->
@@ -639,7 +717,7 @@ SELECT COUNT(*) FROM events_distributed;</code></pre>
 <h3>Create Replicated Tables</h3>
 <div class="grid-2">
 <div class="card">
-<pre><code class="hljs">-- Single shard, 2 replicas
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Single shard, 2 replicas
 CREATE TABLE t1 (
     id UInt32,
     name String
@@ -647,10 +725,10 @@ CREATE TABLE t1 (
     '/clickhouse/tables/01/t1',
     'replica_1'
 )
-ORDER BY id;</code></pre>
+ORDER BY id;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 </div>
 <div class="card">
-<pre><code class="hljs">-- Multi-shard, multi-replica
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Multi-shard, multi-replica
 CREATE TABLE t2 (
     id UInt32,
     name String
@@ -658,11 +736,11 @@ CREATE TABLE t2 (
     '/clickhouse/tables/{shard}/t2',
     'replica_{replica}'
 )
-ORDER BY id;</code></pre>
+ORDER BY id;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 </div>
 </div>
 <h3>Replication Status Monitoring</h3>
-<pre><code class="hljs">-- Check replica status
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Check replica status
 SELECT
     database,
     table,
@@ -697,9 +775,9 @@ SELECT
     num_tries
 FROM system.replication_queue
 WHERE table = 'events_replicated'
-ORDER BY create_time DESC;</code></pre>
+ORDER BY create_time DESC;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>Replica Synchronization Commands</h3>
-<pre><code class="hljs">-- Manually trigger sync from another replica
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Manually trigger sync from another replica
 ALTER TABLE events_replicated RESYNC REPLICA;
 
 -- ATTACH/DETACH for manual control
@@ -713,9 +791,9 @@ ALTER TABLE events_replicated DROP DETACHED PARTS;
 -- Connect to Keeper and explore:
 -- /clickhouse/tables/1/events - contains log entries
 -- /clickhouse/tables/1/events/replicas/1 - node 1 state
--- /clickhouse/tables/1/events/replicas/2 - node 2 state</code></pre>
+-- /clickhouse/tables/1/events/replicas/2 - node 2 state</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>Quorum Write Configuration</h3>
-<pre><code class="hljs">-- Check current quorum settings
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Check current quorum settings
 SELECT
     name,
     value
@@ -728,9 +806,9 @@ SET insert_quorum_timeout_ms = 30000;
 SET select_sequential_consistency = 1;  -- Read after write consistency
 
 -- Verify quorum setting
-SELECT @@insert_quorum, @@insert_quorum_timeout_ms;</code></pre>
+SELECT @@insert_quorum, @@insert_quorum_timeout_ms;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>Cluster Configuration Commands</h3>
-<pre><code class="hljs">-- List cluster configuration
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- List cluster configuration
 SELECT
     cluster,
     shard_num,
@@ -760,7 +838,7 @@ FROM system.clusters_health;
 -- Execute on specific replica
 SELECT * FROM table_name;  -- Queries all replicas
 -- With settings to prefer specific replica:
-SET prefer_localhost_replica = 1;</code></pre>
+SET prefer_localhost_replica = 1;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 </div>
 </div>
 <!-- Best Practices Section -->
@@ -770,17 +848,17 @@ SET prefer_localhost_replica = 1;</code></pre>
 <div class="comparison">
 <div class="bad">
 <div class="badge badge-bad">❌ Bad</div>
-<pre><code class="hljs">-- Single Keeper node (DANGER!)
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Single Keeper node (DANGER!)
 
 9181
 
 
-# If this node fails, entire cluster is down!</code></pre>
+# If this node fails, entire cluster is down!</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <p><strong>Problem:</strong> Single point of failure</p>
 </div>
 <div class="good">
 <div class="badge badge-good">✅ Good</div>
-<pre><code class="hljs">-- 3-node Keeper quorum (recommended)
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- 3-node Keeper quorum (recommended)
 
 9181
 1
@@ -791,7 +869,7 @@ SET prefer_localhost_replica = 1;</code></pre>
 
 
 
-# Survives 1 node failure; 5 nodes survives 2 failures</code></pre>
+# Survives 1 node failure; 5 nodes survives 2 failures</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <p><strong>Benefit:</strong> Production-ready fault tolerance</p>
 </div>
 </div>
@@ -799,21 +877,21 @@ SET prefer_localhost_replica = 1;</code></pre>
 <div class="comparison">
 <div class="bad">
 <div class="badge badge-bad">❌ Bad</div>
-<pre><code class="hljs">-- Too many partitions
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content"><pre><code class="hljs">-- Too many partitions
 PARTITION BY toDate(event_time)
 
 # Creates 365 partitions/year, massive overhead
-# Replication slower, more complexity</code></pre>
+# Replication slower, more complexity</code></pre></div><button class="toggle-btn"></button></div>
 <p><strong>Problem:</strong> Each partition = more replication work</p>
 </div>
 <div class="good">
 <div class="badge badge-good">✅ Good</div>
-<pre><code class="hljs">-- Reasonable partitions
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Reasonable partitions
 PARTITION BY toYYYYMM(event_time)
 
 # 12 partitions/year
 # Easier to manage, fast replication
-# Can drop old data easily</code></pre>
+# Can drop old data easily</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <p><strong>Benefit:</strong> Efficient replication, manageable</p>
 </div>
 </div>
@@ -821,19 +899,19 @@ PARTITION BY toYYYYMM(event_time)
 <div class="comparison">
 <div class="bad">
 <div class="badge badge-bad">❌ Bad</div>
-<pre><code class="hljs">-- Inserting one row at a time (SLOW!)
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Inserting one row at a time (SLOW!)
 INSERT INTO t VALUES (1, 'a');
 INSERT INTO t VALUES (2, 'b');
 INSERT INTO t VALUES (3, 'c');
 
 # Each insert triggers separate replication
 # Database thrashes from compaction
-# Hundreds of parts created</code></pre>
+# Hundreds of parts created</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <p><strong>Problem:</strong> Kills replication performance</p>
 </div>
 <div class="good">
 <div class="badge badge-good">✅ Good</div>
-<pre><code class="hljs">-- Batch inserts (1000+ rows)
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Batch inserts (1000+ rows)
 INSERT INTO t VALUES
     (1, 'a'),
     (2, 'b'),
@@ -843,7 +921,7 @@ INSERT INTO t VALUES
 
 # Single replication event
 # One part created
-# Massive performance gain</code></pre>
+# Massive performance gain</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <p><strong>Benefit:</strong> 100-1000x faster inserts</p>
 </div>
 </div>
@@ -1004,7 +1082,7 @@ INSERT INTO t VALUES
 <div class="section" id="templates"><div class="section-header">📋 Ready-to-Use Templates</div>
 <div class="section-content">
 <h3>Template 1: Basic 2-Replica Replicated Table</h3>
-<pre><code class="hljs">-- Node 1
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Node 1
 CREATE TABLE events (
     event_id UUID,
     event_time DateTime,
@@ -1152,14 +1230,14 @@ SELECT
     queue_size
 FROM system.replication_queue
 WHERE absolute_delay &gt; 30 AND database != 'system';
-</code></pre>
+</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 </div>
 </div>
 <!-- Advanced Patterns Section -->
 <div class="section" id="advanced"><div class="section-header">🔥 Advanced Patterns</div>
 <div class="section-content">
 <h3>1. Zero-Downtime Rolling Updates</h3>
-<pre><code class="hljs">-- With replicated setup, update nodes one at a time
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- With replicated setup, update nodes one at a time
 -- Example: Update Node 2 first
 
 -- Step 1: Verify both replicas are in sync
@@ -1177,9 +1255,9 @@ sudo service clickhouse-server start
 SELECT * FROM system.replicas WHERE table = 'events';
 
 -- Step 5: Repeat for Node 1
--- Never stop both replicas simultaneously!</code></pre>
+-- Never stop both replicas simultaneously!</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>2. Handling Replica Failures Automatically</h3>
-<pre><code class="hljs">-- Monitor and auto-heal replica lag
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Monitor and auto-heal replica lag
 -- This Lua script (if using Keeper hooks):
 
 -- If replica lag &gt; 60 seconds:
@@ -1195,9 +1273,9 @@ SELECT
     last_queue_update
 FROM system.replicas
 WHERE absolute_delay &gt; 60
-  AND database NOT IN ('system', 'information_schema');</code></pre>
+  AND database NOT IN ('system', 'information_schema');</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>3. Sharding Strategy for Large Datasets</h3>
-<pre><code class="hljs">-- Shard by user_id (consistent hashing)
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Shard by user_id (consistent hashing)
 CREATE TABLE events_distributed AS events
 ENGINE = Distributed(
     'my_cluster',
@@ -1219,9 +1297,9 @@ ENGINE = Distributed(
 -- 1. Data distributed across shards
 -- 2. Each shard has 2+ replicas (HA)
 -- 3. Queries parallelized across shards
--- 4. Can lose entire shard, recover from replicas</code></pre>
+-- 4. Can lose entire shard, recover from replicas</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>4. Migrating Non-Replicated to Replicated</h3>
-<pre><code class="hljs">-- Old table (non-replicated)
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Old table (non-replicated)
 CREATE TABLE events_old (
     id UInt64,
     timestamp DateTime,
@@ -1273,7 +1351,7 @@ SELECT
     table,
     deduplication_queue_size
 FROM system.replication_queue;
-</code></pre>
+</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 </div>
 </div>
 <!-- Resources Section -->
@@ -1371,5 +1449,47 @@ FROM system.replication_queue;
 <a class="nav-btn-module nav-home" href="../index.html">🏠 Home</a>
 <a class="nav-btn-module" href="module-5-cluster-deployment.html">Next: Module 5 - Cluster Deployment →</a>
 </div>
-<script>hljs.highlightAll();</script></body>
+<script>hljs.highlightAll();</script><script>
+// Copy code functionality
+document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const code = this.parentElement.querySelector('code').textContent;
+        navigator.clipboard.writeText(code).then(() => {
+            const originalText = this.textContent;
+            this.textContent = '✓ Copied!';
+            this.classList.add('copied');
+            setTimeout(() => {
+                this.textContent = originalText;
+                this.classList.remove('copied');
+            },2000);
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+            this.textContent = '✗ Failed';
+            setTimeout(() => {
+                this.textContent = 'Copy';
+            },2000);
+        });
+    });
+});
+
+// Show more/less functionality
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const content = this.parentElement.querySelector('.code-content');
+        const overlay = content.querySelector('.fade-overlay');
+        
+        if (content.classList.contains('collapsed')) {
+            content.classList.remove('collapsed');
+            content.classList.add('expanded');
+            this.textContent = 'Show Less';
+            if (overlay) overlay.style.display = 'none';
+        } else {
+            content.classList.add('collapsed');
+            content.classList.remove('expanded');
+            this.textContent = 'Show More';
+            if (overlay) overlay.style.display = 'block';
+        }
+    });
+});
+</script></body>
 </html>

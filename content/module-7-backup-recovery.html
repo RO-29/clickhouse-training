@@ -276,7 +276,85 @@
         tr:nth-child(even) {
             background: #f9f9f9;
         }
-    </style>
+    
+        .code-wrapper {
+            position: relative;
+            margin: 15px 0;
+        }
+        .code-wrapper pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px 20px 50px 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+        }
+        .code-wrapper .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255,255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+        .code-wrapper .copy-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        .code-wrapper .copy-btn.copied {
+            background: rgba(39, 174, 96, 0.8);
+            border-color: #27ae60;
+        }
+        .code-wrapper .code-content {
+            transition: max-height 0.3s ease-out;
+            overflow: hidden;
+        }
+        .code-wrapper .code-content.expanded {
+            max-height: none !important;
+        }
+        .code-wrapper .code-content.collapsed {
+            max-height: 120px;
+        }
+        .code-wrapper .toggle-btn {
+            display: none;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: -40px;
+            margin-bottom: 20px;
+            transition: transform 0.2s;
+        }
+        .code-wrapper .toggle-btn:hover {
+            transform: translateY(-2px);
+        }
+        .code-wrapper .toggle-btn.visible {
+            display: inline-block;
+        }
+        .code-wrapper .fade-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(transparent, #1e1e1e);
+            pointer-events: none;
+            display: none;
+        }
+        .code-wrapper .code-content.collapsed .fade-overlay {
+            display: block;
+        }
+</style>
 </head>
 <body>
 <div class="module-nav">
@@ -510,22 +588,22 @@
 <div class="card">
 <h4>Local Backup</h4>
 <p><strong>Pros:</strong> Fast, simple, no external dependencies. <strong>Cons:</strong> Vulnerable to single-node failure.</p>
-<pre><code class="hljs">Backup Server → Local Disk (Fast)</code></pre>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content"><pre><code class="hljs">Backup Server → Local Disk (Fast)</code></pre></div><button class="toggle-btn"></button></div>
 </div>
 <div class="card">
 <h4>Network Storage (NFS/SMB)</h4>
 <p><strong>Pros:</strong> Shared storage, centralized. <strong>Cons:</strong> Network bottleneck, single point of failure.</p>
-<pre><code class="hljs">ClickHouse Cluster → NFS/SMB → Backup Storage</code></pre>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content"><pre><code class="hljs">ClickHouse Cluster → NFS/SMB → Backup Storage</code></pre></div><button class="toggle-btn"></button></div>
 </div>
 <div class="card">
 <h4>S3/Cloud Storage</h4>
 <p><strong>Pros:</strong> Highly available, geographic redundancy, scalable. <strong>Cons:</strong> Network bandwidth, latency, cost.</p>
-<pre><code class="hljs">ClickHouse Cluster → S3/GCS/Azure Blob → Versioning + Lifecycle</code></pre>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content"><pre><code class="hljs">ClickHouse Cluster → S3/GCS/Azure Blob → Versioning + Lifecycle</code></pre></div><button class="toggle-btn"></button></div>
 </div>
 <div class="card">
 <h4>Hybrid Multi-Tier</h4>
 <p><strong>Recommended:</strong> Local + S3 with tiering. Daily to local, weekly to S3.</p>
-<pre><code class="hljs">Cluster → Daily Local (Fast Recovery) + Weekly S3 (Long-term retention)</code></pre>
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content"><pre><code class="hljs">Cluster → Daily Local (Fast Recovery) + Weekly S3 (Long-term retention)</code></pre></div><button class="toggle-btn"></button></div>
 </div>
 </div>
 </div>
@@ -536,21 +614,21 @@
 <div class="grid-2">
 <div class="card">
 <h4>Ubuntu/Debian</h4>
-<pre><code class="hljs">sudo apt-get install -y clickhouse-backup
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content"><pre><code class="hljs">sudo apt-get install -y clickhouse-backup
 
 # Verify installation
-clickhouse-backup version</code></pre>
+clickhouse-backup version</code></pre></div><button class="toggle-btn"></button></div>
 </div>
 <div class="card">
 <h4>macOS</h4>
-<pre><code class="hljs">brew install clickhouse-backup
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content"><pre><code class="hljs">brew install clickhouse-backup
 
 # Verify installation
-clickhouse-backup version</code></pre>
+clickhouse-backup version</code></pre></div><button class="toggle-btn"></button></div>
 </div>
 </div>
 <h3>2. Create Your First Full Backup</h3>
-<pre><code class="hljs"># Make sure clickhouse-server is running
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># Make sure clickhouse-server is running
 sudo service clickhouse-server status
 
 # Create a full backup
@@ -561,24 +639,24 @@ sudo clickhouse-backup list
 
 # Example output:
 # Backup: 20260122_100000
-# Backup: 20260122_110000</code></pre>
+# Backup: 20260122_110000</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>3. Verify Backup</h3>
-<pre><code class="hljs"># Get backup details
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content"><pre><code class="hljs"># Get backup details
 sudo clickhouse-backup details 20260122_100000
 
 # Check backup size
-sudo du -sh /var/lib/clickhouse/backups/</code></pre>
+sudo du -sh /var/lib/clickhouse/backups/</code></pre></div><button class="toggle-btn"></button></div>
 <h3>4. Restore from Backup</h3>
-<pre><code class="hljs"># First, restore metadata (table structure)
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># First, restore metadata (table structure)
 sudo clickhouse-backup restore --backup 20260122_100000
 
 # Restart server
 sudo service clickhouse-server restart
 
 # Verify data is restored
-clickhouse-client -q "SELECT COUNT(*) FROM default.events;"</code></pre>
+clickhouse-client -q "SELECT COUNT(*) FROM default.events;"</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>5. Basic Scheduling with Cron</h3>
-<pre><code class="hljs"># Edit crontab
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># Edit crontab
 sudo crontab -e
 
 # Add daily backup at 2 AM
@@ -588,14 +666,14 @@ sudo crontab -e
 0 3 * * 0 /usr/bin/clickhouse-backup create --all --full 2&gt;&amp;1 | logger
 
 # Keep only last 7 backups (cleanup old ones)
-0 4 * * * /usr/bin/clickhouse-backup delete --older-than 7d 2&gt;&amp;1 | logger</code></pre>
+0 4 * * * /usr/bin/clickhouse-backup delete --older-than 7d 2&gt;&amp;1 | logger</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 </div>
 </div>
 <!-- Commands Reference Section -->
 <div class="section" id="commands"><div class="section-header">💻 Commands Reference</div>
 <div class="section-content">
 <h3>Backup Commands</h3>
-<pre><code class="hljs"># Create full backup of all tables
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># Create full backup of all tables
 clickhouse-backup create --all
 
 # Create backup of specific database
@@ -618,9 +696,9 @@ clickhouse-backup size backup_name
 
 # Delete old backups
 clickhouse-backup delete backup_name
-clickhouse-backup delete --older-than 30d</code></pre>
+clickhouse-backup delete --older-than 30d</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>Upload Backups to S3</h3>
-<pre><code class="hljs"># Upload backup to S3
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># Upload backup to S3
 clickhouse-backup upload backup_name
 
 # Upload to S3 with specific destination
@@ -635,9 +713,9 @@ clickhouse-backup download backup_name
 # Download specific backup
 clickhouse-backup download backup_name \
   --s3-bucket my-backup-bucket \
-  --s3-path /clickhouse-backups</code></pre>
+  --s3-path /clickhouse-backups</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>Restore Commands</h3>
-<pre><code class="hljs"># Restore specific backup (metadata + data)
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># Restore specific backup (metadata + data)
 clickhouse-backup restore --backup backup_name
 
 # Restore only metadata (table structure)
@@ -651,9 +729,9 @@ clickhouse-backup restore --backup backup_name \
 clickhouse-backup restore --backup backup_name --verify
 
 # Dry run (see what would be restored)
-clickhouse-backup restore --backup backup_name --dry-run</code></pre>
+clickhouse-backup restore --backup backup_name --dry-run</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>Native ClickHouse Backup Commands</h3>
-<pre><code class="hljs"># Create backup using native ClickHouse command
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># Create backup using native ClickHouse command
 BACKUP TABLE mydb.mytable TO 'file:///backups/mybackup'
 
 # Create backup to S3
@@ -667,9 +745,9 @@ SETTINGS
 RESTORE TABLE mydb.mytable FROM 'file:///backups/mybackup'
 
 # Monitor restore progress
-SELECT * FROM system.backup_log ORDER BY finish_time DESC</code></pre>
+SELECT * FROM system.backup_log ORDER BY finish_time DESC</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>System Monitoring</h3>
-<pre><code class="hljs"># Check backup operations (ClickHouse 22.3+)
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># Check backup operations (ClickHouse 22.3+)
 SELECT
     id,
     name,
@@ -699,7 +777,7 @@ SELECT
 FROM system.parts
 WHERE database = 'mydb' AND active
 GROUP BY table, partition
-ORDER BY sum(bytes) DESC;</code></pre>
+ORDER BY sum(bytes) DESC;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 </div>
 </div>
 <!-- Best Practices Section -->
@@ -709,25 +787,25 @@ ORDER BY sum(bytes) DESC;</code></pre>
 <div class="comparison">
 <div class="bad">
 <div class="badge badge-bad">❌ Risky</div>
-<pre><code class="hljs">-- Only local backups
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Only local backups
 -- No off-site copies
 -- Monthly backups
 -- No testing
 
 RTO: Unknown
-RPO: 30 days</code></pre>
+RPO: 30 days</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <p><strong>Problem:</strong> Data center fire = total data loss</p>
 </div>
 <div class="good">
 <div class="badge badge-good">✅ Recommended</div>
-<pre><code class="hljs">-- Daily full backup to local
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Daily full backup to local
 -- Daily incremental to S3
 -- Weekly full backup to S3
 -- Monthly archive to Glacier
 -- Test restore monthly
 
 RTO: 2 hours
-RPO: 24 hours</code></pre>
+RPO: 24 hours</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <p><strong>Benefit:</strong> Protected against multiple failure modes</p>
 </div>
 </div>
@@ -739,38 +817,38 @@ RPO: 24 hours</code></pre>
 <li><strong>2 media types:</strong> Local disk + Cloud storage (S3)</li>
 <li><strong>1 offsite:</strong> One copy in different geographic region</li>
 </ul>
-<pre><code class="hljs">Production DB (Local)
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content"><pre><code class="hljs">Production DB (Local)
   ↓
 Daily Backup (Local SSD) → 48 hours retention
 Daily Backup (S3) → 90 days retention
-Monthly Archive (Glacier) → 7 years retention</code></pre>
+Monthly Archive (Glacier) → 7 years retention</code></pre></div><button class="toggle-btn"></button></div>
 </div>
 <h3>3. Backup Window Planning</h3>
 <div class="comparison">
 <div class="bad">
 <div class="badge badge-bad">❌ Bad</div>
-<pre><code class="hljs">-- Backup during peak hours
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Backup during peak hours
 -- No throttling
 -- Impacts production queries
 
 Backup Time: 5 hours
-Query Impact: 40% slower</code></pre>
+Query Impact: 40% slower</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <p><strong>Problem:</strong> Users experience slowness</p>
 </div>
 <div class="good">
 <div class="badge badge-good">✅ Good</div>
-<pre><code class="hljs">-- Backup off-peak (2-4 AM)
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Backup off-peak (2-4 AM)
 -- Use secondary replica
 -- Throttle I/O
 -- Monitor backup progress
 
 Backup Time: 3 hours (off-peak)
-Query Impact: None</code></pre>
+Query Impact: None</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <p><strong>Benefit:</strong> Zero impact on users</p>
 </div>
 </div>
 <h3>4. Retention and Lifecycle</h3>
-<pre><code class="hljs"># Configure S3 lifecycle policy for auto-archival
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># Configure S3 lifecycle policy for auto-archival
 # (Set in S3 bucket policy or lifecycle configuration)
 
 # Backup retention strategy:
@@ -782,9 +860,9 @@ Query Impact: None</code></pre>
 # Calculate storage costs
 Local SSD: 5TB * $0.10/GB/month = $500/month
 S3 Standard: 50TB * $0.023/GB/month = $1,150/month
-S3 Glacier: 50TB * $0.004/GB/month = $200/month</code></pre>
+S3 Glacier: 50TB * $0.004/GB/month = $200/month</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>5. Point-in-Time Recovery (PITR) Setup</h3>
-<pre><code class="hljs"># Enable query logging for PITR capability
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># Enable query logging for PITR capability
 # Edit /etc/clickhouse-server/config.d/backup.xml
 
 
@@ -803,7 +881,7 @@ true
 # Restart ClickHouse
 sudo service clickhouse-server restart
 
-# Now you can restore to any point in time!</code></pre>
+# Now you can restore to any point in time!</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>6. Testing Backups Regularly</h3>
 <div class="highlight-box">
 <h4>⚠️ Critical: A backup is useless if it can't be restored!</h4>
@@ -815,7 +893,7 @@ sudo service clickhouse-server restart
 </ul>
 </div>
 <h3>7. Replication for HA</h3>
-<pre><code class="hljs"># Replication provides instant failover (not traditional backup)
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># Replication provides instant failover (not traditional backup)
 # Setup 2-replica cluster for high availability
 
 # Check replication status
@@ -837,9 +915,9 @@ SELECT
 FROM system.part_log
 WHERE database = 'mydb'
 ORDER BY event_time DESC
-LIMIT 10;</code></pre>
+LIMIT 10;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>8. Backup Monitoring and Alerting</h3>
-<pre><code class="hljs"># Script to check backup freshness (bash)
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># Script to check backup freshness (bash)
 #!/bin/bash
 
 BACKUP_DIR="/var/lib/clickhouse/backups"
@@ -853,7 +931,7 @@ if [ $AGE_HOURS -gt 48 ]; then
 fi
 
 # Add to cron to check every 6 hours
-0 */6 * * * /usr/local/bin/check_backup_age.sh</code></pre>
+0 */6 * * * /usr/local/bin/check_backup_age.sh</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 </div>
 </div>
 <!-- When to Use Section -->
@@ -992,7 +1070,7 @@ fi
 <div class="section" id="production-ready-templates"><div class="section-header">📋 Production-Ready Templates</div>
 <div class="section-content">
 <h3>Template 1: Basic Daily Backup Script</h3>
-<pre><code class="hljs">#!/bin/bash
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">#!/bin/bash
 # backup-daily.sh - Daily ClickHouse backup to local + S3
 
 set -e
@@ -1020,9 +1098,9 @@ clickhouse-backup upload $BACKUP_NAME 2&gt;&amp;1 | tee -a $LOG_FILE
 echo "[$(date)] Cleaning up old backups..." | tee -a $LOG_FILE
 clickhouse-backup delete --older-than 7d 2&gt;&amp;1 | tee -a $LOG_FILE
 
-echo "[$(date)] Backup complete!" | tee -a $LOG_FILE</code></pre>
+echo "[$(date)] Backup complete!" | tee -a $LOG_FILE</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>Template 2: S3 Configuration for clickhouse-backup</h3>
-<pre><code class="hljs"># /etc/clickhouse-backup/config.yml
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># /etc/clickhouse-backup/config.yml
 
 general:
   remote_storage: s3
@@ -1056,9 +1134,9 @@ clickhouse:
 backup:
   schema: true
   rbac: false
-  configs: false</code></pre>
+  configs: false</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>Template 3: Restore Script with Verification</h3>
-<pre><code class="hljs">#!/bin/bash
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">#!/bin/bash
 # restore-with-verify.sh
 
 BACKUP_NAME=$1
@@ -1121,14 +1199,14 @@ echo "Restore verification complete!"
 
 # Test restore on staging (Monthly, Saturday 10 PM)
 0 22 * * 6 /usr/local/bin/test_restore_staging.sh 2&gt;&amp;1 | logger
-</code></pre>
+</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 </div>
 </div>
 <!-- Advanced Patterns Section -->
 <div class="section" id="advanced"><div class="section-header">🔥 Advanced Patterns</div>
 <div class="section-content">
 <h3>1. Cross-Cluster Backup Strategy</h3>
-<pre><code class="hljs"># Backup from one cluster and restore to another
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># Backup from one cluster and restore to another
 # Useful for: geo-replication, disaster recovery, upgrades
 
 # On source cluster:
@@ -1142,9 +1220,9 @@ clickhouse-backup download cross-cluster-backup
 clickhouse-backup restore --backup cross-cluster-backup
 
 # Verify data matches
-clickhouse-client -q "SELECT COUNT(*) FROM mydb.mytable;" # Compare both clusters</code></pre>
+clickhouse-client -q "SELECT COUNT(*) FROM mydb.mytable;" # Compare both clusters</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>2. Incremental Backup with Chain</h3>
-<pre><code class="hljs"># Full backup + incremental chain = efficient storage
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># Full backup + incremental chain = efficient storage
 
 Sunday: Full backup (100GB)
 Monday: Incremental (5GB) - only changes
@@ -1158,9 +1236,9 @@ Tuesday: Incremental (5GB) - only new changes
 # - Flexibility: Can restore to any day
 
 # In clickhouse-backup:
-clickhouse-backup create --incremental --backup-name monday-inc</code></pre>
+clickhouse-backup create --incremental --backup-name monday-inc</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>3. Backup Deduplication at Scale</h3>
-<pre><code class="hljs"># S3 with deduplication for large clusters
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># S3 with deduplication for large clusters
 
 # Configure S3 Object Lock for immutability
 aws s3api put-object-lock-configuration \
@@ -1191,9 +1269,9 @@ aws s3api put-bucket-lifecycle-configuration \
       "Expiration": {"Days": 2555}  # 7 years
     }
   ]
-}</code></pre>
+}</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>4. Backup Verification Pipeline</h3>
-<pre><code class="hljs">#!/bin/bash
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">#!/bin/bash
 # Automated backup verification with alerts
 
 verify_backup() {
@@ -1218,9 +1296,9 @@ verify_backup() {
 
 # Run verification on latest backup
 LATEST=$(clickhouse-backup list | head -1)
-verify_backup $LATEST || mail -s "BACKUP FAILURE: $LATEST" admin@company.com</code></pre>
+verify_backup $LATEST || mail -s "BACKUP FAILURE: $LATEST" admin@company.com</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>5. Parallel Backup for Large Clusters</h3>
-<pre><code class="hljs"># For clusters with many shards, backup in parallel
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># For clusters with many shards, backup in parallel
 
 # clickhouse-backup config for parallel operations
 general:
@@ -1245,9 +1323,9 @@ done
 wait  # Wait for all backups to complete
 
 # Monitor progress
-clickhouse-backup list</code></pre>
+clickhouse-backup list</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>6. Disaster Recovery Runbook</h3>
-<pre><code class="hljs"># Follow these steps if complete cluster failure
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># Follow these steps if complete cluster failure
 
 1. Detect failure (monitoring alerts)
    - Monitor: cluster availability, data reachability
@@ -1282,7 +1360,7 @@ clickhouse-backup list</code></pre>
    - Document what failed and why
    - Update runbook if needed
    - Schedule post-mortem review
-   - Test backups again to ensure recovery works</code></pre>
+   - Test backups again to ensure recovery works</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 </div>
 </div>
 <!-- Resources Section -->
@@ -1381,5 +1459,47 @@ clickhouse-backup list</code></pre>
 <a class="nav-btn-module nav-home" href="../index.html">🏠 Home</a>
 <a class="nav-btn-module" href="module-8-disaster-recovery.html">Next: Module 8 - Disaster Recovery →</a>
 </div>
-<script>hljs.highlightAll();</script></body>
+<script>hljs.highlightAll();</script><script>
+// Copy code functionality
+document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const code = this.parentElement.querySelector('code').textContent;
+        navigator.clipboard.writeText(code).then(() => {
+            const originalText = this.textContent;
+            this.textContent = '✓ Copied!';
+            this.classList.add('copied');
+            setTimeout(() => {
+                this.textContent = originalText;
+                this.classList.remove('copied');
+            },2000);
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+            this.textContent = '✗ Failed';
+            setTimeout(() => {
+                this.textContent = 'Copy';
+            },2000);
+        });
+    });
+});
+
+// Show more/less functionality
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const content = this.parentElement.querySelector('.code-content');
+        const overlay = content.querySelector('.fade-overlay');
+        
+        if (content.classList.contains('collapsed')) {
+            content.classList.remove('collapsed');
+            content.classList.add('expanded');
+            this.textContent = 'Show Less';
+            if (overlay) overlay.style.display = 'none';
+        } else {
+            content.classList.add('collapsed');
+            content.classList.remove('expanded');
+            this.textContent = 'Show More';
+            if (overlay) overlay.style.display = 'block';
+        }
+    });
+});
+</script></body>
 </html>
