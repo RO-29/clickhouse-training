@@ -1,14 +1,15 @@
 <!DOCTYPE html>
+
 <html lang="en" style="scroll-behavior: smooth;">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Module 3: Sharding Strategy & Distribution</title>
-    <link rel="icon" type="image/x-icon" href="../favicon.ico">
-    <link rel="icon" type="image/png" href="../favicon.png">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
-    <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Module 3: Sharding Strategy &amp; Distribution</title>
+<link href="../favicon.ico" rel="icon" type="image/x-icon"/>
+<link href="../favicon.png" rel="icon" type="image/png"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
             margin: 0;
@@ -230,304 +231,277 @@
     </style>
 </head>
 <body>
-
 <div class="module-nav">
-    <a href="module-2-table-engines.html" class="nav-btn-module">← Previous: Module 2 - Table Engines</a>
-    <a href="../index.html" class="nav-btn-module nav-home">🏠 Home</a>
-    <a href="module-4-replication.html" class="nav-btn-module">Next: Module 4 - Replication →</a>
+<a class="nav-btn-module" href="module-2-table-engines.html">← Previous: Module 2 - Table Engines</a>
+<a class="nav-btn-module nav-home" href="../index.html">🏠 Home</a>
+<a class="nav-btn-module" href="module-4-replication.html">Next: Module 4 - Replication →</a>
 </div>
-
 <div class="header">
-    <h1>🔀 MODULE 3</h1>
-    <div class="subtitle">Sharding Strategy & Distribution</div>
-    <div class="subtitle" style="font-size: 1em; margin-top: 20px;">Duration: 6-8 hours | Week 3</div>
+<h1>🔀 MODULE 3</h1>
+<div class="subtitle">Sharding Strategy &amp; Distribution</div>
+<div class="subtitle" style="font-size: 1em; margin-top: 20px;">Duration: 6-8 hours | Week 3</div>
 </div>
-
 <div style="background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);">
-    <div class="nav-buttons">
-        <div class="nav-btn">📚 What is It?</div>
-        <div class="nav-btn">🚀 Quick Start</div>
-        <div class="nav-btn">💻 Commands</div>
-        <div class="nav-btn">✨ Best Practices</div>
-        <div class="nav-btn">🎯 When to Use</div>
-        <div class="nav-btn">🏆 Real-World Results</div>
-        <div class="nav-btn">📋 Templates</div>
-        <div class="nav-btn">🔥 Advanced</div>
-        <div class="nav-btn">📚 Resources</div>
-    </div>
+<div class="nav-buttons">
+<div class="nav-btn">📚 What is It?</div>
+<div class="nav-btn">🚀 Quick Start</div>
+<div class="nav-btn">💻 Commands</div>
+<div class="nav-btn">✨ Best Practices</div>
+<div class="nav-btn">🎯 When to Use</div>
+<div class="nav-btn">🏆 Real-World Results</div>
+<div class="nav-btn">📋 Templates</div>
+<div class="nav-btn">🔥 Advanced</div>
+<div class="nav-btn">📚 Resources</div>
 </div>
-
+</div>
 <div class="container">
-
-    <!-- What is Sharding Section -->
-    <div class="section" id="what-is-sharding-distribution"><div class="section-header">📚 What is Sharding & Distribution?</div>
-        <div class="section-content">
-            <div class="highlight-box">
-                <h4 style="margin-top: 0;">Sharding in a Nutshell</h4>
-                <p><strong>Sharding is the process of distributing data across multiple nodes in a cluster.</strong> Each node (shard) holds a portion of the data, allowing ClickHouse to scale horizontally and handle datasets too large for a single server. The Distributed engine lets you query data across all shards transparently, as if it were a single table.</p>
-            </div>
-
-            <div class="icon-grid">
-                <div class="icon-card">
-                    <div class="icon">📊</div>
-                    <h4>Horizontal Scaling</h4>
-                    <p>Scale to petabytes by adding more nodes. Each shard processes its portion of data independently.</p>
-                </div>
-                <div class="icon-card">
-                    <div class="icon">⚡</div>
-                    <h4>Parallel Processing</h4>
-                    <p>Queries execute in parallel across all shards, dramatically reducing response time for large datasets.</p>
-                </div>
-                <div class="icon-card">
-                    <div class="icon">🔄</div>
-                    <h4>Data Distribution</h4>
-                    <p>Sharding keys determine how data is split. Smart key selection ensures balanced distribution.</p>
-                </div>
-                <div class="icon-card">
-                    <div class="icon">🛡️</div>
-                    <h4>Fault Tolerance</h4>
-                    <p>Combined with replication, sharding provides resilience. Loss of one shard doesn't stop the cluster.</p>
-                </div>
-            </div>
-
-            <h3>Single Node vs Distributed Architecture</h3>
-            <div class="grid-2">
-                <div class="card">
-                    <h4>Single Node</h4>
-                    <ul>
-                        <li>All data on one server</li>
-                        <li>Limited by disk space and memory</li>
-                        <li>Queries process on one machine</li>
-                        <li>No fault tolerance</li>
-                        <li>Simple to setup and manage</li>
-                        <li>Good for: < 10TB data</li>
-                    </ul>
-                </div>
-                <div class="card">
-                    <h4>Distributed Cluster</h4>
-                    <ul>
-                        <li>Data spread across multiple nodes</li>
-                        <li>Scales to petabytes</li>
-                        <li>Queries parallelized across nodes</li>
-                        <li>Can survive node failures</li>
-                        <li>More complex setup</li>
-                        <li>Good for: 100TB+ data</li>
-                    </ul>
-                </div>
-            </div>
-
-            <h3>Key Concepts</h3>
-            <div class="grid-2">
-                <div class="card">
-                    <h4>Local Table</h4>
-                    <p>The actual table on each shard node storing a partition of the data. Each shard has a local table with the same structure.</p>
-                </div>
-                <div class="card">
-                    <h4>Distributed Table</h4>
-                    <p>A virtual table that references all local tables across the cluster. Queries to it are automatically distributed.</p>
-                </div>
-                <div class="card">
-                    <h4>Sharding Key</h4>
-                    <p>The column used to determine which shard gets which data. Must distribute evenly across shards.</p>
-                </div>
-                <div class="card">
-                    <h4>Replica</h4>
-                    <p>A copy of each shard for fault tolerance. Can be combined with sharding for maximum resilience.</p>
-                </div>
-            </div>
-
-            <h3>Distributed Table Architecture</h3>
-            <div style="background: #f9f9f9; padding: 30px; border-radius: 8px; margin: 20px 0;">
-                <div style="max-width: 900px; margin: 0 auto;">
-                    <div style="display: flex; flex-direction: column; gap: 15px;">
-                        <!-- Client Layer -->
-                        <div style="background: #e3f2fd; padding: 20px; border-radius: 6px; border: 2px solid #1976d2; text-align: center;">
-                            <div style="font-weight: bold; color: #0d47a1; font-size: 1.2em;">Client Application</div>
-                            <div style="font-size: 0.9em; color: #555; margin-top: 5px;">Sends query to Distributed Table</div>
-                        </div>
-
-                        <div style="text-align: center; font-size: 24px; color: #666;">↓</div>
-
-                        <!-- Distributed Table Layer -->
-                        <div style="background: #fff3e0; padding: 20px; border-radius: 6px; border: 2px solid #f57c00; text-align: center;">
-                            <div style="font-weight: bold; color: #e65100; font-size: 1.2em;">Distributed Table (Virtual)</div>
-                            <div style="font-size: 0.9em; color: #555; margin-top: 5px;">Routes query to appropriate shards based on sharding key</div>
-                        </div>
-
-                        <div style="text-align: center; font-size: 24px; color: #666;">↓ Query Distribution ↓</div>
-
-                        <!-- Shards Layer -->
-                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
-                            <div style="background: #e8f5e9; padding: 20px; border-radius: 6px; border: 2px solid #388e3c;">
-                                <div style="font-weight: bold; color: #2e7d32; text-align: center; margin-bottom: 10px;">Shard 1</div>
-                                <div style="background: white; padding: 12px; border-radius: 4px; margin-bottom: 8px;">
-                                    <div style="font-weight: bold; color: #333; font-size: 0.9em;">Local Table</div>
-                                    <div style="font-size: 0.85em; color: #555;">events_local</div>
-                                    <div style="font-size: 0.85em; color: #555;">Data: user_id 1-1M</div>
+<!-- What is Sharding Section -->
+<div class="section" id="what-is-sharding-distribution"><div class="section-header">📚 What is Sharding &amp; Distribution?</div>
+<div class="section-content">
+<div class="highlight-box">
+<h4 style="margin-top: 0;">Sharding in a Nutshell</h4>
+<p><strong>Sharding is the process of distributing data across multiple nodes in a cluster.</strong> Each node (shard) holds a portion of the data, allowing ClickHouse to scale horizontally and handle datasets too large for a single server. The Distributed engine lets you query data across all shards transparently, as if it were a single table.</p>
+</div>
+<div class="icon-grid">
+<div class="icon-card">
+<div class="icon">📊</div>
+<h4>Horizontal Scaling</h4>
+<p>Scale to petabytes by adding more nodes. Each shard processes its portion of data independently.</p>
+</div>
+<div class="icon-card">
+<div class="icon">⚡</div>
+<h4>Parallel Processing</h4>
+<p>Queries execute in parallel across all shards, dramatically reducing response time for large datasets.</p>
+</div>
+<div class="icon-card">
+<div class="icon">🔄</div>
+<h4>Data Distribution</h4>
+<p>Sharding keys determine how data is split. Smart key selection ensures balanced distribution.</p>
+</div>
+<div class="icon-card">
+<div class="icon">🛡️</div>
+<h4>Fault Tolerance</h4>
+<p>Combined with replication, sharding provides resilience. Loss of one shard doesn't stop the cluster.</p>
+</div>
+</div>
+<h3>Single Node vs Distributed Architecture</h3>
+<div class="grid-2">
+<div class="card">
+<h4>Single Node</h4>
+<ul>
+<li>All data on one server</li>
+<li>Limited by disk space and memory</li>
+<li>Queries process on one machine</li>
+<li>No fault tolerance</li>
+<li>Simple to setup and manage</li>
+<li>Good for: &lt; 10TB data</li>
+</ul>
+</div>
+<div class="card">
+<h4>Distributed Cluster</h4>
+<ul>
+<li>Data spread across multiple nodes</li>
+<li>Scales to petabytes</li>
+<li>Queries parallelized across nodes</li>
+<li>Can survive node failures</li>
+<li>More complex setup</li>
+<li>Good for: 100TB+ data</li>
+</ul>
+</div>
+</div>
+<h3>Key Concepts</h3>
+<div class="grid-2">
+<div class="card">
+<h4>Local Table</h4>
+<p>The actual table on each shard node storing a partition of the data. Each shard has a local table with the same structure.</p>
+</div>
+<div class="card">
+<h4>Distributed Table</h4>
+<p>A virtual table that references all local tables across the cluster. Queries to it are automatically distributed.</p>
+</div>
+<div class="card">
+<h4>Sharding Key</h4>
+<p>The column used to determine which shard gets which data. Must distribute evenly across shards.</p>
+</div>
+<div class="card">
+<h4>Replica</h4>
+<p>A copy of each shard for fault tolerance. Can be combined with sharding for maximum resilience.</p>
+</div>
+</div>
+<h3>Distributed Table Architecture</h3>
+<div style="background: #f9f9f9; padding: 30px; border-radius: 8px; margin: 20px 0;">
+<div style="max-width: 900px; margin: 0 auto;">
+<div style="display: flex; flex-direction: column; gap: 15px;">
+<!-- Client Layer -->
+<div style="background: #e3f2fd; padding: 20px; border-radius: 6px; border: 2px solid #1976d2; text-align: center;">
+<div style="font-weight: bold; color: #0d47a1; font-size: 1.2em;">Client Application</div>
+<div style="font-size: 0.9em; color: #555; margin-top: 5px;">Sends query to Distributed Table</div>
+</div>
+<div style="text-align: center; font-size: 24px; color: #666;">↓</div>
+<!-- Distributed Table Layer -->
+<div style="background: #fff3e0; padding: 20px; border-radius: 6px; border: 2px solid #f57c00; text-align: center;">
+<div style="font-weight: bold; color: #e65100; font-size: 1.2em;">Distributed Table (Virtual)</div>
+<div style="font-size: 0.9em; color: #555; margin-top: 5px;">Routes query to appropriate shards based on sharding key</div>
+</div>
+<div style="text-align: center; font-size: 24px; color: #666;">↓ Query Distribution ↓</div>
+<!-- Shards Layer -->
+<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+<div style="background: #e8f5e9; padding: 20px; border-radius: 6px; border: 2px solid #388e3c;">
+<div style="font-weight: bold; color: #2e7d32; text-align: center; margin-bottom: 10px;">Shard 1</div>
+<div style="background: white; padding: 12px; border-radius: 4px; margin-bottom: 8px;">
+<div style="font-weight: bold; color: #333; font-size: 0.9em;">Local Table</div>
+<div style="font-size: 0.85em; color: #555;">events_local</div>
+<div style="font-size: 0.85em; color: #555;">Data: user_id 1-1M</div>
+</div>
+</div>
+<div style="background: #f3e5f5; padding: 20px; border-radius: 6px; border: 2px solid #7b1fa2;">
+<div style="font-weight: bold; color: #6a1b9a; text-align: center; margin-bottom: 10px;">Shard 2</div>
+<div style="background: white; padding: 12px; border-radius: 4px; margin-bottom: 8px;">
+<div style="font-weight: bold; color: #333; font-size: 0.9em;">Local Table</div>
+<div style="font-size: 0.85em; color: #555;">events_local</div>
+<div style="font-size: 0.85em; color: #555;">Data: user_id 1M-2M</div>
+</div>
+</div>
+<div style="background: #fce4ec; padding: 20px; border-radius: 6px; border: 2px solid #c2185b;">
+<div style="font-weight: bold; color: #ad1457; text-align: center; margin-bottom: 10px;">Shard 3</div>
+<div style="background: white; padding: 12px; border-radius: 4px; margin-bottom: 8px;">
+<div style="font-weight: bold; color: #333; font-size: 0.9em;">Local Table</div>
+<div style="font-size: 0.85em; color: #555;">events_local</div>
+<div style="font-size: 0.85em; color: #555;">Data: user_id 2M-3M</div>
+</div>
+</div>
+</div>
+<div style="text-align: center; font-size: 24px; color: #666;">↓ Parallel Execution ↓</div>
+<!-- Result Aggregation -->
+<div style="background: #fff9e6; padding: 20px; border-radius: 6px; border-left: 4px solid #ffb82e; text-align: center;">
+<div style="font-weight: bold; color: #333; font-size: 1.1em;">Query Coordinator</div>
+<div style="font-size: 0.9em; color: #555; margin-top: 5px;">Collects and merges results from all shards</div>
+</div>
+<div style="text-align: center; font-size: 24px; color: #666;">↓</div>
+<!-- Final Result -->
+<div style="background: #e3f2fd; padding: 20px; border-radius: 6px; border: 2px solid #1976d2; text-align: center;">
+<div style="font-weight: bold; color: #0d47a1; font-size: 1.2em;">Final Result to Client</div>
+</div>
+</div>
+</div>
+</div>
+<h3>Sharding Key Distribution</h3>
+<div style="background: #f9f9f9; padding: 30px; border-radius: 8px; margin: 20px 0;">
+<div style="max-width: 900px; margin: 0 auto;">
+<div style="background: #e3f2fd; padding: 20px; border-radius: 6px; border: 2px solid #1976d2; margin-bottom: 20px; text-align: center;">
+<div style="font-weight: bold; color: #0d47a1; margin-bottom: 10px;">Sharding Function</div>
+<div style="font-family: monospace; color: #333; font-size: 1.1em;">cityHash64(user_id) % 3</div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px;">
+<!-- Shard 0 -->
+<div style="background: #e8f5e9; padding: 20px; border-radius: 6px; border: 2px solid #388e3c;">
+<div style="font-weight: bold; color: #2e7d32; text-align: center; margin-bottom: 15px;">Shard 1 (33.3%)</div>
+<div style="font-size: 0.85em; color: #555; margin-bottom: 10px;">Users:</div>
+<div style="display: flex; flex-wrap: wrap; gap: 5px;">
+<span style="background: #c8e6c9; padding: 5px 10px; border-radius: 4px; font-size: 0.8em;">user_1</span>
+<span style="background: #c8e6c9; padding: 5px 10px; border-radius: 4px; font-size: 0.8em;">user_4</span>
+<span style="background: #c8e6c9; padding: 5px 10px; border-radius: 4px; font-size: 0.8em;">user_7</span>
+<span style="background: #c8e6c9; padding: 5px 10px; border-radius: 4px; font-size: 0.8em;">user_10</span>
+<span style="color: #666;">...</span>
+</div>
+</div>
+<!-- Shard 1 -->
+<div style="background: #f3e5f5; padding: 20px; border-radius: 6px; border: 2px solid #7b1fa2;">
+<div style="font-weight: bold; color: #6a1b9a; text-align: center; margin-bottom: 15px;">Shard 2 (33.3%)</div>
+<div style="font-size: 0.85em; color: #555; margin-bottom: 10px;">Users:</div>
+<div style="display: flex; flex-wrap: wrap; gap: 5px;">
+<span style="background: #e1bee7; padding: 5px 10px; border-radius: 4px; font-size: 0.8em;">user_2</span>
+<span style="background: #e1bee7; padding: 5px 10px; border-radius: 4px; font-size: 0.8em;">user_5</span>
+<span style="background: #e1bee7; padding: 5px 10px; border-radius: 4px; font-size: 0.8em;">user_8</span>
+<span style="background: #e1bee7; padding: 5px 10px; border-radius: 4px; font-size: 0.8em;">user_11</span>
+<span style="color: #666;">...</span>
+</div>
+</div>
+<!-- Shard 2 -->
+<div style="background: #fce4ec; padding: 20px; border-radius: 6px; border: 2px solid #c2185b;">
+<div style="font-weight: bold; color: #ad1457; text-align: center; margin-bottom: 15px;">Shard 3 (33.3%)</div>
+<div style="font-size: 0.85em; color: #555; margin-bottom: 10px;">Users:</div>
+<div style="display: flex; flex-wrap: wrap; gap: 5px;">
+<span style="background: #f8bbd0; padding: 5px 10px; border-radius: 4px; font-size: 0.8em;">user_3</span>
+<span style="background: #f8bbd0; padding: 5px 10px; border-radius: 4px; font-size: 0.8em;">user_6</span>
+<span style="background: #f8bbd0; padding: 5px 10px; border-radius: 4px; font-size: 0.8em;">user_9</span>
+<span style="background: #f8bbd0; padding: 5px 10px; border-radius: 4px; font-size: 0.8em;">user_12</span>
+<span style="color: #666;">...</span>
+</div>
+</div>
+</div>
+<div style="background: #fff9e6; padding: 15px; border-radius: 6px; border-left: 4px solid #ffb82e;">
+<div style="font-weight: bold; color: #333; margin-bottom: 8px;">Key Properties:</div>
+<ul style="margin: 0; padding-left: 20px; color: #555; font-size: 0.9em;">
+<li>Even distribution across all shards</li>
+<li>Consistent hashing: same user_id always goes to same shard</li>
+<li>Single-shard queries when filtering by user_id</li>
+</ul>
+</div>
+</div>
+</div>
+<h3>Query Execution Flow</h3>
+<div style="background: #f9f9f9; padding: 30px; border-radius: 8px; margin: 20px 0;">
+<div style="max-width: 900px; margin: 0 auto;">
+<div class="grid-2" style="gap: 20px;">
+<!-- Single Shard Query -->
+<div>
+<h4 style="color: #333; text-align: center; margin-bottom: 15px;">Single-Shard Query (Fast)</h4>
+<div style="background: #e8f5e9; padding: 15px; border-radius: 6px; border-left: 4px solid #388e3c; margin-bottom: 15px;">
+<div style="font-family: monospace; font-size: 0.85em; color: #333;">
+                                    SELECT * FROM events<br/>
+                                    WHERE user_id = 12345<br/>
+                                    AND date &gt;= '2026-01-01'
                                 </div>
-                            </div>
-
-                            <div style="background: #f3e5f5; padding: 20px; border-radius: 6px; border: 2px solid #7b1fa2;">
-                                <div style="font-weight: bold; color: #6a1b9a; text-align: center; margin-bottom: 10px;">Shard 2</div>
-                                <div style="background: white; padding: 12px; border-radius: 4px; margin-bottom: 8px;">
-                                    <div style="font-weight: bold; color: #333; font-size: 0.9em;">Local Table</div>
-                                    <div style="font-size: 0.85em; color: #555;">events_local</div>
-                                    <div style="font-size: 0.85em; color: #555;">Data: user_id 1M-2M</div>
-                                </div>
-                            </div>
-
-                            <div style="background: #fce4ec; padding: 20px; border-radius: 6px; border: 2px solid #c2185b;">
-                                <div style="font-weight: bold; color: #ad1457; text-align: center; margin-bottom: 10px;">Shard 3</div>
-                                <div style="background: white; padding: 12px; border-radius: 4px; margin-bottom: 8px;">
-                                    <div style="font-weight: bold; color: #333; font-size: 0.9em;">Local Table</div>
-                                    <div style="font-size: 0.85em; color: #555;">events_local</div>
-                                    <div style="font-size: 0.85em; color: #555;">Data: user_id 2M-3M</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style="text-align: center; font-size: 24px; color: #666;">↓ Parallel Execution ↓</div>
-
-                        <!-- Result Aggregation -->
-                        <div style="background: #fff9e6; padding: 20px; border-radius: 6px; border-left: 4px solid #ffb82e; text-align: center;">
-                            <div style="font-weight: bold; color: #333; font-size: 1.1em;">Query Coordinator</div>
-                            <div style="font-size: 0.9em; color: #555; margin-top: 5px;">Collects and merges results from all shards</div>
-                        </div>
-
-                        <div style="text-align: center; font-size: 24px; color: #666;">↓</div>
-
-                        <!-- Final Result -->
-                        <div style="background: #e3f2fd; padding: 20px; border-radius: 6px; border: 2px solid #1976d2; text-align: center;">
-                            <div style="font-weight: bold; color: #0d47a1; font-size: 1.2em;">Final Result to Client</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <h3>Sharding Key Distribution</h3>
-            <div style="background: #f9f9f9; padding: 30px; border-radius: 8px; margin: 20px 0;">
-                <div style="max-width: 900px; margin: 0 auto;">
-                    <div style="background: #e3f2fd; padding: 20px; border-radius: 6px; border: 2px solid #1976d2; margin-bottom: 20px; text-align: center;">
-                        <div style="font-weight: bold; color: #0d47a1; margin-bottom: 10px;">Sharding Function</div>
-                        <div style="font-family: monospace; color: #333; font-size: 1.1em;">cityHash64(user_id) % 3</div>
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px;">
-                        <!-- Shard 0 -->
-                        <div style="background: #e8f5e9; padding: 20px; border-radius: 6px; border: 2px solid #388e3c;">
-                            <div style="font-weight: bold; color: #2e7d32; text-align: center; margin-bottom: 15px;">Shard 1 (33.3%)</div>
-                            <div style="font-size: 0.85em; color: #555; margin-bottom: 10px;">Users:</div>
-                            <div style="display: flex; flex-wrap: wrap; gap: 5px;">
-                                <span style="background: #c8e6c9; padding: 5px 10px; border-radius: 4px; font-size: 0.8em;">user_1</span>
-                                <span style="background: #c8e6c9; padding: 5px 10px; border-radius: 4px; font-size: 0.8em;">user_4</span>
-                                <span style="background: #c8e6c9; padding: 5px 10px; border-radius: 4px; font-size: 0.8em;">user_7</span>
-                                <span style="background: #c8e6c9; padding: 5px 10px; border-radius: 4px; font-size: 0.8em;">user_10</span>
-                                <span style="color: #666;">...</span>
-                            </div>
-                        </div>
-
-                        <!-- Shard 1 -->
-                        <div style="background: #f3e5f5; padding: 20px; border-radius: 6px; border: 2px solid #7b1fa2;">
-                            <div style="font-weight: bold; color: #6a1b9a; text-align: center; margin-bottom: 15px;">Shard 2 (33.3%)</div>
-                            <div style="font-size: 0.85em; color: #555; margin-bottom: 10px;">Users:</div>
-                            <div style="display: flex; flex-wrap: wrap; gap: 5px;">
-                                <span style="background: #e1bee7; padding: 5px 10px; border-radius: 4px; font-size: 0.8em;">user_2</span>
-                                <span style="background: #e1bee7; padding: 5px 10px; border-radius: 4px; font-size: 0.8em;">user_5</span>
-                                <span style="background: #e1bee7; padding: 5px 10px; border-radius: 4px; font-size: 0.8em;">user_8</span>
-                                <span style="background: #e1bee7; padding: 5px 10px; border-radius: 4px; font-size: 0.8em;">user_11</span>
-                                <span style="color: #666;">...</span>
-                            </div>
-                        </div>
-
-                        <!-- Shard 2 -->
-                        <div style="background: #fce4ec; padding: 20px; border-radius: 6px; border: 2px solid #c2185b;">
-                            <div style="font-weight: bold; color: #ad1457; text-align: center; margin-bottom: 15px;">Shard 3 (33.3%)</div>
-                            <div style="font-size: 0.85em; color: #555; margin-bottom: 10px;">Users:</div>
-                            <div style="display: flex; flex-wrap: wrap; gap: 5px;">
-                                <span style="background: #f8bbd0; padding: 5px 10px; border-radius: 4px; font-size: 0.8em;">user_3</span>
-                                <span style="background: #f8bbd0; padding: 5px 10px; border-radius: 4px; font-size: 0.8em;">user_6</span>
-                                <span style="background: #f8bbd0; padding: 5px 10px; border-radius: 4px; font-size: 0.8em;">user_9</span>
-                                <span style="background: #f8bbd0; padding: 5px 10px; border-radius: 4px; font-size: 0.8em;">user_12</span>
-                                <span style="color: #666;">...</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style="background: #fff9e6; padding: 15px; border-radius: 6px; border-left: 4px solid #ffb82e;">
-                        <div style="font-weight: bold; color: #333; margin-bottom: 8px;">Key Properties:</div>
-                        <ul style="margin: 0; padding-left: 20px; color: #555; font-size: 0.9em;">
-                            <li>Even distribution across all shards</li>
-                            <li>Consistent hashing: same user_id always goes to same shard</li>
-                            <li>Single-shard queries when filtering by user_id</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <h3>Query Execution Flow</h3>
-            <div style="background: #f9f9f9; padding: 30px; border-radius: 8px; margin: 20px 0;">
-                <div style="max-width: 900px; margin: 0 auto;">
-                    <div class="grid-2" style="gap: 20px;">
-                        <!-- Single Shard Query -->
-                        <div>
-                            <h4 style="color: #333; text-align: center; margin-bottom: 15px;">Single-Shard Query (Fast)</h4>
-                            <div style="background: #e8f5e9; padding: 15px; border-radius: 6px; border-left: 4px solid #388e3c; margin-bottom: 15px;">
-                                <div style="font-family: monospace; font-size: 0.85em; color: #333;">
-                                    SELECT * FROM events<br>
-                                    WHERE user_id = 12345<br>
-                                    AND date >= '2026-01-01'
-                                </div>
-                            </div>
-                            <div style="display: flex; flex-direction: column; gap: 10px;">
-                                <div style="background: white; padding: 12px; border-radius: 4px; border: 2px solid #388e3c;">
-                                    <div style="font-weight: bold; color: #2e7d32; margin-bottom: 5px;">Step 1: Hash user_id</div>
-                                    <div style="font-size: 0.85em; color: #555;">cityHash64(12345) % 3 = 1</div>
-                                </div>
-                                <div style="text-align: center; font-size: 20px; color: #666;">↓</div>
-                                <div style="background: white; padding: 12px; border-radius: 4px; border: 2px solid #388e3c;">
-                                    <div style="font-weight: bold; color: #2e7d32; margin-bottom: 5px;">Step 2: Route to Shard 2</div>
-                                    <div style="font-size: 0.85em; color: #555;">Query only 1 shard</div>
-                                </div>
-                                <div style="text-align: center; font-size: 20px; color: #666;">↓</div>
-                                <div style="background: #c8e6c9; padding: 12px; border-radius: 4px; text-align: center;">
-                                    <div style="font-weight: bold; color: #2e7d32;">✅ Fast: ~100ms</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Multi-Shard Query -->
-                        <div>
-                            <h4 style="color: #333; text-align: center; margin-bottom: 15px;">Multi-Shard Query (Scatter-Gather)</h4>
-                            <div style="background: #fff3e0; padding: 15px; border-radius: 6px; border-left: 4px solid #f57c00; margin-bottom: 15px;">
-                                <div style="font-family: monospace; font-size: 0.85em; color: #333;">
-                                    SELECT event_type, COUNT(*)<br>
-                                    FROM events<br>
-                                    WHERE date >= '2026-01-01'<br>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px;">
+<div style="background: white; padding: 12px; border-radius: 4px; border: 2px solid #388e3c;">
+<div style="font-weight: bold; color: #2e7d32; margin-bottom: 5px;">Step 1: Hash user_id</div>
+<div style="font-size: 0.85em; color: #555;">cityHash64(12345) % 3 = 1</div>
+</div>
+<div style="text-align: center; font-size: 20px; color: #666;">↓</div>
+<div style="background: white; padding: 12px; border-radius: 4px; border: 2px solid #388e3c;">
+<div style="font-weight: bold; color: #2e7d32; margin-bottom: 5px;">Step 2: Route to Shard 2</div>
+<div style="font-size: 0.85em; color: #555;">Query only 1 shard</div>
+</div>
+<div style="text-align: center; font-size: 20px; color: #666;">↓</div>
+<div style="background: #c8e6c9; padding: 12px; border-radius: 4px; text-align: center;">
+<div style="font-weight: bold; color: #2e7d32;">✅ Fast: ~100ms</div>
+</div>
+</div>
+</div>
+<!-- Multi-Shard Query -->
+<div>
+<h4 style="color: #333; text-align: center; margin-bottom: 15px;">Multi-Shard Query (Scatter-Gather)</h4>
+<div style="background: #fff3e0; padding: 15px; border-radius: 6px; border-left: 4px solid #f57c00; margin-bottom: 15px;">
+<div style="font-family: monospace; font-size: 0.85em; color: #333;">
+                                    SELECT event_type, COUNT(*)<br/>
+                                    FROM events<br/>
+                                    WHERE date &gt;= '2026-01-01'<br/>
                                     GROUP BY event_type
                                 </div>
-                            </div>
-                            <div style="display: flex; flex-direction: column; gap: 10px;">
-                                <div style="background: white; padding: 12px; border-radius: 4px; border: 2px solid #f57c00;">
-                                    <div style="font-weight: bold; color: #e65100; margin-bottom: 5px;">Step 1: Broadcast to ALL shards</div>
-                                    <div style="font-size: 0.85em; color: #555;">No user_id filter</div>
-                                </div>
-                                <div style="text-align: center; font-size: 20px; color: #666;">↓</div>
-                                <div style="background: white; padding: 12px; border-radius: 4px; border: 2px solid #f57c00;">
-                                    <div style="font-weight: bold; color: #e65100; margin-bottom: 5px;">Step 2: Parallel Execution</div>
-                                    <div style="font-size: 0.85em; color: #555;">All 3 shards process in parallel</div>
-                                </div>
-                                <div style="text-align: center; font-size: 20px; color: #666;">↓</div>
-                                <div style="background: #ffe0b2; padding: 12px; border-radius: 4px; text-align: center;">
-                                    <div style="font-weight: bold; color: #e65100;">⚠️ Slower: ~1-2s</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <h3>Cluster Architecture</h3>
-            <pre><code class="hljs">Single Node:
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px;">
+<div style="background: white; padding: 12px; border-radius: 4px; border: 2px solid #f57c00;">
+<div style="font-weight: bold; color: #e65100; margin-bottom: 5px;">Step 1: Broadcast to ALL shards</div>
+<div style="font-size: 0.85em; color: #555;">No user_id filter</div>
+</div>
+<div style="text-align: center; font-size: 20px; color: #666;">↓</div>
+<div style="background: white; padding: 12px; border-radius: 4px; border: 2px solid #f57c00;">
+<div style="font-weight: bold; color: #e65100; margin-bottom: 5px;">Step 2: Parallel Execution</div>
+<div style="font-size: 0.85em; color: #555;">All 3 shards process in parallel</div>
+</div>
+<div style="text-align: center; font-size: 20px; color: #666;">↓</div>
+<div style="background: #ffe0b2; padding: 12px; border-radius: 4px; text-align: center;">
+<div style="font-weight: bold; color: #e65100;">⚠️ Slower: ~1-2s</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<h3>Cluster Architecture</h3>
+<pre><code class="hljs">Single Node:
   Node-1: Table with ALL data
 
 Sharded (3 shards):
@@ -545,18 +519,15 @@ Sharded + Replicated (3 shards × 2 replicas):
   Shard-3:
     Node-5: Replica-A
     Node-6: Replica-B</code></pre>
-
-        </div>
-    </div>
-
-    <!-- Quick Start Section -->
-    <div class="section" id="quick-start"><div class="section-header">🚀 Quick Start</div>
-        <div class="section-content">
-
-            <h3>1. Setup a 2-Node ClickHouse Cluster</h3>
-            <div class="card">
-                <h4>Using Docker (Simplest for Testing)</h4>
-                <pre><code class="hljs">docker-compose up -d
+</div>
+</div>
+<!-- Quick Start Section -->
+<div class="section" id="quick-start"><div class="section-header">🚀 Quick Start</div>
+<div class="section-content">
+<h3>1. Setup a 2-Node ClickHouse Cluster</h3>
+<div class="card">
+<h4>Using Docker (Simplest for Testing)</h4>
+<pre><code class="hljs">docker-compose up -d
 
 # After running docker-compose.yml with:
 # - clickhouse-node1 on port 9000
@@ -567,10 +538,9 @@ docker exec -it clickhouse-node1 clickhouse-client
 
 # Connect to node 2 in another terminal
 docker exec -it clickhouse-node2 clickhouse-client</code></pre>
-            </div>
-
-            <h3>2. Create Local Tables on Each Node</h3>
-            <pre><code class="hljs">-- Run on BOTH nodes (connect to each separately)
+</div>
+<h3>2. Create Local Tables on Each Node</h3>
+<pre><code class="hljs">-- Run on BOTH nodes (connect to each separately)
 
 CREATE DATABASE sharding_demo;
 
@@ -583,9 +553,8 @@ CREATE TABLE sharding_demo.events_local (
 ) ENGINE = MergeTree()
 PARTITION BY toYYYYMM(event_date)
 ORDER BY (event_date, user_id);</code></pre>
-
-            <h3>3. Create Distributed Table (Query All Shards)</h3>
-            <pre><code class="hljs">-- Run on ANY node (or all for convenience)
+<h3>3. Create Distributed Table (Query All Shards)</h3>
+<pre><code class="hljs">-- Run on ANY node (or all for convenience)
 
 CREATE TABLE sharding_demo.events_distributed (
     event_date Date,
@@ -599,9 +568,8 @@ CREATE TABLE sharding_demo.events_distributed (
     'events_local',                  -- Local table name
     rand()                           -- Sharding key (random)
 );</code></pre>
-
-            <h3>4. Insert Data</h3>
-            <pre><code class="hljs">-- Insert to distributed table (auto-distributed to shards)
+<h3>4. Insert Data</h3>
+<pre><code class="hljs">-- Insert to distributed table (auto-distributed to shards)
 INSERT INTO sharding_demo.events_distributed VALUES
     ('2026-01-22', '2026-01-22 10:00:00', 1001, 'click', 1.5),
     ('2026-01-22', '2026-01-22 10:01:00', 1002, 'purchase', 99.99),
@@ -610,9 +578,8 @@ INSERT INTO sharding_demo.events_distributed VALUES
 -- Verify data distributed
 SELECT COUNT(*) FROM sharding_demo.events_local;   -- Each node shows its partition
 SELECT COUNT(*) FROM sharding_demo.events_distributed;  -- Total across all nodes</code></pre>
-
-            <h3>5. Query Across Shards</h3>
-            <pre><code class="hljs">-- Queries automatically parallelize across shards
+<h3>5. Query Across Shards</h3>
+<pre><code class="hljs">-- Queries automatically parallelize across shards
 SELECT
     event_type,
     COUNT(*) as count,
@@ -620,16 +587,13 @@ SELECT
 FROM sharding_demo.events_distributed
 GROUP BY event_type
 ORDER BY count DESC;</code></pre>
-
-        </div>
-    </div>
-
-    <!-- Commands Reference Section -->
-    <div class="section" id="commands"><div class="section-header">💻 Commands Reference</div>
-        <div class="section-content">
-
-            <h3>Cluster Configuration</h3>
-            <pre><code class="hljs">-- Check cluster nodes
+</div>
+</div>
+<!-- Commands Reference Section -->
+<div class="section" id="commands"><div class="section-header">💻 Commands Reference</div>
+<div class="section-content">
+<h3>Cluster Configuration</h3>
+<pre><code class="hljs">-- Check cluster nodes
 SELECT * FROM system.clusters;
 
 -- Get cluster info
@@ -637,9 +601,8 @@ SELECT cluster, shard_num, replica_num, host_name, port, user
 FROM system.clusters
 WHERE cluster = 'my_cluster'
 ORDER BY shard_num, replica_num;</code></pre>
-
-            <h3>Create Local Tables</h3>
-            <pre><code class="hljs">-- Standard MergeTree table on each shard
+<h3>Create Local Tables</h3>
+<pre><code class="hljs">-- Standard MergeTree table on each shard
 CREATE TABLE events_local (
     event_date Date,
     event_time DateTime,
@@ -665,8 +628,8 @@ CREATE TABLE events_local_replicated (
 PARTITION BY toYYYYMM(event_date)
 ORDER BY (event_date, user_id);
 
-            &lt;h3&gt;Create Distributed Tables&lt;/h3&gt;
-            &lt;div class="code-block"&gt;-- Distributed table (query all shards)
+            Create Distributed Tables
+-- Distributed table (query all shards)
 CREATE TABLE events_distributed (
     event_date Date,
     event_time DateTime,
@@ -684,10 +647,9 @@ CREATE TABLE events_distributed (
 INSERT INTO events_distributed VALUES (...);
 
 -- Query distributed (automatically fans out to all shards)
-SELECT COUNT(*) FROM events_distributed;</code></pre>
-
-            <h3>Data Distribution & Rebalancing</h3>
-            <pre><code class="hljs">-- Check data on each shard
+SELECT COUNT(*) FROM events_distributed;
+Data Distribution &amp; Rebalancing
+-- Check data on each shard
 SELECT hostname, COUNT(*) as row_count
 FROM clusterAllReplicas('my_cluster', default.events_local)
 GROUP BY hostname;
@@ -695,22 +657,18 @@ GROUP BY hostname;
 -- Get shard info
 SELECT shard_num, replica_num, host_name, port
 FROM system.clusters
-WHERE cluster = 'my_cluster';</code></pre>
-
-        </div>
-    </div>
-
-    
-    </div>
+WHERE cluster = 'my_cluster';
+</code></pre>
+</div>
+</div>
 <!-- Best Practices Section -->
-    <div class="section" id="best-practices"><div class="section-header">✨ Best Practices</div>
-        <div class="section-content">
-
-            <h3>1. Choosing the Right Sharding Key</h3>
-            <div class="comparison">
-                <div class="bad">
-                    <div class="badge badge-bad">❌ Bad</div>
-                    <pre><code class="hljs">-- High-cardinality key (millions of unique values)
+<div class="section" id="best-practices"><div class="section-header">✨ Best Practices</div>
+<div class="section-content">
+<h3>1. Choosing the Right Sharding Key</h3>
+<div class="comparison">
+<div class="bad">
+<div class="badge badge-bad">❌ Bad</div>
+<pre><code class="hljs">-- High-cardinality key (millions of unique values)
 ENGINE = Distributed(
     'my_cluster',
     'db',
@@ -718,10 +676,10 @@ ENGINE = Distributed(
     user_id  -- ClickHouse uses modulo
 )
 -- Problem: Slow hash function, uneven distribution</code></pre>
-                </div>
-                <div class="good">
-                    <div class="badge badge-good">✅ Good</div>
-                    <pre><code class="hljs">-- Consistent hash key
+</div>
+<div class="good">
+<div class="badge badge-good">✅ Good</div>
+<pre><code class="hljs">-- Consistent hash key
 ENGINE = Distributed(
     'my_cluster',
     'db',
@@ -729,80 +687,76 @@ ENGINE = Distributed(
     cityHash64(user_id)  -- Fast hashing
 )
 -- Benefit: Even distribution, better parallelization</code></pre>
-                </div>
-            </div>
-
-            <h3>2. Shard Key Selection Criteria</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Criterion</th>
-                        <th>Description</th>
-                        <th>Example</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>Cardinality</strong></td>
-                        <td>High cardinality (millions of unique values) ensures even distribution</td>
-                        <td>user_id (good) vs country (bad)</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Immutability</strong></td>
-                        <td>Should not change over time (reshaping is expensive)</td>
-                        <td>user_id (good) vs status (bad)</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Access Pattern</strong></td>
-                        <td>Queries should frequently filter by shard key for efficiency</td>
-                        <td>WHERE user_id = X (good)</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Uniformity</strong></td>
-                        <td>Values should be uniformly distributed</td>
-                        <td>Sequential IDs (good) vs timestamps (bad)</td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <h3>3. Local vs Distributed Tables</h3>
-            <div class="grid-2">
-                <div class="card">
-                    <h4>Local Tables</h4>
-                    <ul>
-                        <li>Exist on each shard node</li>
-                        <li>Store actual data</li>
-                        <li>Use MergeTree family</li>
-                        <li>Queries return partial results</li>
-                        <li>Used internally by Distributed tables</li>
-                    </ul>
-                </div>
-                <div class="card">
-                    <h4>Distributed Tables</h4>
-                    <ul>
-                        <li>Virtual tables (no data storage)</li>
-                        <li>Reference local tables on shards</li>
-                        <li>Route queries to appropriate shards</li>
-                        <li>Combine results from all shards</li>
-                        <li>Transparent horizontal scaling</li>
-                    </ul>
-                </div>
-            </div>
-
-            <h3>4. Resharding Considerations</h3>
-            <div class="highlight-box">
-                <h4>Resharding is EXPENSIVE and RISKY</h4>
-                <p>Plan your sharding key carefully from the start. Resharding (changing the shard key or number of shards) requires:</p>
-                <ul>
-                    <li>Dropping and recreating all tables</li>
-                    <li>Re-inserting all data (can take hours/days for large datasets)</li>
-                    <li>Application downtime during migration</li>
-                </ul>
-                <p><strong>Recommendation:</strong> Choose your sharding strategy carefully initially. If unsure, start with 4-8 shards (easy to grow, hard to shrink).</p>
-            </div>
-
-            <h3>5. Handling Uneven Distribution</h3>
-            <pre><code class="hljs">-- Monitor data distribution across shards
+</div>
+</div>
+<h3>2. Shard Key Selection Criteria</h3>
+<table>
+<thead>
+<tr>
+<th>Criterion</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Cardinality</strong></td>
+<td>High cardinality (millions of unique values) ensures even distribution</td>
+<td>user_id (good) vs country (bad)</td>
+</tr>
+<tr>
+<td><strong>Immutability</strong></td>
+<td>Should not change over time (reshaping is expensive)</td>
+<td>user_id (good) vs status (bad)</td>
+</tr>
+<tr>
+<td><strong>Access Pattern</strong></td>
+<td>Queries should frequently filter by shard key for efficiency</td>
+<td>WHERE user_id = X (good)</td>
+</tr>
+<tr>
+<td><strong>Uniformity</strong></td>
+<td>Values should be uniformly distributed</td>
+<td>Sequential IDs (good) vs timestamps (bad)</td>
+</tr>
+</tbody>
+</table>
+<h3>3. Local vs Distributed Tables</h3>
+<div class="grid-2">
+<div class="card">
+<h4>Local Tables</h4>
+<ul>
+<li>Exist on each shard node</li>
+<li>Store actual data</li>
+<li>Use MergeTree family</li>
+<li>Queries return partial results</li>
+<li>Used internally by Distributed tables</li>
+</ul>
+</div>
+<div class="card">
+<h4>Distributed Tables</h4>
+<ul>
+<li>Virtual tables (no data storage)</li>
+<li>Reference local tables on shards</li>
+<li>Route queries to appropriate shards</li>
+<li>Combine results from all shards</li>
+<li>Transparent horizontal scaling</li>
+</ul>
+</div>
+</div>
+<h3>4. Resharding Considerations</h3>
+<div class="highlight-box">
+<h4>Resharding is EXPENSIVE and RISKY</h4>
+<p>Plan your sharding key carefully from the start. Resharding (changing the shard key or number of shards) requires:</p>
+<ul>
+<li>Dropping and recreating all tables</li>
+<li>Re-inserting all data (can take hours/days for large datasets)</li>
+<li>Application downtime during migration</li>
+</ul>
+<p><strong>Recommendation:</strong> Choose your sharding strategy carefully initially. If unsure, start with 4-8 shards (easy to grow, hard to shrink).</p>
+</div>
+<h3>5. Handling Uneven Distribution</h3>
+<pre><code class="hljs">-- Monitor data distribution across shards
 SELECT
     database,
     table,
@@ -816,134 +770,118 @@ GROUP BY database, table, shard_num, replica_num
 ORDER BY database, table, shard_num;
 
         </code></pre>
-    
-    </div>
 </div>
+</div>
+<!-- When to Use Section -->
+<div class="section" id="when-to-use-sharding"><div class="section-header">🎯 When to Use Sharding</div>
+<div class="section-content">
+<div class="grid-2">
+<div class="card" style="background: #e6f7ed;">
+<h4>✅ Use Sharding When</h4>
+<ul>
+<li>Data exceeds single server capacity (100TB+)</li>
+<li>Query latency is critical (need parallelization)</li>
+<li>Ingestion rate requires multiple nodes</li>
+<li>Geographic distribution needed (regional shards)</li>
+<li>Different data retention per shard</li>
+<li>High availability is mandatory</li>
+<li>Cost optimization via horizontal scaling</li>
+</ul>
+</div>
+<div class="card" style="background: #ffe6e6;">
+<h4>❌ Don't Use Sharding When</h4>
+<ul>
+<li>Data fits on single server (&lt; 50TB)</li>
+<li>Queries are simple and fast</li>
+<li>Team lacks experience with distributed systems</li>
+<li>Adding infrastructure complexity isn't justified</li>
+<li>JOIN queries are frequent (costly across shards)</li>
+<li>Transactions are critical (weak ACID support)</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<!-- Real-World Results Section -->
+<div class="section" id="real-world"><div class="section-header">🏆 Real-World Results</div>
+<div class="section-content">
+<div class="icon-grid">
+<div class="icon-card" style="background: #fff9e6;">
+<div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">10x</div>
+<h4>Query Speed Improvement</h4>
+<p>Parallelizing across 10 shards reduces query time by ~90% (10x speedup)</p>
+</div>
+<div class="icon-card" style="background: #e6f7ed;">
+<div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">1PB+</div>
+<h4>Scalable Data Volume</h4>
+<p>Handle petabytes of data across clusters with transparent sharding</p>
+</div>
+<div class="icon-card" style="background: #e6f2ff;">
+<div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">99.9%</div>
+<h4>High Availability</h4>
+<p>Combined with replication, achieve 99.9%+ uptime</p>
+</div>
+<div class="icon-card" style="background: #f0e6ff;">
+<div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">50%</div>
+<h4>Cost Reduction</h4>
+<p>Scale efficiently with commodity hardware, reduce per-node requirements</p>
+</div>
+</div>
+<h3>Use Case Examples</h3>
+<div class="card">
+<h4>Case Study: Multi-Regional Analytics Platform</h4>
+<p><strong>Challenge:</strong> 500 billion events/day across 15 countries</p>
+<p><strong>Solution:</strong> 3 shards × 3 replicas (9 total nodes, geographically distributed)</p>
+<p><strong>Results:</strong></p>
+<ul>
+<li>Query latency: &lt; 2 seconds for global queries</li>
+<li>Ingestion: 5.7M events/second sustained</li>
+<li>Regional failover: &lt; 30 seconds RTO</li>
+<li>Cost per event: 10x lower than data warehouse</li>
+</ul>
+</div>
+<div class="card">
+<h4>Case Study: Financial Time-Series System</h4>
+<p><strong>Challenge:</strong> 2 trillion data points (market data, trades, quotes)</p>
+<p><strong>Solution:</strong> 8 shards (partitioned by market + symbol hash)</p>
+<p><strong>Results:</strong></p>
+<ul>
+<li>Storage: 15TB raw data in 2TB compressed</li>
+<li>P99 query latency: 500ms on 1-year lookback</li>
+<li>Backfill performance: 100M points/sec per node</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- Templates Section -->
+<div class="section" id="templates"><div class="section-header">📋 Ready-to-Use Templates</div>
+<div class="section-content">
+<h3>Template 1: Basic 3-Node Cluster Setup</h3>
+<pre><code class="hljs">-- config.xml on coordinator node (defines cluster)
 
-    <!-- When to Use Section -->
-    <div class="section" id="when-to-use-sharding"><div class="section-header">🎯 When to Use Sharding</div>
-        <div class="section-content">
 
-            <div class="grid-2">
-                <div class="card" style="background: #e6f7ed;">
-                    <h4>✅ Use Sharding When</h4>
-                    <ul>
-                        <li>Data exceeds single server capacity (100TB+)</li>
-                        <li>Query latency is critical (need parallelization)</li>
-                        <li>Ingestion rate requires multiple nodes</li>
-                        <li>Geographic distribution needed (regional shards)</li>
-                        <li>Different data retention per shard</li>
-                        <li>High availability is mandatory</li>
-                        <li>Cost optimization via horizontal scaling</li>
-                    </ul>
-                </div>
 
-                <div class="card" style="background: #ffe6e6;">
-                    <h4>❌ Don't Use Sharding When</h4>
-                    <ul>
-                        <li>Data fits on single server (< 50TB)</li>
-                        <li>Queries are simple and fast</li>
-                        <li>Team lacks experience with distributed systems</li>
-                        <li>Adding infrastructure complexity isn't justified</li>
-                        <li>JOIN queries are frequent (costly across shards)</li>
-                        <li>Transactions are critical (weak ACID support)</li>
-                    </ul>
-                </div>
-            </div>
 
-        </div>
-    </div>
 
-    <!-- Real-World Results Section -->
-    <div class="section" id="real-world"><div class="section-header">🏆 Real-World Results</div>
-        <div class="section-content">
+node1
+9000
 
-            <div class="icon-grid">
-                <div class="icon-card" style="background: #fff9e6;">
-                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">10x</div>
-                    <h4>Query Speed Improvement</h4>
-                    <p>Parallelizing across 10 shards reduces query time by ~90% (10x speedup)</p>
-                </div>
 
-                <div class="icon-card" style="background: #e6f7ed;">
-                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">1PB+</div>
-                    <h4>Scalable Data Volume</h4>
-                    <p>Handle petabytes of data across clusters with transparent sharding</p>
-                </div>
 
-                <div class="icon-card" style="background: #e6f2ff;">
-                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">99.9%</div>
-                    <h4>High Availability</h4>
-                    <p>Combined with replication, achieve 99.9%+ uptime</p>
-                </div>
 
-                <div class="icon-card" style="background: #f0e6ff;">
-                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">50%</div>
-                    <h4>Cost Reduction</h4>
-                    <p>Scale efficiently with commodity hardware, reduce per-node requirements</p>
-                </div>
-            </div>
+node2
+9000
 
-            <h3>Use Case Examples</h3>
 
-            <div class="card">
-                <h4>Case Study: Multi-Regional Analytics Platform</h4>
-                <p><strong>Challenge:</strong> 500 billion events/day across 15 countries</p>
-                <p><strong>Solution:</strong> 3 shards × 3 replicas (9 total nodes, geographically distributed)</p>
-                <p><strong>Results:</strong></p>
-                <ul>
-                    <li>Query latency: < 2 seconds for global queries</li>
-                    <li>Ingestion: 5.7M events/second sustained</li>
-                    <li>Regional failover: < 30 seconds RTO</li>
-                    <li>Cost per event: 10x lower than data warehouse</li>
-                </ul>
-            </div>
 
-            <div class="card">
-                <h4>Case Study: Financial Time-Series System</h4>
-                <p><strong>Challenge:</strong> 2 trillion data points (market data, trades, quotes)</p>
-                <p><strong>Solution:</strong> 8 shards (partitioned by market + symbol hash)</p>
-                <p><strong>Results:</strong></p>
-                <ul>
-                    <li>Storage: 15TB raw data in 2TB compressed</li>
-                    <li>P99 query latency: 500ms on 1-year lookback</li>
-                    <li>Backfill performance: 100M points/sec per node</li>
-                </ul>
-            </div>
 
-        </div>
-    </div>
+node3
+9000
 
-    <!-- Templates Section -->
-    <div class="section" id="templates"><div class="section-header">📋 Ready-to-Use Templates</div>
-        <div class="section-content">
 
-            <h3>Template 1: Basic 3-Node Cluster Setup</h3>
-            <pre><code class="hljs">-- config.xml on coordinator node (defines cluster)
-&lt;clickhouse&gt;
-  &lt;remote_servers&gt;
-    &lt;my_cluster&gt;
-      &lt;shard&gt;
-        &lt;replica&gt;
-          &lt;host&gt;node1&lt;/host&gt;
-          &lt;port&gt;9000&lt;/port&gt;
-        &lt;/replica&gt;
-      &lt;/shard&gt;
-      &lt;shard&gt;
-        &lt;replica&gt;
-          &lt;host&gt;node2&lt;/host&gt;
-          &lt;port&gt;9000&lt;/port&gt;
-        &lt;/replica&gt;
-      &lt;/shard&gt;
-      &lt;shard&gt;
-        &lt;replica&gt;
-          &lt;host&gt;node3&lt;/host&gt;
-          &lt;port&gt;9000&lt;/port&gt;
-        &lt;/replica&gt;
-      &lt;/shard&gt;
-    &lt;/my_cluster&gt;
-  &lt;/remote_servers&gt;
-&lt;/clickhouse&gt;
+
+
+
 
 -- Create local tables on all nodes
 CREATE TABLE events_local (
@@ -965,8 +903,8 @@ CREATE TABLE events (
     properties String
 ) ENGINE = Distributed('my_cluster', default, events_local, cityHash64(user_id));
 
-            &lt;h3&gt;Template 2: Replicated + Sharded for High Availability&lt;/h3&gt;
-            &lt;div class="code-block"&gt;-- Cluster with replication (2 shards × 2 replicas)
+            Template 2: Replicated + Sharded for High Availability
+-- Cluster with replication (2 shards × 2 replicas)
 CREATE TABLE events_local (
     event_date Date,
     event_time DateTime,
@@ -996,8 +934,8 @@ CREATE TABLE events (
 
 -- Result: High availability + horizontal scaling
 
-            &lt;h3&gt;Template 3: Monitoring Data Distribution&lt;/h3&gt;
-            &lt;div class="code-block"&gt;-- Monitor uneven shards
+            Template 3: Monitoring Data Distribution
+-- Monitor uneven shards
 CREATE TABLE shard_statistics AS
 SELECT
     database,
@@ -1020,43 +958,39 @@ FROM shard_statistics
 GROUP BY table;
 
        
-    </code></pre>
+    
 
-    </div>
-
-    </div>
- </div>
-    </div>
-
-    <!-- Advanced Patterns Section -->
-    <div class="section" id="advanced"><div class="section-header">🔥 Advanced Patterns</div>
-        <div class="section-content">
-
-            <h3>1. Asymmetric Sharding (Variable Shard Sizes)</h3>
-            <pre><code class="hljs">-- Some shards larger than others (e.g., US data is 50% of total)
+</code></pre>
+</div>
+</div>
+<!-- Advanced Patterns Section -->
+<div class="section" id="advanced"><div class="section-header">🔥 Advanced Patterns</div>
+<div class="section-content">
+<h3>1. Asymmetric Sharding (Variable Shard Sizes)</h3>
+<pre><code class="hljs">-- Some shards larger than others (e.g., US data is 50% of total)
 -- Define multiple cluster configurations
-&lt;remote_servers&gt;
-  &lt;asymmetric_cluster&gt;
-    &lt;!-- US shard (2 replicas, more powerful hardware) --&gt;
-    &lt;shard&gt;
-      &lt;replica&gt;
-        &lt;host&gt;us-node-1&lt;/host&gt;
-        &lt;port&gt;9000&lt;/port&gt;
-      &lt;/replica&gt;
-      &lt;replica&gt;
-        &lt;host&gt;us-node-2&lt;/host&gt;
-        &lt;port&gt;9000&lt;/port&gt;
-      &lt;/replica&gt;
-    &lt;/shard&gt;
-    &lt;!-- EU shard (1 replica, smaller hardware) --&gt;
-    &lt;shard&gt;
-      &lt;replica&gt;
-        &lt;host&gt;eu-node-1&lt;/host&gt;
-        &lt;port&gt;9000&lt;/port&gt;
-      &lt;/replica&gt;
-    &lt;/shard&gt;
-  &lt;/asymmetric_cluster&gt;
-&lt;/remote_servers&gt;
+
+
+
+
+
+us-node-1
+9000
+
+
+us-node-2
+9000
+
+
+
+
+
+eu-node-1
+9000
+
+
+
+
 
 -- Use consistent hashing to prefer US shard
 CREATE TABLE events ENGINE = Distributed(
@@ -1066,8 +1000,8 @@ CREATE TABLE events ENGINE = Distributed(
   if(country = 'US', intHash32(user_id) % 1, intHash32(user_id) % 2 + 1)
 );
 
-            &lt;h3&gt;2. Geo-Distributed Sharding&lt;/h3&gt;
-            &lt;div class="code-block"&gt;-- Route data to regional shards based on geography
+            2. Geo-Distributed Sharding
+-- Route data to regional shards based on geography
 -- Shard 1: US/Canada/Latin America
 -- Shard 2: Europe/Africa/Middle East
 -- Shard 3: Asia-Pacific
@@ -1086,8 +1020,8 @@ CREATE TABLE events ENGINE = Distributed(
 
 -- Benefits: Data locality, lower latency, compliance (GDPR)
 
-            &lt;h3&gt;3. Two-Level Sharding (Sharded + Replicated)&lt;/h3&gt;
-            &lt;div class="code-block"&gt;-- Maximum reliability: partition data AND replicate
+            3. Two-Level Sharding (Sharded + Replicated)
+-- Maximum reliability: partition data AND replicate
 -- 4 shards × 3 replicas = 12 nodes total
 -- Can lose 2 replicas per shard (67% node failure)
 
@@ -1107,8 +1041,8 @@ ORDER BY (event_date, user_id);
 -- Distributed query automatically handles all replicas
 SELECT COUNT(*) FROM events_distributed;  -- Queries all 12 nodes
 
-            &lt;h3&gt;4. Handling Slow Shards (Adaptive Query Timeout)&lt;/h3&gt;
-            &lt;div class="code-block"&gt;-- Set timeout for slow shards
+            4. Handling Slow Shards (Adaptive Query Timeout)
+-- Set timeout for slow shards
 SET connect_timeout = 5;
 SET receive_timeout = 30;
 SET send_timeout = 30;
@@ -1132,108 +1066,89 @@ SELECT
 FROM clusterAllReplicas('my_cluster', system.query_log)
 WHERE type = 'QueryFinish' AND query_duration_ms &gt; 5000
 ORDER
-    </code></pre>
+    
 
-    </div>
 
-    </div>
-
-    </div>
+</code></pre>
  BY query_duration_ms DESC;
 
         </div>
-    </div>
-
-    <!-- Resources Section -->
-    <div class="section" id="resources"><div class="section-header">📚 Resources & Next Steps</div>
-        <div class="section-content">
-
-            <div class="grid-2">
-                <div class="card">
-                    <h4>📘 View in Notion</h4>
-                    <p style="margin: 10px 0;">Access this module in your Notion workspace for note-taking and tracking your progress.</p>
-                    <a href="https://www.notion.so/Module-3-Sharding-Strategy-Distribution-2f1bb896952b8173831ed3a014093435" target="_blank" rel="noopener noreferrer" style="color: #ff6b35; font-weight: 600; text-decoration: none;">Open in Notion →</a>
-                </div>
-
-                <div class="card">
-                    <h4>📖 Official Documentation</h4>
-                    <ul>
-                        <li><a href="https://clickhouse.com/docs/en/engines/table-engines/special/distributed" target="_blank">Distributed Table Engine</a></li>
-                        <li><a href="https://clickhouse.com/docs/en/operations/server-configuration-parameters/settings#remote_servers" target="_blank">Cluster Configuration</a></li>
-                        <li><a href="https://clickhouse.com/docs/en/operations/replica" target="_blank">Replication Setup</a></li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <h4>🎓 Learning Resources</h4>
-                    <ul>
-                        <li><a href="https://clickhouse.com/learn" target="_blank">ClickHouse Learning</a></li>
-                        <li><a href="https://clickhouse.com/blog" target="_blank">Official Blog</a></li>
-                        <li><a href="https://github.com/ClickHouse/ClickHouse" target="_blank">GitHub Repository</a></li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <h4>🛠️ Tools & Utilities</h4>
-                    <ul>
-                        <li>ClickHouse Client - CLI for queries</li>
-                        <li>DBeaver - GUI management tool</li>
-                        <li>Tabix - Web UI for ClickHouse</li>
-                        <li>ch-go - Go client library</li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <h4>💬 Community & Support</h4>
-                    <ul>
-                        <li><a href="https://clickhouse.com/slack" target="_blank">Slack Community</a></li>
-                        <li><a href="https://stackoverflow.com/questions/tagged/clickhouse" target="_blank">Stack Overflow</a></li>
-                        <li><a href="https://github.com/ClickHouse/ClickHouse/discussions" target="_blank">GitHub Discussions</a></li>
-                    </ul>
-                </div>
-            </div>
-
-            <div class="highlight-box">
-                <h4>Key Takeaways</h4>
-                <ul>
-                    <li>✅ <strong>Sharding = Horizontal Scaling:</strong> Distribute data across nodes for unlimited capacity</li>
-                    <li>✅ <strong>Shard Key is Critical:</strong> Choose wisely; resharding is expensive and risky</li>
-                    <li>✅ <strong>Local + Distributed:</strong> Local tables store data, Distributed tables query them</li>
-                    <li>✅ <strong>Combine with Replication:</strong> Sharding + replication provides both scale and reliability</li>
-                    <li>✅ <strong>Monitor Distribution:</strong> Uneven shards degrade performance; use system.parts to monitor</li>
-                </ul>
-            </div>
-
-            <div class="highlight-box">
-                <h4>Next: Module 4 - Advanced Query Optimization</h4>
-                <p>After mastering sharding, you'll learn:</p>
-                <ul>
-                    <li>Query optimization techniques for large datasets</li>
-                    <li>Materialized views for pre-aggregation</li>
-                    <li>Window functions and advanced analytics</li>
-                    <li>Performance profiling and troubleshooting</li>
-                </ul>
-            </div>
-
-        </div>
-    </div>
-
 </div>
-
+<!-- Resources Section -->
+<div class="section" id="resources"><div class="section-header">📚 Resources &amp; Next Steps</div>
+<div class="section-content">
+<div class="grid-2">
+<div class="card">
+<h4>📘 View in Notion</h4>
+<p style="margin: 10px 0;">Access this module in your Notion workspace for note-taking and tracking your progress.</p>
+<a href="https://www.notion.so/Module-3-Sharding-Strategy-Distribution-2f1bb896952b8173831ed3a014093435" rel="noopener noreferrer" style="color: #ff6b35; font-weight: 600; text-decoration: none;" target="_blank">Open in Notion →</a>
+</div>
+<div class="card">
+<h4>📖 Official Documentation</h4>
+<ul>
+<li><a href="https://clickhouse.com/docs/en/engines/table-engines/special/distributed" target="_blank">Distributed Table Engine</a></li>
+<li><a href="https://clickhouse.com/docs/en/operations/server-configuration-parameters/settings#remote_servers" target="_blank">Cluster Configuration</a></li>
+<li><a href="https://clickhouse.com/docs/en/operations/replica" target="_blank">Replication Setup</a></li>
+</ul>
+</div>
+<div class="card">
+<h4>🎓 Learning Resources</h4>
+<ul>
+<li><a href="https://clickhouse.com/learn" target="_blank">ClickHouse Learning</a></li>
+<li><a href="https://clickhouse.com/blog" target="_blank">Official Blog</a></li>
+<li><a href="https://github.com/ClickHouse/ClickHouse" target="_blank">GitHub Repository</a></li>
+</ul>
+</div>
+<div class="card">
+<h4>🛠️ Tools &amp; Utilities</h4>
+<ul>
+<li>ClickHouse Client - CLI for queries</li>
+<li>DBeaver - GUI management tool</li>
+<li>Tabix - Web UI for ClickHouse</li>
+<li>ch-go - Go client library</li>
+</ul>
+</div>
+<div class="card">
+<h4>💬 Community &amp; Support</h4>
+<ul>
+<li><a href="https://clickhouse.com/slack" target="_blank">Slack Community</a></li>
+<li><a href="https://stackoverflow.com/questions/tagged/clickhouse" target="_blank">Stack Overflow</a></li>
+<li><a href="https://github.com/ClickHouse/ClickHouse/discussions" target="_blank">GitHub Discussions</a></li>
+</ul>
+</div>
+</div>
+<div class="highlight-box">
+<h4>Key Takeaways</h4>
+<ul>
+<li>✅ <strong>Sharding = Horizontal Scaling:</strong> Distribute data across nodes for unlimited capacity</li>
+<li>✅ <strong>Shard Key is Critical:</strong> Choose wisely; resharding is expensive and risky</li>
+<li>✅ <strong>Local + Distributed:</strong> Local tables store data, Distributed tables query them</li>
+<li>✅ <strong>Combine with Replication:</strong> Sharding + replication provides both scale and reliability</li>
+<li>✅ <strong>Monitor Distribution:</strong> Uneven shards degrade performance; use system.parts to monitor</li>
+</ul>
+</div>
+<div class="highlight-box">
+<h4>Next: Module 4 - Advanced Query Optimization</h4>
+<p>After mastering sharding, you'll learn:</p>
+<ul>
+<li>Query optimization techniques for large datasets</li>
+<li>Materialized views for pre-aggregation</li>
+<li>Window functions and advanced analytics</li>
+<li>Performance profiling and troubleshooting</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
 <div style="background: #333; color: white; padding: 40px 20px; text-align: center; margin-top: 40px;">
-    <h3>🔀 ClickHouse Sharding & Distribution</h3>
-    <p>Module 3 of 10 | Duration: 6-8 weeks total</p>
-    <p style="margin-top: 20px; opacity: 0.8;">Master distributed architecture for unlimited scalability | 2026</p>
+<h3>🔀 ClickHouse Sharding &amp; Distribution</h3>
+<p>Module 3 of 10 | Duration: 6-8 weeks total</p>
+<p style="margin-top: 20px; opacity: 0.8;">Master distributed architecture for unlimited scalability | 2026</p>
 </div>
-
 <div class="module-nav" style="border-bottom: none; border-top: 2px solid #ff6b35;">
-    <a href="module-2-table-engines.html" class="nav-btn-module">← Previous: Module 2 - Table Engines</a>
-    <a href="../index.html" class="nav-btn-module nav-home">🏠 Home</a>
-    <a href="module-4-replication.html" class="nav-btn-module">Next: Module 4 - Replication →</a>
+<a class="nav-btn-module" href="module-2-table-engines.html">← Previous: Module 2 - Table Engines</a>
+<a class="nav-btn-module nav-home" href="../index.html">🏠 Home</a>
+<a class="nav-btn-module" href="module-4-replication.html">Next: Module 4 - Replication →</a>
 </div>
-
-<script>
-hljs.highlightAll();
-</script>
-</body>
+<script>hljs.highlightAll();</script></body>
 </html>

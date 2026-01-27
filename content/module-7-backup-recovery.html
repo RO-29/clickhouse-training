@@ -1,14 +1,15 @@
 <!DOCTYPE html>
+
 <html lang="en" style="scroll-behavior: smooth;">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Module 7: ClickHouse Backup, Recovery & PITR</title>
-    <link rel="icon" type="image/x-icon" href="../favicon.ico">
-    <link rel="icon" type="image/png" href="../favicon.png">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
-    <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Module 7: ClickHouse Backup, Recovery &amp; PITR</title>
+<link href="../favicon.ico" rel="icon" type="image/x-icon"/>
+<link href="../favicon.png" rel="icon" type="image/png"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
             margin: 0;
@@ -278,298 +279,278 @@
     </style>
 </head>
 <body>
-
 <div class="module-nav">
-    <a href="module-6-query-optimization.html" class="nav-btn-module">← Previous: Module 6 - Query Optimization</a>
-    <a href="../index.html" class="nav-btn-module nav-home">🏠 Home</a>
-    <a href="module-8-disaster-recovery.html" class="nav-btn-module">Next: Module 8 - Disaster Recovery →</a>
+<a class="nav-btn-module" href="module-6-query-optimization.html">← Previous: Module 6 - Query Optimization</a>
+<a class="nav-btn-module nav-home" href="../index.html">🏠 Home</a>
+<a class="nav-btn-module" href="module-8-disaster-recovery.html">Next: Module 8 - Disaster Recovery →</a>
 </div>
-
 <div class="header">
-    <h1>💾 MODULE 7</h1>
-    <div class="subtitle">Backup, Recovery & Point-in-Time Recovery (PITR)</div>
-    <div class="subtitle" style="font-size: 1em; margin-top: 20px;">Duration: 4-5 hours | Week 5</div>
+<h1>💾 MODULE 7</h1>
+<div class="subtitle">Backup, Recovery &amp; Point-in-Time Recovery (PITR)</div>
+<div class="subtitle" style="font-size: 1em; margin-top: 20px;">Duration: 4-5 hours | Week 5</div>
 </div>
-
 <div style="background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);">
-    <div class="nav-buttons">
-        <div class="nav-btn">📖 What is it?</div>
-        <div class="nav-btn">🚀 Quick Start</div>
-        <div class="nav-btn">💻 Commands</div>
-        <div class="nav-btn">✨ Best Practices</div>
-        <div class="nav-btn">🎯 When to Use</div>
-        <div class="nav-btn">🏆 Real-World Results</div>
-        <div class="nav-btn">📋 Templates</div>
-        <div class="nav-btn">🔥 Advanced</div>
-        <div class="nav-btn">📚 Resources</div>
-    </div>
+<div class="nav-buttons">
+<div class="nav-btn">📖 What is it?</div>
+<div class="nav-btn">🚀 Quick Start</div>
+<div class="nav-btn">💻 Commands</div>
+<div class="nav-btn">✨ Best Practices</div>
+<div class="nav-btn">🎯 When to Use</div>
+<div class="nav-btn">🏆 Real-World Results</div>
+<div class="nav-btn">📋 Templates</div>
+<div class="nav-btn">🔥 Advanced</div>
+<div class="nav-btn">📚 Resources</div>
 </div>
-
+</div>
 <div class="container">
-
-    <!-- What is it Section -->
-    <div class="section" id="what-is-backup-recovery-pitr"><div class="section-header">📖 What is Backup, Recovery & PITR?</div>
-        <div class="section-content">
-            <div class="highlight-box">
-                <h4 style="margin-top: 0;">Core Concepts</h4>
-                <p><strong>Backup & Recovery</strong> is the process of creating copies of your ClickHouse data and being able to restore it when needed. <strong>Point-in-Time Recovery (PITR)</strong> allows you to restore your database to any specific point in time, not just to the most recent backup. Together, these form your disaster recovery strategy.</p>
-            </div>
-
-            <div class="icon-grid">
-                <div class="icon-card">
-                    <div class="icon">💾</div>
-                    <h4>Full Backups</h4>
-                    <p>Complete copy of all data at a specific moment. Slower but simple recovery.</p>
-                </div>
-                <div class="icon-card">
-                    <div class="icon">📊</div>
-                    <h4>Incremental Backups</h4>
-                    <p>Only new/changed data since last backup. Fast and storage-efficient.</p>
-                </div>
-                <div class="icon-card">
-                    <div class="icon">⏱️</div>
-                    <h4>Point-in-Time Recovery</h4>
-                    <p>Restore to any moment, combining backups + transaction logs.</p>
-                </div>
-                <div class="icon-card">
-                    <div class="icon">🔄</div>
-                    <h4>Backup Tools</h4>
-                    <p>clickhouse-backup for easy management, replication for HA.</p>
-                </div>
-            </div>
-
-            <h3>Backup Strategies Comparison</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Strategy</th>
-                        <th>Speed</th>
-                        <th>Storage</th>
-                        <th>Recovery Time</th>
-                        <th>Best For</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>Full Backup</strong></td>
-                        <td>Slow</td>
-                        <td>High</td>
-                        <td>Fast</td>
-                        <td>Complete protection, weekly backups</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Incremental</strong></td>
-                        <td>Fast</td>
-                        <td>Low</td>
-                        <td>Medium</td>
-                        <td>Daily backups, cost reduction</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Differential</strong></td>
-                        <td>Fast</td>
-                        <td>Medium</td>
-                        <td>Medium</td>
-                        <td>Balanced approach</td>
-                    </tr>
-                    <tr>
-                        <td><strong>PITR</strong></td>
-                        <td>Variable</td>
-                        <td>Medium</td>
-                        <td>Very Fast</td>
-                        <td>Production, disaster recovery</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Replication</strong></td>
-                        <td>Real-time</td>
-                        <td>2x per shard</td>
-                        <td>Instant</td>
-                        <td>High availability</td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <h3>Why You Need Multiple Strategies</h3>
-            <div class="grid-2">
-                <div class="card">
-                    <h4>Disaster Recovery</h4>
-                    <ul>
-                        <li>Hardware failures (disk crash)</li>
-                        <li>Data center outages</li>
-                        <li>Accidental deletes (human error)</li>
-                        <li>Ransomware attacks</li>
-                        <li>Corrupted data</li>
-                    </ul>
-                </div>
-                <div class="card">
-                    <h4>Business Continuity</h4>
-                    <ul>
-                        <li>Minimize data loss (RTO/RPO)</li>
-                        <li>Enable quick recovery</li>
-                        <li>Compliance requirements</li>
-                        <li>Geographic redundancy</li>
-                        <li>Testing/staging environments</li>
-                    </ul>
-                </div>
-            </div>
-
-            <h3>Backup Architecture Diagram</h3>
-            <div class="diagram">
-                <h4 style="text-align: center; color: #ff6b35; margin-top: 0;">ClickHouse Backup Pipeline</h4>
-                <div class="diagram-box" style="background: #e6f7ed;">ClickHouse Cluster (Production Data)</div>
-                <div class="diagram-arrow">↓</div>
-                <div class="diagram-box" style="background: #fff9e6;">clickhouse-backup Tool</div>
-                <div class="diagram-arrow">↓</div>
-                <div class="flow-container">
-                    <div class="flow-box">
-                        <strong>Local Storage</strong><br>
-                        <small>Fast Access<br>48-hour retention</small>
-                    </div>
-                    <div class="flow-arrow-right">→</div>
-                    <div class="flow-box">
-                        <strong>S3/Cloud Storage</strong><br>
-                        <small>Geographic Redundancy<br>90-day retention</small>
-                    </div>
-                    <div class="flow-arrow-right">→</div>
-                    <div class="flow-box">
-                        <strong>Glacier Archive</strong><br>
-                        <small>Long-term Storage<br>7-year retention</small>
-                    </div>
-                </div>
-            </div>
-
-            <h3>Full vs Incremental Backup Flow</h3>
-            <div class="diagram">
-                <div class="grid-2">
-                    <div>
-                        <h4 style="color: #ff6b35;">Full Backup</h4>
-                        <div class="diagram-box" style="background: #e6f7ed;">Day 1: Full Backup (100GB)</div>
-                        <div class="diagram-arrow">↓</div>
-                        <div class="diagram-box" style="background: #e6f7ed;">Day 2: Full Backup (102GB)</div>
-                        <div class="diagram-arrow">↓</div>
-                        <div class="diagram-box" style="background: #e6f7ed;">Day 3: Full Backup (105GB)</div>
-                        <div style="margin-top: 15px; padding: 10px; background: #ffe6e6; border-radius: 5px; color: #1a1a1a;">
-                            <strong>Total Storage:</strong> 307GB<br>
-                            <strong>Backup Time:</strong> ~3 hours each<br>
-                            <strong>Recovery:</strong> Fast (single backup)
+<!-- What is it Section -->
+<div class="section" id="what-is-backup-recovery-pitr"><div class="section-header">📖 What is Backup, Recovery &amp; PITR?</div>
+<div class="section-content">
+<div class="highlight-box">
+<h4 style="margin-top: 0;">Core Concepts</h4>
+<p><strong>Backup &amp; Recovery</strong> is the process of creating copies of your ClickHouse data and being able to restore it when needed. <strong>Point-in-Time Recovery (PITR)</strong> allows you to restore your database to any specific point in time, not just to the most recent backup. Together, these form your disaster recovery strategy.</p>
+</div>
+<div class="icon-grid">
+<div class="icon-card">
+<div class="icon">💾</div>
+<h4>Full Backups</h4>
+<p>Complete copy of all data at a specific moment. Slower but simple recovery.</p>
+</div>
+<div class="icon-card">
+<div class="icon">📊</div>
+<h4>Incremental Backups</h4>
+<p>Only new/changed data since last backup. Fast and storage-efficient.</p>
+</div>
+<div class="icon-card">
+<div class="icon">⏱️</div>
+<h4>Point-in-Time Recovery</h4>
+<p>Restore to any moment, combining backups + transaction logs.</p>
+</div>
+<div class="icon-card">
+<div class="icon">🔄</div>
+<h4>Backup Tools</h4>
+<p>clickhouse-backup for easy management, replication for HA.</p>
+</div>
+</div>
+<h3>Backup Strategies Comparison</h3>
+<table>
+<thead>
+<tr>
+<th>Strategy</th>
+<th>Speed</th>
+<th>Storage</th>
+<th>Recovery Time</th>
+<th>Best For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Full Backup</strong></td>
+<td>Slow</td>
+<td>High</td>
+<td>Fast</td>
+<td>Complete protection, weekly backups</td>
+</tr>
+<tr>
+<td><strong>Incremental</strong></td>
+<td>Fast</td>
+<td>Low</td>
+<td>Medium</td>
+<td>Daily backups, cost reduction</td>
+</tr>
+<tr>
+<td><strong>Differential</strong></td>
+<td>Fast</td>
+<td>Medium</td>
+<td>Medium</td>
+<td>Balanced approach</td>
+</tr>
+<tr>
+<td><strong>PITR</strong></td>
+<td>Variable</td>
+<td>Medium</td>
+<td>Very Fast</td>
+<td>Production, disaster recovery</td>
+</tr>
+<tr>
+<td><strong>Replication</strong></td>
+<td>Real-time</td>
+<td>2x per shard</td>
+<td>Instant</td>
+<td>High availability</td>
+</tr>
+</tbody>
+</table>
+<h3>Why You Need Multiple Strategies</h3>
+<div class="grid-2">
+<div class="card">
+<h4>Disaster Recovery</h4>
+<ul>
+<li>Hardware failures (disk crash)</li>
+<li>Data center outages</li>
+<li>Accidental deletes (human error)</li>
+<li>Ransomware attacks</li>
+<li>Corrupted data</li>
+</ul>
+</div>
+<div class="card">
+<h4>Business Continuity</h4>
+<ul>
+<li>Minimize data loss (RTO/RPO)</li>
+<li>Enable quick recovery</li>
+<li>Compliance requirements</li>
+<li>Geographic redundancy</li>
+<li>Testing/staging environments</li>
+</ul>
+</div>
+</div>
+<h3>Backup Architecture Diagram</h3>
+<div class="diagram">
+<h4 style="text-align: center; color: #ff6b35; margin-top: 0;">ClickHouse Backup Pipeline</h4>
+<div class="diagram-box" style="background: #e6f7ed;">ClickHouse Cluster (Production Data)</div>
+<div class="diagram-arrow">↓</div>
+<div class="diagram-box" style="background: #fff9e6;">clickhouse-backup Tool</div>
+<div class="diagram-arrow">↓</div>
+<div class="flow-container">
+<div class="flow-box">
+<strong>Local Storage</strong><br/>
+<small>Fast Access<br/>48-hour retention</small>
+</div>
+<div class="flow-arrow-right">→</div>
+<div class="flow-box">
+<strong>S3/Cloud Storage</strong><br/>
+<small>Geographic Redundancy<br/>90-day retention</small>
+</div>
+<div class="flow-arrow-right">→</div>
+<div class="flow-box">
+<strong>Glacier Archive</strong><br/>
+<small>Long-term Storage<br/>7-year retention</small>
+</div>
+</div>
+</div>
+<h3>Full vs Incremental Backup Flow</h3>
+<div class="diagram">
+<div class="grid-2">
+<div>
+<h4 style="color: #ff6b35;">Full Backup</h4>
+<div class="diagram-box" style="background: #e6f7ed;">Day 1: Full Backup (100GB)</div>
+<div class="diagram-arrow">↓</div>
+<div class="diagram-box" style="background: #e6f7ed;">Day 2: Full Backup (102GB)</div>
+<div class="diagram-arrow">↓</div>
+<div class="diagram-box" style="background: #e6f7ed;">Day 3: Full Backup (105GB)</div>
+<div style="margin-top: 15px; padding: 10px; background: #ffe6e6; border-radius: 5px; color: #1a1a1a;">
+<strong>Total Storage:</strong> 307GB<br/>
+<strong>Backup Time:</strong> ~3 hours each<br/>
+<strong>Recovery:</strong> Fast (single backup)
                         </div>
-                    </div>
-                    <div>
-                        <h4 style="color: #ff6b35;">Incremental Backup</h4>
-                        <div class="diagram-box" style="background: #e6f7ed;">Day 1: Full Backup (100GB)</div>
-                        <div class="diagram-arrow">↓</div>
-                        <div class="diagram-box" style="background: #fff9e6;">Day 2: +2GB changes</div>
-                        <div class="diagram-arrow">↓</div>
-                        <div class="diagram-box" style="background: #fff9e6;">Day 3: +3GB changes</div>
-                        <div style="margin-top: 15px; padding: 10px; background: #e6f7ed; border-radius: 5px; color: #1a1a1a;">
-                            <strong>Total Storage:</strong> 105GB<br>
-                            <strong>Backup Time:</strong> ~10 min each<br>
-                            <strong>Recovery:</strong> Slower (chain restore)
+</div>
+<div>
+<h4 style="color: #ff6b35;">Incremental Backup</h4>
+<div class="diagram-box" style="background: #e6f7ed;">Day 1: Full Backup (100GB)</div>
+<div class="diagram-arrow">↓</div>
+<div class="diagram-box" style="background: #fff9e6;">Day 2: +2GB changes</div>
+<div class="diagram-arrow">↓</div>
+<div class="diagram-box" style="background: #fff9e6;">Day 3: +3GB changes</div>
+<div style="margin-top: 15px; padding: 10px; background: #e6f7ed; border-radius: 5px; color: #1a1a1a;">
+<strong>Total Storage:</strong> 105GB<br/>
+<strong>Backup Time:</strong> ~10 min each<br/>
+<strong>Recovery:</strong> Slower (chain restore)
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <h3>Point-in-Time Recovery Timeline</h3>
-            <div class="diagram">
-                <h4 style="text-align: center; color: #ff6b35; margin-top: 0;">PITR Workflow</h4>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0;">
-                    <div class="diagram-box" style="flex: 1; background: #e6f7ed;">
-                        <strong>Sunday 00:00</strong><br>
+</div>
+</div>
+</div>
+<h3>Point-in-Time Recovery Timeline</h3>
+<div class="diagram">
+<h4 style="text-align: center; color: #ff6b35; margin-top: 0;">PITR Workflow</h4>
+<div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0;">
+<div class="diagram-box" style="flex: 1; background: #e6f7ed;">
+<strong>Sunday 00:00</strong><br/>
                         Full Backup
                     </div>
-                    <div style="padding: 0 10px; font-size: 1.5em; color: #ff6b35;">→</div>
-                    <div class="diagram-box" style="flex: 1; background: #fff9e6;">
-                        <strong>Mon-Sat</strong><br>
+<div style="padding: 0 10px; font-size: 1.5em; color: #ff6b35;">→</div>
+<div class="diagram-box" style="flex: 1; background: #fff9e6;">
+<strong>Mon-Sat</strong><br/>
                         Incremental + Logs
                     </div>
-                    <div style="padding: 0 10px; font-size: 1.5em; color: #ff6b35;">→</div>
-                    <div class="diagram-box" style="flex: 1; background: #ffe6e6;">
-                        <strong>Wed 14:30</strong><br>
+<div style="padding: 0 10px; font-size: 1.5em; color: #ff6b35;">→</div>
+<div class="diagram-box" style="flex: 1; background: #ffe6e6;">
+<strong>Wed 14:30</strong><br/>
                         Disaster!
                     </div>
-                </div>
-                <div class="diagram-arrow">↓ RECOVERY ↓</div>
-                <div style="background: #e6f7ed; padding: 20px; border-radius: 8px; margin-top: 20px; color: #1a1a1a;">
-                    <strong>Recovery Steps:</strong><br>
-                    1. Restore Sunday Full Backup → Base State<br>
-                    2. Apply Mon Incremental → +changes<br>
-                    3. Apply Tue Incremental → +changes<br>
-                    4. Apply Wed Logs up to 14:29:59 → Exact Recovery Point<br>
-                    <strong style="color: #27ae60;">✅ Result: Data recovered to Wed 14:29:59 (1 second before disaster)</strong>
-                </div>
-            </div>
-
-            <h3>Restore Procedure Flowchart</h3>
-            <div class="diagram">
-                <div class="diagram-box" style="background: #fff9e6;">1. Detect Failure / Data Loss</div>
-                <div class="diagram-arrow">↓</div>
-                <div class="diagram-box" style="background: #e6f2ff;">2. Identify Last Good Backup</div>
-                <div class="diagram-arrow">↓</div>
-                <div class="diagram-box" style="background: #e6f2ff;">3. Download from S3 (if needed)</div>
-                <div class="diagram-arrow">↓</div>
-                <div class="diagram-box" style="background: #fff9e6;">4. Restore Schema (Metadata)</div>
-                <div class="diagram-arrow">↓</div>
-                <div class="diagram-box" style="background: #fff9e6;">5. Restore Data (Parts)</div>
-                <div class="diagram-arrow">↓</div>
-                <div class="diagram-box" style="background: #e6f2ff;">6. Apply Incremental Changes</div>
-                <div class="diagram-arrow">↓</div>
-                <div class="diagram-box" style="background: #e6f2ff;">7. Verify Data Integrity</div>
-                <div class="diagram-arrow">↓</div>
-                <div class="diagram-box" style="background: #e6f7ed;">8. Resume Operations ✅</div>
-            </div>
-
-            <h3>Backup Architecture Options</h3>
-            <div class="card">
-                <h4>Local Backup</h4>
-                <p><strong>Pros:</strong> Fast, simple, no external dependencies. <strong>Cons:</strong> Vulnerable to single-node failure.</p>
-                <pre><code class="hljs">Backup Server → Local Disk (Fast)</code></pre>
-            </div>
-
-            <div class="card">
-                <h4>Network Storage (NFS/SMB)</h4>
-                <p><strong>Pros:</strong> Shared storage, centralized. <strong>Cons:</strong> Network bottleneck, single point of failure.</p>
-                <pre><code class="hljs">ClickHouse Cluster → NFS/SMB → Backup Storage</code></pre>
-            </div>
-
-            <div class="card">
-                <h4>S3/Cloud Storage</h4>
-                <p><strong>Pros:</strong> Highly available, geographic redundancy, scalable. <strong>Cons:</strong> Network bandwidth, latency, cost.</p>
-                <pre><code class="hljs">ClickHouse Cluster → S3/GCS/Azure Blob → Versioning + Lifecycle</code></pre>
-            </div>
-
-            <div class="card">
-                <h4>Hybrid Multi-Tier</h4>
-                <p><strong>Recommended:</strong> Local + S3 with tiering. Daily to local, weekly to S3.</p>
-                <pre><code class="hljs">Cluster → Daily Local (Fast Recovery) + Weekly S3 (Long-term retention)</code></pre>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- Quick Start Section -->
-    <div class="section" id="quick-start-your-first-backup"><div class="section-header">🚀 Quick Start: Your First Backup</div>
-        <div class="section-content">
-
-            <h3>1. Install clickhouse-backup Tool</h3>
-            <div class="grid-2">
-                <div class="card">
-                    <h4>Ubuntu/Debian</h4>
-                    <pre><code class="hljs">sudo apt-get install -y clickhouse-backup
+</div>
+<div class="diagram-arrow">↓ RECOVERY ↓</div>
+<div style="background: #e6f7ed; padding: 20px; border-radius: 8px; margin-top: 20px; color: #1a1a1a;">
+<strong>Recovery Steps:</strong><br/>
+                    1. Restore Sunday Full Backup → Base State<br/>
+                    2. Apply Mon Incremental → +changes<br/>
+                    3. Apply Tue Incremental → +changes<br/>
+                    4. Apply Wed Logs up to 14:29:59 → Exact Recovery Point<br/>
+<strong style="color: #27ae60;">✅ Result: Data recovered to Wed 14:29:59 (1 second before disaster)</strong>
+</div>
+</div>
+<h3>Restore Procedure Flowchart</h3>
+<div class="diagram">
+<div class="diagram-box" style="background: #fff9e6;">1. Detect Failure / Data Loss</div>
+<div class="diagram-arrow">↓</div>
+<div class="diagram-box" style="background: #e6f2ff;">2. Identify Last Good Backup</div>
+<div class="diagram-arrow">↓</div>
+<div class="diagram-box" style="background: #e6f2ff;">3. Download from S3 (if needed)</div>
+<div class="diagram-arrow">↓</div>
+<div class="diagram-box" style="background: #fff9e6;">4. Restore Schema (Metadata)</div>
+<div class="diagram-arrow">↓</div>
+<div class="diagram-box" style="background: #fff9e6;">5. Restore Data (Parts)</div>
+<div class="diagram-arrow">↓</div>
+<div class="diagram-box" style="background: #e6f2ff;">6. Apply Incremental Changes</div>
+<div class="diagram-arrow">↓</div>
+<div class="diagram-box" style="background: #e6f2ff;">7. Verify Data Integrity</div>
+<div class="diagram-arrow">↓</div>
+<div class="diagram-box" style="background: #e6f7ed;">8. Resume Operations ✅</div>
+</div>
+<h3>Backup Architecture Options</h3>
+<div class="card">
+<h4>Local Backup</h4>
+<p><strong>Pros:</strong> Fast, simple, no external dependencies. <strong>Cons:</strong> Vulnerable to single-node failure.</p>
+<pre><code class="hljs">Backup Server → Local Disk (Fast)</code></pre>
+</div>
+<div class="card">
+<h4>Network Storage (NFS/SMB)</h4>
+<p><strong>Pros:</strong> Shared storage, centralized. <strong>Cons:</strong> Network bottleneck, single point of failure.</p>
+<pre><code class="hljs">ClickHouse Cluster → NFS/SMB → Backup Storage</code></pre>
+</div>
+<div class="card">
+<h4>S3/Cloud Storage</h4>
+<p><strong>Pros:</strong> Highly available, geographic redundancy, scalable. <strong>Cons:</strong> Network bandwidth, latency, cost.</p>
+<pre><code class="hljs">ClickHouse Cluster → S3/GCS/Azure Blob → Versioning + Lifecycle</code></pre>
+</div>
+<div class="card">
+<h4>Hybrid Multi-Tier</h4>
+<p><strong>Recommended:</strong> Local + S3 with tiering. Daily to local, weekly to S3.</p>
+<pre><code class="hljs">Cluster → Daily Local (Fast Recovery) + Weekly S3 (Long-term retention)</code></pre>
+</div>
+</div>
+</div>
+<!-- Quick Start Section -->
+<div class="section" id="quick-start-your-first-backup"><div class="section-header">🚀 Quick Start: Your First Backup</div>
+<div class="section-content">
+<h3>1. Install clickhouse-backup Tool</h3>
+<div class="grid-2">
+<div class="card">
+<h4>Ubuntu/Debian</h4>
+<pre><code class="hljs">sudo apt-get install -y clickhouse-backup
 
 # Verify installation
 clickhouse-backup version</code></pre>
-                </div>
-                <div class="card">
-                    <h4>macOS</h4>
-                    <pre><code class="hljs">brew install clickhouse-backup
+</div>
+<div class="card">
+<h4>macOS</h4>
+<pre><code class="hljs">brew install clickhouse-backup
 
 # Verify installation
 clickhouse-backup version</code></pre>
-                </div>
-            </div>
-
-            <h3>2. Create Your First Full Backup</h3>
-            <pre><code class="hljs"># Make sure clickhouse-server is running
+</div>
+</div>
+<h3>2. Create Your First Full Backup</h3>
+<pre><code class="hljs"># Make sure clickhouse-server is running
 sudo service clickhouse-server status
 
 # Create a full backup
@@ -581,16 +562,14 @@ sudo clickhouse-backup list
 # Example output:
 # Backup: 20260122_100000
 # Backup: 20260122_110000</code></pre>
-
-            <h3>3. Verify Backup</h3>
-            <pre><code class="hljs"># Get backup details
+<h3>3. Verify Backup</h3>
+<pre><code class="hljs"># Get backup details
 sudo clickhouse-backup details 20260122_100000
 
 # Check backup size
 sudo du -sh /var/lib/clickhouse/backups/</code></pre>
-
-            <h3>4. Restore from Backup</h3>
-            <pre><code class="hljs"># First, restore metadata (table structure)
+<h3>4. Restore from Backup</h3>
+<pre><code class="hljs"># First, restore metadata (table structure)
 sudo clickhouse-backup restore --backup 20260122_100000
 
 # Restart server
@@ -598,9 +577,8 @@ sudo service clickhouse-server restart
 
 # Verify data is restored
 clickhouse-client -q "SELECT COUNT(*) FROM default.events;"</code></pre>
-
-            <h3>5. Basic Scheduling with Cron</h3>
-            <pre><code class="hljs"># Edit crontab
+<h3>5. Basic Scheduling with Cron</h3>
+<pre><code class="hljs"># Edit crontab
 sudo crontab -e
 
 # Add daily backup at 2 AM
@@ -611,16 +589,13 @@ sudo crontab -e
 
 # Keep only last 7 backups (cleanup old ones)
 0 4 * * * /usr/bin/clickhouse-backup delete --older-than 7d 2&gt;&amp;1 | logger</code></pre>
-
-        </div>
-    </div>
-
-    <!-- Commands Reference Section -->
-    <div class="section" id="commands"><div class="section-header">💻 Commands Reference</div>
-        <div class="section-content">
-
-            <h3>Backup Commands</h3>
-            <pre><code class="hljs"># Create full backup of all tables
+</div>
+</div>
+<!-- Commands Reference Section -->
+<div class="section" id="commands"><div class="section-header">💻 Commands Reference</div>
+<div class="section-content">
+<h3>Backup Commands</h3>
+<pre><code class="hljs"># Create full backup of all tables
 clickhouse-backup create --all
 
 # Create backup of specific database
@@ -644,9 +619,8 @@ clickhouse-backup size backup_name
 # Delete old backups
 clickhouse-backup delete backup_name
 clickhouse-backup delete --older-than 30d</code></pre>
-
-            <h3>Upload Backups to S3</h3>
-            <pre><code class="hljs"># Upload backup to S3
+<h3>Upload Backups to S3</h3>
+<pre><code class="hljs"># Upload backup to S3
 clickhouse-backup upload backup_name
 
 # Upload to S3 with specific destination
@@ -662,9 +636,8 @@ clickhouse-backup download backup_name
 clickhouse-backup download backup_name \
   --s3-bucket my-backup-bucket \
   --s3-path /clickhouse-backups</code></pre>
-
-            <h3>Restore Commands</h3>
-            <pre><code class="hljs"># Restore specific backup (metadata + data)
+<h3>Restore Commands</h3>
+<pre><code class="hljs"># Restore specific backup (metadata + data)
 clickhouse-backup restore --backup backup_name
 
 # Restore only metadata (table structure)
@@ -679,9 +652,8 @@ clickhouse-backup restore --backup backup_name --verify
 
 # Dry run (see what would be restored)
 clickhouse-backup restore --backup backup_name --dry-run</code></pre>
-
-            <h3>Native ClickHouse Backup Commands</h3>
-            <pre><code class="hljs"># Create backup using native ClickHouse command
+<h3>Native ClickHouse Backup Commands</h3>
+<pre><code class="hljs"># Create backup using native ClickHouse command
 BACKUP TABLE mydb.mytable TO 'file:///backups/mybackup'
 
 # Create backup to S3
@@ -696,9 +668,8 @@ RESTORE TABLE mydb.mytable FROM 'file:///backups/mybackup'
 
 # Monitor restore progress
 SELECT * FROM system.backup_log ORDER BY finish_time DESC</code></pre>
-
-            <h3>System Monitoring</h3>
-            <pre><code class="hljs"># Check backup operations (ClickHouse 22.3+)
+<h3>System Monitoring</h3>
+<pre><code class="hljs"># Check backup operations (ClickHouse 22.3+)
 SELECT
     id,
     name,
@@ -729,30 +700,27 @@ FROM system.parts
 WHERE database = 'mydb' AND active
 GROUP BY table, partition
 ORDER BY sum(bytes) DESC;</code></pre>
-
-        </div>
-    </div>
-
-    <!-- Best Practices Section -->
-    <div class="section" id="best-practices"><div class="section-header">✨ Best Practices</div>
-        <div class="section-content">
-
-            <h3>1. Backup Strategy Design</h3>
-            <div class="comparison">
-                <div class="bad">
-                    <div class="badge badge-bad">❌ Risky</div>
-                    <pre><code class="hljs">-- Only local backups
+</div>
+</div>
+<!-- Best Practices Section -->
+<div class="section" id="best-practices"><div class="section-header">✨ Best Practices</div>
+<div class="section-content">
+<h3>1. Backup Strategy Design</h3>
+<div class="comparison">
+<div class="bad">
+<div class="badge badge-bad">❌ Risky</div>
+<pre><code class="hljs">-- Only local backups
 -- No off-site copies
 -- Monthly backups
 -- No testing
 
 RTO: Unknown
 RPO: 30 days</code></pre>
-                    <p><strong>Problem:</strong> Data center fire = total data loss</p>
-                </div>
-                <div class="good">
-                    <div class="badge badge-good">✅ Recommended</div>
-                    <pre><code class="hljs">-- Daily full backup to local
+<p><strong>Problem:</strong> Data center fire = total data loss</p>
+</div>
+<div class="good">
+<div class="badge badge-good">✅ Recommended</div>
+<pre><code class="hljs">-- Daily full backup to local
 -- Daily incremental to S3
 -- Weekly full backup to S3
 -- Monthly archive to Glacier
@@ -760,52 +728,49 @@ RPO: 30 days</code></pre>
 
 RTO: 2 hours
 RPO: 24 hours</code></pre>
-                    <p><strong>Benefit:</strong> Protected against multiple failure modes</p>
-                </div>
-            </div>
-
-            <h3>2. 3-2-1 Backup Rule</h3>
-            <div class="highlight-box">
-                <h4>Industry Best Practice: 3-2-1</h4>
-                <ul>
-                    <li><strong>3 copies:</strong> Original data + 2 backup copies</li>
-                    <li><strong>2 media types:</strong> Local disk + Cloud storage (S3)</li>
-                    <li><strong>1 offsite:</strong> One copy in different geographic region</li>
-                </ul>
-                <pre><code class="hljs">Production DB (Local)
+<p><strong>Benefit:</strong> Protected against multiple failure modes</p>
+</div>
+</div>
+<h3>2. 3-2-1 Backup Rule</h3>
+<div class="highlight-box">
+<h4>Industry Best Practice: 3-2-1</h4>
+<ul>
+<li><strong>3 copies:</strong> Original data + 2 backup copies</li>
+<li><strong>2 media types:</strong> Local disk + Cloud storage (S3)</li>
+<li><strong>1 offsite:</strong> One copy in different geographic region</li>
+</ul>
+<pre><code class="hljs">Production DB (Local)
   ↓
 Daily Backup (Local SSD) → 48 hours retention
 Daily Backup (S3) → 90 days retention
 Monthly Archive (Glacier) → 7 years retention</code></pre>
-            </div>
-
-            <h3>3. Backup Window Planning</h3>
-            <div class="comparison">
-                <div class="bad">
-                    <div class="badge badge-bad">❌ Bad</div>
-                    <pre><code class="hljs">-- Backup during peak hours
+</div>
+<h3>3. Backup Window Planning</h3>
+<div class="comparison">
+<div class="bad">
+<div class="badge badge-bad">❌ Bad</div>
+<pre><code class="hljs">-- Backup during peak hours
 -- No throttling
 -- Impacts production queries
 
 Backup Time: 5 hours
 Query Impact: 40% slower</code></pre>
-                    <p><strong>Problem:</strong> Users experience slowness</p>
-                </div>
-                <div class="good">
-                    <div class="badge badge-good">✅ Good</div>
-                    <pre><code class="hljs">-- Backup off-peak (2-4 AM)
+<p><strong>Problem:</strong> Users experience slowness</p>
+</div>
+<div class="good">
+<div class="badge badge-good">✅ Good</div>
+<pre><code class="hljs">-- Backup off-peak (2-4 AM)
 -- Use secondary replica
 -- Throttle I/O
 -- Monitor backup progress
 
 Backup Time: 3 hours (off-peak)
 Query Impact: None</code></pre>
-                    <p><strong>Benefit:</strong> Zero impact on users</p>
-                </div>
-            </div>
-
-            <h3>4. Retention and Lifecycle</h3>
-            <pre><code class="hljs"># Configure S3 lifecycle policy for auto-archival
+<p><strong>Benefit:</strong> Zero impact on users</p>
+</div>
+</div>
+<h3>4. Retention and Lifecycle</h3>
+<pre><code class="hljs"># Configure S3 lifecycle policy for auto-archival
 # (Set in S3 bucket policy or lifecycle configuration)
 
 # Backup retention strategy:
@@ -818,43 +783,39 @@ Query Impact: None</code></pre>
 Local SSD: 5TB * $0.10/GB/month = $500/month
 S3 Standard: 50TB * $0.023/GB/month = $1,150/month
 S3 Glacier: 50TB * $0.004/GB/month = $200/month</code></pre>
-
-            <h3>5. Point-in-Time Recovery (PITR) Setup</h3>
-            <pre><code class="hljs"># Enable query logging for PITR capability
+<h3>5. Point-in-Time Recovery (PITR) Setup</h3>
+<pre><code class="hljs"># Enable query logging for PITR capability
 # Edit /etc/clickhouse-server/config.d/backup.xml
 
-&lt;clickhouse&gt;
-    &lt;query_log&gt;
-        &lt;database&gt;system&lt;/database&gt;
-        &lt;table&gt;query_log&lt;/table&gt;
-        &lt;partition_by&gt;toYYYYMM(event_time)&lt;/partition_by&gt;
-        &lt;flush_interval_milliseconds&gt;7500&lt;/flush_interval_milliseconds&gt;
-    &lt;/query_log&gt;
 
-    &lt;backup&gt;
-        &lt;enabled&gt;true&lt;/enabled&gt;
-        &lt;backup_dir&gt;/var/lib/clickhouse/backups&lt;/backup_dir&gt;
-    &lt;/backup&gt;
-&lt;/clickhouse&gt;
+
+system
+query_log
+toYYYYMM(event_time)
+7500
+
+
+true
+/var/lib/clickhouse/backups
+
+
 
 # Restart ClickHouse
 sudo service clickhouse-server restart
 
 # Now you can restore to any point in time!</code></pre>
-
-            <h3>6. Testing Backups Regularly</h3>
-            <div class="highlight-box">
-                <h4>⚠️ Critical: A backup is useless if it can't be restored!</h4>
-                <ul>
-                    <li><strong>Monthly test:</strong> Restore full backup to staging environment</li>
-                    <li><strong>Verify data integrity:</strong> Compare checksums</li>
-                    <li><strong>Document recovery time:</strong> Measure RTO</li>
-                    <li><strong>Test selective restore:</strong> Restore single table/database</li>
-                </ul>
-            </div>
-
-            <h3>7. Replication for HA</h3>
-            <pre><code class="hljs"># Replication provides instant failover (not traditional backup)
+<h3>6. Testing Backups Regularly</h3>
+<div class="highlight-box">
+<h4>⚠️ Critical: A backup is useless if it can't be restored!</h4>
+<ul>
+<li><strong>Monthly test:</strong> Restore full backup to staging environment</li>
+<li><strong>Verify data integrity:</strong> Compare checksums</li>
+<li><strong>Document recovery time:</strong> Measure RTO</li>
+<li><strong>Test selective restore:</strong> Restore single table/database</li>
+</ul>
+</div>
+<h3>7. Replication for HA</h3>
+<pre><code class="hljs"># Replication provides instant failover (not traditional backup)
 # Setup 2-replica cluster for high availability
 
 # Check replication status
@@ -877,9 +838,8 @@ FROM system.part_log
 WHERE database = 'mydb'
 ORDER BY event_time DESC
 LIMIT 10;</code></pre>
-
-            <h3>8. Backup Monitoring and Alerting</h3>
-            <pre><code class="hljs"># Script to check backup freshness (bash)
+<h3>8. Backup Monitoring and Alerting</h3>
+<pre><code class="hljs"># Script to check backup freshness (bash)
 #!/bin/bash
 
 BACKUP_DIR="/var/lib/clickhouse/backups"
@@ -894,161 +854,145 @@ fi
 
 # Add to cron to check every 6 hours
 0 */6 * * * /usr/local/bin/check_backup_age.sh</code></pre>
-
-        </div>
-    </div>
-
-    <!-- When to Use Section -->
-    <div class="section" id="when-to-use-each-backup-strategy"><div class="section-header">🎯 When to Use Each Backup Strategy</div>
-        <div class="section-content">
-
-            <div class="grid-2">
-                <div class="card" style="background: #e6f7ed;">
-                    <h4>Full Backups</h4>
-                    <p>Use when:</p>
-                    <ul>
-                        <li>You need complete data copies</li>
-                        <li>Recovery speed is critical</li>
-                        <li>Database is small (< 500GB)</li>
-                        <li>Storage is not constrained</li>
-                        <li>Weekly or monthly frequency</li>
-                    </ul>
-                </div>
-                <div class="card" style="background: #e6f7ed;">
-                    <h4>Incremental Backups</h4>
-                    <p>Use when:</p>
-                    <ul>
-                        <li>Data changes frequently</li>
-                        <li>Storage space is limited</li>
-                        <li>Daily or hourly frequency</li>
-                        <li>You need cost efficiency</li>
-                        <li>Database is large (> 1TB)</li>
-                    </ul>
-                </div>
-            </div>
-
-            <div class="grid-2">
-                <div class="card" style="background: #ffe6e6;">
-                    <h4>Replication (Not Backup)</h4>
-                    <p>Use when:</p>
-                    <ul>
-                        <li>You need instant failover</li>
-                        <li>High availability is critical</li>
-                        <li>No single node can fail</li>
-                        <li>Read replicas needed</li>
-                        <li>Disaster recovery required</li>
-                    </ul>
-                    <p><strong>Note:</strong> Replication protects against node failure, not data corruption or deletes!</p>
-                </div>
-                <div class="card" style="background: #e6f7ed;">
-                    <h4>Point-in-Time Recovery</h4>
-                    <p>Use when:</p>
-                    <ul>
-                        <li>You need to recover to specific moment</li>
-                        <li>Accidental deletes must be recoverable</li>
-                        <li>Compliance requires audit trails</li>
-                        <li>Ransomware protection needed</li>
-                        <li>Testing against production data</li>
-                    </ul>
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- Real-World Results Section -->
-    <div class="section" id="real-world-results-case-studies"><div class="section-header">🏆 Real-World Results & Case Studies</div>
-        <div class="section-content">
-
-            <div class="icon-grid">
-                <div class="icon-card" style="background: #fff9e6;">
-                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">99.99%</div>
-                    <h4>Data Recovery Success</h4>
-                    <p>With proper 3-2-1 strategy and regular testing</p>
-                </div>
-
-                <div class="icon-card" style="background: #e6f7ed;">
-                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">< 4 hours</div>
-                    <h4>RTO (Recovery Time)</h4>
-                    <p>Restore 10TB from S3 backup with full verification</p>
-                </div>
-
-                <div class="icon-card" style="background: #e6f2ff;">
-                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">70%</div>
-                    <h4>Cost Reduction</h4>
-                    <p>vs traditional databases with lifecycle policies</p>
-                </div>
-
-                <div class="icon-card" style="background: #f0e6ff;">
-                    <div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">15 min</div>
-                    <h4>Avg Recovery Time</h4>
-                    <p>For single table restore from local backup</p>
-                </div>
-            </div>
-
-            <div class="card">
-                <h4>Case Study 1: SaaS Analytics Platform</h4>
-                <p><strong>Challenge:</strong> Customer deleted entire dataset by mistake, needs instant recovery</p>
-                <p><strong>Solution:</strong></p>
-                <ul>
-                    <li>Point-in-time recovery from 6-hour-old backup</li>
-                    <li>Merged with last 6 hours of WAL logs</li>
-                    <li>Restored to staging, verified, then swapped</li>
-                </ul>
-                <p><strong>Results:</strong></p>
-                <ul>
-                    <li>Recovery time: 45 minutes</li>
-                    <li>Data loss: 0 (complete recovery)</li>
-                    <li>Customer satisfaction: Restored before they realized the delete!</li>
-                </ul>
-            </div>
-
-            <div class="card">
-                <h4>Case Study 2: Financial Services Company</h4>
-                <p><strong>Challenge:</strong> Ransomware attack affects production cluster</p>
-                <p><strong>Solution:</strong></p>
-                <ul>
-                    <li>Detected attack via S3 backup versioning</li>
-                    <li>Activated offline backup on Glacier</li>
-                    <li>Restored to new cluster in different AWS region</li>
-                </ul>
-                <p><strong>Results:</strong></p>
-                <ul>
-                    <li>RTO: 2 hours (incident to recovery)</li>
-                    <li>Zero ransomware payload impact</li>
-                    <li>Compliance audit passed</li>
-                    <li>Business continuity: Full</li>
-                </ul>
-            </div>
-
-            <div class="card">
-                <h4>Case Study 3: Real-Time Analytics Company</h4>
-                <p><strong>Challenge:</strong> Balance daily backups with ingesting 10 billion events/day</p>
-                <p><strong>Solution:</strong></p>
-                <ul>
-                    <li>Use replication for HA (instant failover)</li>
-                    <li>Backup from secondary replica (no impact)</li>
-                    <li>Incremental backups to S3 (efficient)</li>
-                    <li>Full backup every Sunday to Glacier</li>
-                </ul>
-                <p><strong>Results:</strong></p>
-                <ul>
-                    <li>Zero impact on ingest performance</li>
-                    <li>RTO: < 5 minutes (failover)</li>
-                    <li>RPO: < 5 seconds (replication)</li>
-                    <li>Monthly restore tests: 100% success</li>
-                </ul>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- Templates Section -->
-    <div class="section" id="production-ready-templates"><div class="section-header">📋 Production-Ready Templates</div>
-        <div class="section-content">
-
-            <h3>Template 1: Basic Daily Backup Script</h3>
-            <pre><code class="hljs">#!/bin/bash
+</div>
+</div>
+<!-- When to Use Section -->
+<div class="section" id="when-to-use-each-backup-strategy"><div class="section-header">🎯 When to Use Each Backup Strategy</div>
+<div class="section-content">
+<div class="grid-2">
+<div class="card" style="background: #e6f7ed;">
+<h4>Full Backups</h4>
+<p>Use when:</p>
+<ul>
+<li>You need complete data copies</li>
+<li>Recovery speed is critical</li>
+<li>Database is small (&lt; 500GB)</li>
+<li>Storage is not constrained</li>
+<li>Weekly or monthly frequency</li>
+</ul>
+</div>
+<div class="card" style="background: #e6f7ed;">
+<h4>Incremental Backups</h4>
+<p>Use when:</p>
+<ul>
+<li>Data changes frequently</li>
+<li>Storage space is limited</li>
+<li>Daily or hourly frequency</li>
+<li>You need cost efficiency</li>
+<li>Database is large (&gt; 1TB)</li>
+</ul>
+</div>
+</div>
+<div class="grid-2">
+<div class="card" style="background: #ffe6e6;">
+<h4>Replication (Not Backup)</h4>
+<p>Use when:</p>
+<ul>
+<li>You need instant failover</li>
+<li>High availability is critical</li>
+<li>No single node can fail</li>
+<li>Read replicas needed</li>
+<li>Disaster recovery required</li>
+</ul>
+<p><strong>Note:</strong> Replication protects against node failure, not data corruption or deletes!</p>
+</div>
+<div class="card" style="background: #e6f7ed;">
+<h4>Point-in-Time Recovery</h4>
+<p>Use when:</p>
+<ul>
+<li>You need to recover to specific moment</li>
+<li>Accidental deletes must be recoverable</li>
+<li>Compliance requires audit trails</li>
+<li>Ransomware protection needed</li>
+<li>Testing against production data</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<!-- Real-World Results Section -->
+<div class="section" id="real-world-results-case-studies"><div class="section-header">🏆 Real-World Results &amp; Case Studies</div>
+<div class="section-content">
+<div class="icon-grid">
+<div class="icon-card" style="background: #fff9e6;">
+<div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">99.99%</div>
+<h4>Data Recovery Success</h4>
+<p>With proper 3-2-1 strategy and regular testing</p>
+</div>
+<div class="icon-card" style="background: #e6f7ed;">
+<div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">&lt; 4 hours</div>
+<h4>RTO (Recovery Time)</h4>
+<p>Restore 10TB from S3 backup with full verification</p>
+</div>
+<div class="icon-card" style="background: #e6f2ff;">
+<div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">70%</div>
+<h4>Cost Reduction</h4>
+<p>vs traditional databases with lifecycle policies</p>
+</div>
+<div class="icon-card" style="background: #f0e6ff;">
+<div style="font-size: 2.5em; font-weight: bold; color: #ff6b35;">15 min</div>
+<h4>Avg Recovery Time</h4>
+<p>For single table restore from local backup</p>
+</div>
+</div>
+<div class="card">
+<h4>Case Study 1: SaaS Analytics Platform</h4>
+<p><strong>Challenge:</strong> Customer deleted entire dataset by mistake, needs instant recovery</p>
+<p><strong>Solution:</strong></p>
+<ul>
+<li>Point-in-time recovery from 6-hour-old backup</li>
+<li>Merged with last 6 hours of WAL logs</li>
+<li>Restored to staging, verified, then swapped</li>
+</ul>
+<p><strong>Results:</strong></p>
+<ul>
+<li>Recovery time: 45 minutes</li>
+<li>Data loss: 0 (complete recovery)</li>
+<li>Customer satisfaction: Restored before they realized the delete!</li>
+</ul>
+</div>
+<div class="card">
+<h4>Case Study 2: Financial Services Company</h4>
+<p><strong>Challenge:</strong> Ransomware attack affects production cluster</p>
+<p><strong>Solution:</strong></p>
+<ul>
+<li>Detected attack via S3 backup versioning</li>
+<li>Activated offline backup on Glacier</li>
+<li>Restored to new cluster in different AWS region</li>
+</ul>
+<p><strong>Results:</strong></p>
+<ul>
+<li>RTO: 2 hours (incident to recovery)</li>
+<li>Zero ransomware payload impact</li>
+<li>Compliance audit passed</li>
+<li>Business continuity: Full</li>
+</ul>
+</div>
+<div class="card">
+<h4>Case Study 3: Real-Time Analytics Company</h4>
+<p><strong>Challenge:</strong> Balance daily backups with ingesting 10 billion events/day</p>
+<p><strong>Solution:</strong></p>
+<ul>
+<li>Use replication for HA (instant failover)</li>
+<li>Backup from secondary replica (no impact)</li>
+<li>Incremental backups to S3 (efficient)</li>
+<li>Full backup every Sunday to Glacier</li>
+</ul>
+<p><strong>Results:</strong></p>
+<ul>
+<li>Zero impact on ingest performance</li>
+<li>RTO: &lt; 5 minutes (failover)</li>
+<li>RPO: &lt; 5 seconds (replication)</li>
+<li>Monthly restore tests: 100% success</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- Templates Section -->
+<div class="section" id="production-ready-templates"><div class="section-header">📋 Production-Ready Templates</div>
+<div class="section-content">
+<h3>Template 1: Basic Daily Backup Script</h3>
+<pre><code class="hljs">#!/bin/bash
 # backup-daily.sh - Daily ClickHouse backup to local + S3
 
 set -e
@@ -1077,9 +1021,8 @@ echo "[$(date)] Cleaning up old backups..." | tee -a $LOG_FILE
 clickhouse-backup delete --older-than 7d 2&gt;&amp;1 | tee -a $LOG_FILE
 
 echo "[$(date)] Backup complete!" | tee -a $LOG_FILE</code></pre>
-
-            <h3>Template 2: S3 Configuration for clickhouse-backup</h3>
-            <pre><code class="hljs"># /etc/clickhouse-backup/config.yml
+<h3>Template 2: S3 Configuration for clickhouse-backup</h3>
+<pre><code class="hljs"># /etc/clickhouse-backup/config.yml
 
 general:
   remote_storage: s3
@@ -1114,9 +1057,8 @@ backup:
   schema: true
   rbac: false
   configs: false</code></pre>
-
-            <h3>Template 3: Restore Script with Verification</h3>
-            <pre><code class="hljs">#!/bin/bash
+<h3>Template 3: Restore Script with Verification</h3>
+<pre><code class="hljs">#!/bin/bash
 # restore-with-verify.sh
 
 BACKUP_NAME=$1
@@ -1153,8 +1095,8 @@ clickhouse-client -q "SELECT table, formatReadableSize(sum(bytes)) as size FROM 
 
 echo "Restore verification complete!"
 
-            &lt;h3&gt;Template 4: Complete Backup Strategy (Cron Jobs)&lt;/h3&gt;
-            &lt;div class="code-block"&gt;#!/bin/bash
+            Template 4: Complete Backup Strategy (Cron Jobs)
+#!/bin/bash
 # Complete backup strategy with multiple tiers
 
 # /etc/clickhouse-backup/cron-backups.sh
@@ -1178,19 +1120,15 @@ echo "Restore verification complete!"
 0 6 1 * * /usr/local/bin/archive_to_glacier.sh 2&gt;&amp;1 | logger
 
 # Test restore on staging (Monthly, Saturday 10 PM)
-0 22 * * 6 /usr/local/bin/test_restore_staging.sh 2&gt;&amp;1 | logger</code></pre>
-
-        </div>
-    </div>
-
-    
-    </div>
+0 22 * * 6 /usr/local/bin/test_restore_staging.sh 2&gt;&amp;1 | logger
+</code></pre>
+</div>
+</div>
 <!-- Advanced Patterns Section -->
-    <div class="section" id="advanced"><div class="section-header">🔥 Advanced Patterns</div>
-        <div class="section-content">
-
-            <h3>1. Cross-Cluster Backup Strategy</h3>
-            <pre><code class="hljs"># Backup from one cluster and restore to another
+<div class="section" id="advanced"><div class="section-header">🔥 Advanced Patterns</div>
+<div class="section-content">
+<h3>1. Cross-Cluster Backup Strategy</h3>
+<pre><code class="hljs"># Backup from one cluster and restore to another
 # Useful for: geo-replication, disaster recovery, upgrades
 
 # On source cluster:
@@ -1205,9 +1143,8 @@ clickhouse-backup restore --backup cross-cluster-backup
 
 # Verify data matches
 clickhouse-client -q "SELECT COUNT(*) FROM mydb.mytable;" # Compare both clusters</code></pre>
-
-            <h3>2. Incremental Backup with Chain</h3>
-            <pre><code class="hljs"># Full backup + incremental chain = efficient storage
+<h3>2. Incremental Backup with Chain</h3>
+<pre><code class="hljs"># Full backup + incremental chain = efficient storage
 
 Sunday: Full backup (100GB)
 Monday: Incremental (5GB) - only changes
@@ -1222,9 +1159,8 @@ Tuesday: Incremental (5GB) - only new changes
 
 # In clickhouse-backup:
 clickhouse-backup create --incremental --backup-name monday-inc</code></pre>
-
-            <h3>3. Backup Deduplication at Scale</h3>
-            <pre><code class="hljs"># S3 with deduplication for large clusters
+<h3>3. Backup Deduplication at Scale</h3>
+<pre><code class="hljs"># S3 with deduplication for large clusters
 
 # Configure S3 Object Lock for immutability
 aws s3api put-object-lock-configuration \
@@ -1256,9 +1192,8 @@ aws s3api put-bucket-lifecycle-configuration \
     }
   ]
 }</code></pre>
-
-            <h3>4. Backup Verification Pipeline</h3>
-            <pre><code class="hljs">#!/bin/bash
+<h3>4. Backup Verification Pipeline</h3>
+<pre><code class="hljs">#!/bin/bash
 # Automated backup verification with alerts
 
 verify_backup() {
@@ -1284,9 +1219,8 @@ verify_backup() {
 # Run verification on latest backup
 LATEST=$(clickhouse-backup list | head -1)
 verify_backup $LATEST || mail -s "BACKUP FAILURE: $LATEST" admin@company.com</code></pre>
-
-            <h3>5. Parallel Backup for Large Clusters</h3>
-            <pre><code class="hljs"># For clusters with many shards, backup in parallel
+<h3>5. Parallel Backup for Large Clusters</h3>
+<pre><code class="hljs"># For clusters with many shards, backup in parallel
 
 # clickhouse-backup config for parallel operations
 general:
@@ -1312,9 +1246,8 @@ wait  # Wait for all backups to complete
 
 # Monitor progress
 clickhouse-backup list</code></pre>
-
-            <h3>6. Disaster Recovery Runbook</h3>
-            <pre><code class="hljs"># Follow these steps if complete cluster failure
+<h3>6. Disaster Recovery Runbook</h3>
+<pre><code class="hljs"># Follow these steps if complete cluster failure
 
 1. Detect failure (monitoring alerts)
    - Monitor: cluster availability, data reachability
@@ -1350,121 +1283,103 @@ clickhouse-backup list</code></pre>
    - Update runbook if needed
    - Schedule post-mortem review
    - Test backups again to ensure recovery works</code></pre>
-
-        </div>
-    </div>
-
-    <!-- Resources Section -->
-    <div class="section" id="resources"><div class="section-header">📚 Resources & Further Learning</div>
-        <div class="section-content">
-
-            <div class="grid-2">
-                <div class="card">
-                    <h4>📘 View in Notion</h4>
-                    <p style="margin: 10px 0;">Access this module in your Notion workspace for note-taking and tracking your progress.</p>
-                    <a href="https://www.notion.so/Module-7-Backup-Recovery-PITR-2f1bb896952b8147b7aecc89c40418ba" target="_blank" rel="noopener noreferrer" style="color: #ff6b35; font-weight: 600; text-decoration: none;">Open in Notion →</a>
-                </div>
-
-                <div class="card">
-                    <h4>Official Documentation</h4>
-                    <ul>
-                        <li><a href="https://clickhouse.com/docs/en/operations/backup" target="_blank">ClickHouse Backup Docs</a></li>
-                        <li><a href="https://github.com/AlexAkulov/clickhouse-backup" target="_blank">clickhouse-backup GitHub</a></li>
-                        <li><a href="https://clickhouse.com/docs/en/operations/system-tables/backup-log" target="_blank">Backup Log Reference</a></li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <h4>S3 Configuration</h4>
-                    <ul>
-                        <li><a href="https://docs.aws.amazon.com/s3/latest/userguide/lifecycle-configuration-examples.html" target="_blank">S3 Lifecycle Rules</a></li>
-                        <li><a href="https://docs.aws.amazon.com/s3/latest/userguide/enable-versioning.html" target="_blank">S3 Versioning</a></li>
-                        <li><a href="https://docs.aws.amazon.com/s3/latest/userguide/storage-class-intro.html" target="_blank">S3 Storage Classes</a></li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <h4>Replication & HA</h4>
-                    <ul>
-                        <li><a href="https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replication" target="_blank">Replication Setup</a></li>
-                        <li><a href="https://clickhouse.com/docs/en/operations/system-tables/replication-queue" target="_blank">Replication Queue</a></li>
-                        <li><a href="https://clickhouse.com/docs/en/operations/cluster-deployment" target="_blank">Cluster Deployment</a></li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <h4>Best Practices</h4>
-                    <ul>
-                        <li><a href="https://www.veeam.com/blog/3-2-1-backup-rule.html" target="_blank">3-2-1 Backup Rule</a></li>
-                        <li><a href="https://www.veritas.com/blog/what-is-rpo-and-rto" target="_blank">Understanding RTO/RPO</a></li>
-                        <li><a href="https://clickhouse.com/blog" target="_blank">ClickHouse Blog</a></li>
-                    </ul>
-                </div>
-            </div>
-
-            <h3>Key Concepts Summary</h3>
-            <div class="grid-2">
-                <div class="card">
-                    <h4>RTO vs RPO</h4>
-                    <ul>
-                        <li><strong>RTO (Recovery Time Objective):</strong> How long until you're back online</li>
-                        <li><strong>RPO (Recovery Point Objective):</strong> Maximum acceptable data loss (in time)</li>
-                    </ul>
-                </div>
-                <div class="card">
-                    <h4>Backup Types</h4>
-                    <ul>
-                        <li><strong>Full:</strong> Complete copy of all data</li>
-                        <li><strong>Incremental:</strong> Only changes since last backup</li>
-                        <li><strong>Differential:</strong> Changes since last full backup</li>
-                    </ul>
-                </div>
-            </div>
-
-            <div class="highlight-box">
-                <h4>Key Takeaways from Module 7</h4>
-                <ul>
-                    <li>✅ Implement 3-2-1 backup rule: 3 copies, 2 media types, 1 offsite</li>
-                    <li>✅ Use clickhouse-backup for easy backup management</li>
-                    <li>✅ Test backups monthly - a backup that can't be restored is useless</li>
-                    <li>✅ Combine backups with replication for HA + disaster recovery</li>
-                    <li>✅ Use S3 lifecycle policies to manage long-term retention efficiently</li>
-                    <li>✅ Automate backup process with cron and monitoring</li>
-                    <li>✅ Document RTO/RPO requirements and measure actual recovery time</li>
-                    <li>✅ Plan backup windows during off-peak hours to minimize impact</li>
-                </ul>
-            </div>
-
-            <div class="highlight-box" style="background: #e6f7ed; border-left-color: #27ae60;">
-                <h4>Next Steps After This Module</h4>
-                <p>You now understand how to protect your ClickHouse data. The remaining modules cover:</p>
-                <ul>
-                    <li>Module 8: Monitoring & Observability - Keep systems running smoothly</li>
-                    <li>Module 9: Performance Tuning - Extract maximum speed from ClickHouse</li>
-                    <li>Module 10: Production Deployment - Deploy safely to production</li>
-                </ul>
-                <p><strong>Congratulations!</strong> You've completed most of the ClickHouse knowledge transfer. You're now equipped to run production systems with confidence!</p>
-            </div>
-
-        </div>
-    </div>
-
 </div>
-
+</div>
+<!-- Resources Section -->
+<div class="section" id="resources"><div class="section-header">📚 Resources &amp; Further Learning</div>
+<div class="section-content">
+<div class="grid-2">
+<div class="card">
+<h4>📘 View in Notion</h4>
+<p style="margin: 10px 0;">Access this module in your Notion workspace for note-taking and tracking your progress.</p>
+<a href="https://www.notion.so/Module-7-Backup-Recovery-PITR-2f1bb896952b8147b7aecc89c40418ba" rel="noopener noreferrer" style="color: #ff6b35; font-weight: 600; text-decoration: none;" target="_blank">Open in Notion →</a>
+</div>
+<div class="card">
+<h4>Official Documentation</h4>
+<ul>
+<li><a href="https://clickhouse.com/docs/en/operations/backup" target="_blank">ClickHouse Backup Docs</a></li>
+<li><a href="https://github.com/AlexAkulov/clickhouse-backup" target="_blank">clickhouse-backup GitHub</a></li>
+<li><a href="https://clickhouse.com/docs/en/operations/system-tables/backup-log" target="_blank">Backup Log Reference</a></li>
+</ul>
+</div>
+<div class="card">
+<h4>S3 Configuration</h4>
+<ul>
+<li><a href="https://docs.aws.amazon.com/s3/latest/userguide/lifecycle-configuration-examples.html" target="_blank">S3 Lifecycle Rules</a></li>
+<li><a href="https://docs.aws.amazon.com/s3/latest/userguide/enable-versioning.html" target="_blank">S3 Versioning</a></li>
+<li><a href="https://docs.aws.amazon.com/s3/latest/userguide/storage-class-intro.html" target="_blank">S3 Storage Classes</a></li>
+</ul>
+</div>
+<div class="card">
+<h4>Replication &amp; HA</h4>
+<ul>
+<li><a href="https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replication" target="_blank">Replication Setup</a></li>
+<li><a href="https://clickhouse.com/docs/en/operations/system-tables/replication-queue" target="_blank">Replication Queue</a></li>
+<li><a href="https://clickhouse.com/docs/en/operations/cluster-deployment" target="_blank">Cluster Deployment</a></li>
+</ul>
+</div>
+<div class="card">
+<h4>Best Practices</h4>
+<ul>
+<li><a href="https://www.veeam.com/blog/3-2-1-backup-rule.html" target="_blank">3-2-1 Backup Rule</a></li>
+<li><a href="https://www.veritas.com/blog/what-is-rpo-and-rto" target="_blank">Understanding RTO/RPO</a></li>
+<li><a href="https://clickhouse.com/blog" target="_blank">ClickHouse Blog</a></li>
+</ul>
+</div>
+</div>
+<h3>Key Concepts Summary</h3>
+<div class="grid-2">
+<div class="card">
+<h4>RTO vs RPO</h4>
+<ul>
+<li><strong>RTO (Recovery Time Objective):</strong> How long until you're back online</li>
+<li><strong>RPO (Recovery Point Objective):</strong> Maximum acceptable data loss (in time)</li>
+</ul>
+</div>
+<div class="card">
+<h4>Backup Types</h4>
+<ul>
+<li><strong>Full:</strong> Complete copy of all data</li>
+<li><strong>Incremental:</strong> Only changes since last backup</li>
+<li><strong>Differential:</strong> Changes since last full backup</li>
+</ul>
+</div>
+</div>
+<div class="highlight-box">
+<h4>Key Takeaways from Module 7</h4>
+<ul>
+<li>✅ Implement 3-2-1 backup rule: 3 copies, 2 media types, 1 offsite</li>
+<li>✅ Use clickhouse-backup for easy backup management</li>
+<li>✅ Test backups monthly - a backup that can't be restored is useless</li>
+<li>✅ Combine backups with replication for HA + disaster recovery</li>
+<li>✅ Use S3 lifecycle policies to manage long-term retention efficiently</li>
+<li>✅ Automate backup process with cron and monitoring</li>
+<li>✅ Document RTO/RPO requirements and measure actual recovery time</li>
+<li>✅ Plan backup windows during off-peak hours to minimize impact</li>
+</ul>
+</div>
+<div class="highlight-box" style="background: #e6f7ed; border-left-color: #27ae60;">
+<h4>Next Steps After This Module</h4>
+<p>You now understand how to protect your ClickHouse data. The remaining modules cover:</p>
+<ul>
+<li>Module 8: Monitoring &amp; Observability - Keep systems running smoothly</li>
+<li>Module 9: Performance Tuning - Extract maximum speed from ClickHouse</li>
+<li>Module 10: Production Deployment - Deploy safely to production</li>
+</ul>
+<p><strong>Congratulations!</strong> You've completed most of the ClickHouse knowledge transfer. You're now equipped to run production systems with confidence!</p>
+</div>
+</div>
+</div>
+</div>
 <div style="background: #333; color: white; padding: 40px 20px; text-align: center; margin-top: 40px;">
-    <h3>💾 ClickHouse Knowledge Transfer</h3>
-    <p>Module 7 of 10 | Duration: 6-8 weeks total</p>
-    <p style="margin-top: 20px; opacity: 0.8;">Backup, Recovery & PITR - Protecting Your Data | 2026</p>
+<h3>💾 ClickHouse Knowledge Transfer</h3>
+<p>Module 7 of 10 | Duration: 6-8 weeks total</p>
+<p style="margin-top: 20px; opacity: 0.8;">Backup, Recovery &amp; PITR - Protecting Your Data | 2026</p>
 </div>
-
 <div class="module-nav" style="border-bottom: none; border-top: 2px solid #ff6b35;">
-    <a href="module-6-query-optimization.html" class="nav-btn-module">← Previous: Module 6 - Query Optimization</a>
-    <a href="../index.html" class="nav-btn-module nav-home">🏠 Home</a>
-    <a href="module-8-disaster-recovery.html" class="nav-btn-module">Next: Module 8 - Disaster Recovery →</a>
+<a class="nav-btn-module" href="module-6-query-optimization.html">← Previous: Module 6 - Query Optimization</a>
+<a class="nav-btn-module nav-home" href="../index.html">🏠 Home</a>
+<a class="nav-btn-module" href="module-8-disaster-recovery.html">Next: Module 8 - Disaster Recovery →</a>
 </div>
-
-<script>
-hljs.highlightAll();
-</script>
-</body>
+<script>hljs.highlightAll();</script></body>
 </html>
