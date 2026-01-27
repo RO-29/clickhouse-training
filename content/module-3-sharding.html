@@ -1143,12 +1143,11 @@ SELECT
     read_rows
 FROM clusterAllReplicas('my_cluster', system.query_log)
 WHERE type = 'QueryFinish' AND query_duration_ms &gt; 5000
-ORDER
+ORDER BY query_duration_ms DESC;
     
 
 
 </code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
- BY query_duration_ms DESC;
 
         </div>
 </div>

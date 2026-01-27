@@ -517,20 +517,20 @@ ORDER BY event_time;
 </div>
 <h3>2. Configure ZooKeeper for Coordination</h3>
 <div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># /etc/clickhouse-server/config.d/zookeeper.xml
-&amp;lt;zookeeper&amp;gt;
-    &amp;lt;node&amp;gt;
-        &amp;lt;host&amp;gt;zk1.dc1.example.com&amp;lt;/host&amp;gt;
-        &amp;lt;port&amp;gt;2181&amp;lt;/port&amp;gt;
-    &amp;lt;/node&amp;gt;
-    &amp;lt;node&amp;gt;
-        &amp;lt;host&amp;gt;zk2.dc1.example.com&amp;lt;/host&amp;gt;
-        &amp;lt;port&amp;gt;2181&amp;lt;/port&amp;gt;
-    &amp;lt;/node&amp;gt;
-    &amp;lt;node&amp;gt;
-        &amp;lt;host&amp;gt;zk3.dc2.example.com&amp;lt;/host&amp;gt;
-        &amp;lt;port&amp;gt;2181&amp;lt;/port&amp;gt;
-    &amp;lt;/node&amp;gt;
-&amp;lt;/zookeeper&amp;gt;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+&lt;zookeeper&gt;
+    &lt;node&gt;
+        &lt;host&gt;zk1.dc1.example.com&lt;/host&gt;
+        &lt;port&gt;2181&lt;/port&gt;
+    &lt;/node&gt;
+    &lt;node&gt;
+        &lt;host&gt;zk2.dc1.example.com&lt;/host&gt;
+        &lt;port&gt;2181&lt;/port&gt;
+    &lt;/node&gt;
+    &lt;node&gt;
+        &lt;host&gt;zk3.dc2.example.com&lt;/host&gt;
+        &lt;port&gt;2181&lt;/port&gt;
+    &lt;/node&gt;
+&lt;/zookeeper&gt;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>3. Monitor Replication Status</h3>
 <div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Check replication lag
 SELECT
@@ -944,31 +944,31 @@ curl -X POST https://alerts.example.com/backup \
   -d "status=success&amp;date=$BACKUP_DATE&amp;size=$(du -sh $BACKUP_DIR | cut -f1)"</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>Template 3: Multi-Datacenter Config</h3>
 <div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># /etc/clickhouse-server/config.d/remote_servers.xml
-&amp;lt;yandex&amp;gt;
-    &amp;lt;remote_servers&amp;gt;
-        &amp;lt;mycluster&amp;gt;
-            &amp;lt;shard&amp;gt;
-                &amp;lt;!-- Replica 1 in DC1 --&amp;gt;
-                &amp;lt;replica&amp;gt;
-                    &amp;lt;host&amp;gt;ch1.dc1.example.com&amp;lt;/host&amp;gt;
-                    &amp;lt;port&amp;gt;9000&amp;lt;/port&amp;gt;
-                &amp;lt;/replica&amp;gt;
-                &amp;lt;!-- Replica 2 in DC1 --&amp;gt;
-                &amp;lt;replica&amp;gt;
-                    &amp;lt;host&amp;gt;ch2.dc1.example.com&amp;lt;/host&amp;gt;
-                    &amp;lt;port&amp;gt;9000&amp;lt;/port&amp;gt;
-                &amp;lt;/replica&amp;gt;
-            &amp;lt;/shard&amp;gt;
-            &amp;lt;shard&amp;gt;
-                &amp;lt;!-- Replica 1 in DC2 --&amp;gt;
-                &amp;lt;replica&amp;gt;
-                    &amp;lt;host&amp;gt;ch1.dc2.example.com&amp;lt;/host&amp;gt;
-                    &amp;lt;port&amp;gt;9000&amp;lt;/port&amp;gt;
-                &amp;lt;/replica&amp;gt;
-            &amp;lt;/shard&amp;gt;
-        &amp;lt;/mycluster&amp;gt;
-    &amp;lt;/remote_servers&amp;gt;
-&amp;lt;/yandex&amp;gt;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+&lt;yandex&gt;
+    &lt;remote_servers&gt;
+        &lt;mycluster&gt;
+            &lt;shard&gt;
+                &lt;!-- Replica 1 in DC1 --&gt;
+                &lt;replica&gt;
+                    &lt;host&gt;ch1.dc1.example.com&lt;/host&gt;
+                    &lt;port&gt;9000&lt;/port&gt;
+                &lt;/replica&gt;
+                &lt;!-- Replica 2 in DC1 --&gt;
+                &lt;replica&gt;
+                    &lt;host&gt;ch2.dc1.example.com&lt;/host&gt;
+                    &lt;port&gt;9000&lt;/port&gt;
+                &lt;/replica&gt;
+            &lt;/shard&gt;
+            &lt;shard&gt;
+                &lt;!-- Replica 1 in DC2 --&gt;
+                &lt;replica&gt;
+                    &lt;host&gt;ch1.dc2.example.com&lt;/host&gt;
+                    &lt;port&gt;9000&lt;/port&gt;
+                &lt;/replica&gt;
+            &lt;/shard&gt;
+        &lt;/mycluster&gt;
+    &lt;/remote_servers&gt;
+&lt;/yandex&gt;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 </div>
 </div>
 <!-- Advanced Patterns Section -->

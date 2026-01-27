@@ -502,184 +502,184 @@ sudo apt-get update
 sudo apt-get install -y clickhouse-server clickhouse-client clickhouse-keeper</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>Step 2: Configure ClickHouse Keeper Cluster</h3>
 <p>Edit <strong>/etc/clickhouse-keeper/keeper_config.xml</strong> on nodes ch1, ch2, ch3:</p>
-<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">&amp;lt;?xml version="1.0"?&amp;gt;
-&amp;lt;clickhouse&amp;gt;
-    &amp;lt;logger&amp;gt;
-        &amp;lt;level&amp;gt;information&amp;lt;/level&amp;gt;
-        &amp;lt;log&amp;gt;/var/log/clickhouse-keeper/clickhouse-keeper.log&amp;lt;/log&amp;gt;
-    &amp;lt;/logger&amp;gt;
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">&lt;?xml version="1.0"?&gt;
+&lt;clickhouse&gt;
+    &lt;logger&gt;
+        &lt;level&gt;information&lt;/level&gt;
+        &lt;log&gt;/var/log/clickhouse-keeper/clickhouse-keeper.log&lt;/log&gt;
+    &lt;/logger&gt;
 
-    &amp;lt;listen_host&amp;gt;0.0.0.0&amp;lt;/listen_host&amp;gt;
-    &amp;lt;keeper_server&amp;gt;
-        &amp;lt;tcp_port&amp;gt;9181&amp;lt;/tcp_port&amp;gt;
-        &amp;lt;server_id&amp;gt;1&amp;lt;/server_id&amp;gt;  &amp;lt;!-- Change to 2 on ch2, 3 on ch3 --&amp;gt;
-        &amp;lt;log_storage_path&amp;gt;/var/lib/clickhouse/coordination/log&amp;lt;/log_storage_path&amp;gt;
-        &amp;lt;snapshot_storage_path&amp;gt;/var/lib/clickhouse/coordination/snapshots&amp;lt;/snapshot_storage_path&amp;gt;
+    &lt;listen_host&gt;0.0.0.0&lt;/listen_host&gt;
+    &lt;keeper_server&gt;
+        &lt;tcp_port&gt;9181&lt;/tcp_port&gt;
+        &lt;server_id&gt;1&lt;/server_id&gt;  &lt;!-- Change to 2 on ch2, 3 on ch3 --&gt;
+        &lt;log_storage_path&gt;/var/lib/clickhouse/coordination/log&lt;/log_storage_path&gt;
+        &lt;snapshot_storage_path&gt;/var/lib/clickhouse/coordination/snapshots&lt;/snapshot_storage_path&gt;
 
-        &amp;lt;coordination_settings&amp;gt;
-            &amp;lt;operation_timeout_ms&amp;gt;10000&amp;lt;/operation_timeout_ms&amp;gt;
-            &amp;lt;session_timeout_ms&amp;gt;30000&amp;lt;/session_timeout_ms&amp;gt;
-            &amp;lt;raft_logs_level&amp;gt;information&amp;lt;/raft_logs_level&amp;gt;
-        &amp;lt;/coordination_settings&amp;gt;
+        &lt;coordination_settings&gt;
+            &lt;operation_timeout_ms&gt;10000&lt;/operation_timeout_ms&gt;
+            &lt;session_timeout_ms&gt;30000&lt;/session_timeout_ms&gt;
+            &lt;raft_logs_level&gt;information&lt;/raft_logs_level&gt;
+        &lt;/coordination_settings&gt;
 
-        &amp;lt;raft_configuration&amp;gt;
-            &amp;lt;server&amp;gt;
-                &amp;lt;id&amp;gt;1&amp;lt;/id&amp;gt;
-                &amp;lt;hostname&amp;gt;ch1.local&amp;lt;/hostname&amp;gt;
-                &amp;lt;port&amp;gt;9234&amp;lt;/port&amp;gt;
-            &amp;lt;/server&amp;gt;
-            &amp;lt;server&amp;gt;
-                &amp;lt;id&amp;gt;2&amp;lt;/id&amp;gt;
-                &amp;lt;hostname&amp;gt;ch2.local&amp;lt;/hostname&amp;gt;
-                &amp;lt;port&amp;gt;9234&amp;lt;/port&amp;gt;
-            &amp;lt;/server&amp;gt;
-            &amp;lt;server&amp;gt;
-                &amp;lt;id&amp;gt;3&amp;lt;/id&amp;gt;
-                &amp;lt;hostname&amp;gt;ch3.local&amp;lt;/hostname&amp;gt;
-                &amp;lt;port&amp;gt;9234&amp;lt;/port&amp;gt;
-            &amp;lt;/server&amp;gt;
-        &amp;lt;/raft_configuration&amp;gt;
-    &amp;lt;/keeper_server&amp;gt;
-&amp;lt;/clickhouse&amp;gt;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+        &lt;raft_configuration&gt;
+            &lt;server&gt;
+                &lt;id&gt;1&lt;/id&gt;
+                &lt;hostname&gt;ch1.local&lt;/hostname&gt;
+                &lt;port&gt;9234&lt;/port&gt;
+            &lt;/server&gt;
+            &lt;server&gt;
+                &lt;id&gt;2&lt;/id&gt;
+                &lt;hostname&gt;ch2.local&lt;/hostname&gt;
+                &lt;port&gt;9234&lt;/port&gt;
+            &lt;/server&gt;
+            &lt;server&gt;
+                &lt;id&gt;3&lt;/id&gt;
+                &lt;hostname&gt;ch3.local&lt;/hostname&gt;
+                &lt;port&gt;9234&lt;/port&gt;
+            &lt;/server&gt;
+        &lt;/raft_configuration&gt;
+    &lt;/keeper_server&gt;
+&lt;/clickhouse&gt;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>Step 3: Configure ClickHouse Cluster (config.xml)</h3>
 <p>Edit <strong>/etc/clickhouse-server/config.xml</strong> on all nodes:</p>
-<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">&amp;lt;?xml version="1.0"?&amp;gt;
-&amp;lt;clickhouse&amp;gt;
-    &amp;lt;!-- Include files for distributed config --&amp;gt;
-    &amp;lt;include_from&amp;gt;/etc/clickhouse-server/config.d/*.xml&amp;lt;/include_from&amp;gt;
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">&lt;?xml version="1.0"?&gt;
+&lt;clickhouse&gt;
+    &lt;!-- Include files for distributed config --&gt;
+    &lt;include_from&gt;/etc/clickhouse-server/config.d/*.xml&lt;/include_from&gt;
 
-    &amp;lt;!-- Keeper coordination --&amp;gt;
-    &amp;lt;zookeeper&amp;gt;
-        &amp;lt;node&amp;gt;
-            &amp;lt;host&amp;gt;ch1.local&amp;lt;/host&amp;gt;
-            &amp;lt;port&amp;gt;9181&amp;lt;/port&amp;gt;
-        &amp;lt;/node&amp;gt;
-        &amp;lt;node&amp;gt;
-            &amp;lt;host&amp;gt;ch2.local&amp;lt;/host&amp;gt;
-            &amp;lt;port&amp;gt;9181&amp;lt;/port&amp;gt;
-        &amp;lt;/node&amp;gt;
-        &amp;lt;node&amp;gt;
-            &amp;lt;host&amp;gt;ch3.local&amp;lt;/host&amp;gt;
-            &amp;lt;port&amp;gt;9181&amp;lt;/port&amp;gt;
-        &amp;lt;/node&amp;gt;
-    &amp;lt;/zookeeper&amp;gt;
+    &lt;!-- Keeper coordination --&gt;
+    &lt;zookeeper&gt;
+        &lt;node&gt;
+            &lt;host&gt;ch1.local&lt;/host&gt;
+            &lt;port&gt;9181&lt;/port&gt;
+        &lt;/node&gt;
+        &lt;node&gt;
+            &lt;host&gt;ch2.local&lt;/host&gt;
+            &lt;port&gt;9181&lt;/port&gt;
+        &lt;/node&gt;
+        &lt;node&gt;
+            &lt;host&gt;ch3.local&lt;/host&gt;
+            &lt;port&gt;9181&lt;/port&gt;
+        &lt;/node&gt;
+    &lt;/zookeeper&gt;
 
-    &amp;lt;!-- Cluster definition --&amp;gt;
-    &amp;lt;remote_servers&amp;gt;
-        &amp;lt;my_cluster&amp;gt;
-            &amp;lt;shard&amp;gt;
-                &amp;lt;replica&amp;gt;
-                    &amp;lt;host&amp;gt;ch1.local&amp;lt;/host&amp;gt;
-                    &amp;lt;port&amp;gt;9000&amp;lt;/port&amp;gt;
-                &amp;lt;/replica&amp;gt;
-                &amp;lt;replica&amp;gt;
-                    &amp;lt;host&amp;gt;ch2.local&amp;lt;/host&amp;gt;
-                    &amp;lt;port&amp;gt;9000&amp;lt;/port&amp;gt;
-                &amp;lt;/replica&amp;gt;
-            &amp;lt;/shard&amp;gt;
-            &amp;lt;shard&amp;gt;
-                &amp;lt;replica&amp;gt;
-                    &amp;lt;host&amp;gt;ch3.local&amp;lt;/host&amp;gt;
-                    &amp;lt;port&amp;gt;9000&amp;lt;/port&amp;gt;
-                &amp;lt;/replica&amp;gt;
-                &amp;lt;replica&amp;gt;
-                    &amp;lt;host&amp;gt;ch4.local&amp;lt;/host&amp;gt;
-                    &amp;lt;port&amp;gt;9000&amp;lt;/port&amp;gt;
-                &amp;lt;/replica&amp;gt;
-            &amp;lt;/shard&amp;gt;
-            &amp;lt;shard&amp;gt;
-                &amp;lt;replica&amp;gt;
-                    &amp;lt;host&amp;gt;ch5.local&amp;lt;/host&amp;gt;
-                    &amp;lt;port&amp;gt;9000&amp;lt;/port&amp;gt;
-                &amp;lt;/replica&amp;gt;
-                &amp;lt;replica&amp;gt;
-                    &amp;lt;host&amp;gt;ch6.local&amp;lt;/host&amp;gt;
-                    &amp;lt;port&amp;gt;9000&amp;lt;/port&amp;gt;
-                &amp;lt;/replica&amp;gt;
-            &amp;lt;/shard&amp;gt;
-        &amp;lt;/my_cluster&amp;gt;
-    &amp;lt;/remote_servers&amp;gt;
+    &lt;!-- Cluster definition --&gt;
+    &lt;remote_servers&gt;
+        &lt;my_cluster&gt;
+            &lt;shard&gt;
+                &lt;replica&gt;
+                    &lt;host&gt;ch1.local&lt;/host&gt;
+                    &lt;port&gt;9000&lt;/port&gt;
+                &lt;/replica&gt;
+                &lt;replica&gt;
+                    &lt;host&gt;ch2.local&lt;/host&gt;
+                    &lt;port&gt;9000&lt;/port&gt;
+                &lt;/replica&gt;
+            &lt;/shard&gt;
+            &lt;shard&gt;
+                &lt;replica&gt;
+                    &lt;host&gt;ch3.local&lt;/host&gt;
+                    &lt;port&gt;9000&lt;/port&gt;
+                &lt;/replica&gt;
+                &lt;replica&gt;
+                    &lt;host&gt;ch4.local&lt;/host&gt;
+                    &lt;port&gt;9000&lt;/port&gt;
+                &lt;/replica&gt;
+            &lt;/shard&gt;
+            &lt;shard&gt;
+                &lt;replica&gt;
+                    &lt;host&gt;ch5.local&lt;/host&gt;
+                    &lt;port&gt;9000&lt;/port&gt;
+                &lt;/replica&gt;
+                &lt;replica&gt;
+                    &lt;host&gt;ch6.local&lt;/host&gt;
+                    &lt;port&gt;9000&lt;/port&gt;
+                &lt;/replica&gt;
+            &lt;/shard&gt;
+        &lt;/my_cluster&gt;
+    &lt;/remote_servers&gt;
 
-    &amp;lt;!-- Macros for simplifying table creation --&amp;gt;
-    &amp;lt;macros&amp;gt;
-        &amp;lt;cluster&amp;gt;my_cluster&amp;lt;/cluster&amp;gt;
-        &amp;lt;shard&amp;gt;1&amp;lt;/shard&amp;gt;  &amp;lt;!-- Change on each node --&amp;gt;
-        &amp;lt;replica&amp;gt;ch1&amp;lt;/replica&amp;gt;  &amp;lt;!-- Change on each node --&amp;gt;
-    &amp;lt;/macros&amp;gt;
+    &lt;!-- Macros for simplifying table creation --&gt;
+    &lt;macros&gt;
+        &lt;cluster&gt;my_cluster&lt;/cluster&gt;
+        &lt;shard&gt;1&lt;/shard&gt;  &lt;!-- Change on each node --&gt;
+        &lt;replica&gt;ch1&lt;/replica&gt;  &lt;!-- Change on each node --&gt;
+    &lt;/macros&gt;
 
-    &amp;lt;!-- Port for client connections --&amp;gt;
-    &amp;lt;tcp_port&amp;gt;9000&amp;lt;/tcp_port&amp;gt;
-    &amp;lt;http_port&amp;gt;8123&amp;lt;/http_port&amp;gt;
+    &lt;!-- Port for client connections --&gt;
+    &lt;tcp_port&gt;9000&lt;/tcp_port&gt;
+    &lt;http_port&gt;8123&lt;/http_port&gt;
 
-    &amp;lt;!-- Resource limits --&amp;gt;
-    &amp;lt;max_connections&amp;gt;1024&amp;lt;/max_connections&amp;gt;
-    &amp;lt;max_concurrent_queries&amp;gt;100&amp;lt;/max_concurrent_queries&amp;gt;
+    &lt;!-- Resource limits --&gt;
+    &lt;max_connections&gt;1024&lt;/max_connections&gt;
+    &lt;max_concurrent_queries&gt;100&lt;/max_concurrent_queries&gt;
 
-    &amp;lt;!-- Logging --&amp;gt;
-    &amp;lt;logger&amp;gt;
-        &amp;lt;level&amp;gt;information&amp;lt;/level&amp;gt;
-        &amp;lt;log&amp;gt;/var/log/clickhouse-server/clickhouse-server.log&amp;lt;/log&amp;gt;
-        &amp;lt;errorlog&amp;gt;/var/log/clickhouse-server/clickhouse-server.err.log&amp;lt;/errorlog&amp;gt;
-    &amp;lt;/logger&amp;gt;
-&amp;lt;/clickhouse&amp;gt;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+    &lt;!-- Logging --&gt;
+    &lt;logger&gt;
+        &lt;level&gt;information&lt;/level&gt;
+        &lt;log&gt;/var/log/clickhouse-server/clickhouse-server.log&lt;/log&gt;
+        &lt;errorlog&gt;/var/log/clickhouse-server/clickhouse-server.err.log&lt;/errorlog&gt;
+    &lt;/logger&gt;
+&lt;/clickhouse&gt;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>Step 4: Configure Users &amp; Security (users.xml)</h3>
-<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">&amp;lt;?xml version="1.0"?&amp;gt;
-&amp;lt;clickhouse&amp;gt;
-    &amp;lt;users&amp;gt;
-        &amp;lt;!-- Default user --&amp;gt;
-        &amp;lt;default&amp;gt;
-            &amp;lt;password_sha256_hex&amp;gt;8d969eef6ecad3c29a3a873fba8c4f7f&amp;lt;/password_sha256_hex&amp;gt;
-            &amp;lt;networks&amp;gt;
-                &amp;lt;ip&amp;gt;::/0&amp;lt;/ip&amp;gt;
-            &amp;lt;/networks&amp;gt;
-            &amp;lt;profile&amp;gt;default&amp;lt;/profile&amp;gt;
-            &amp;lt;quota&amp;gt;default&amp;lt;/quota&amp;gt;
-        &amp;lt;/default&amp;gt;
+<div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">&lt;?xml version="1.0"?&gt;
+&lt;clickhouse&gt;
+    &lt;users&gt;
+        &lt;!-- Default user --&gt;
+        &lt;default&gt;
+            &lt;password_sha256_hex&gt;8d969eef6ecad3c29a3a873fba8c4f7f&lt;/password_sha256_hex&gt;
+            &lt;networks&gt;
+                &lt;ip&gt;::/0&lt;/ip&gt;
+            &lt;/networks&gt;
+            &lt;profile&gt;default&lt;/profile&gt;
+            &lt;quota&gt;default&lt;/quota&gt;
+        &lt;/default&gt;
 
-        &amp;lt;!-- Application user with limited permissions --&amp;gt;
-        &amp;lt;app_user&amp;gt;
-            &amp;lt;password_sha256_hex&amp;gt;8d969eef6ecad3c29a3a873fba8c4f7f&amp;lt;/password_sha256_hex&amp;gt;
-            &amp;lt;networks&amp;gt;
-                &amp;lt;ip&amp;gt;192.168.1.0/24&amp;lt;/ip&amp;gt;
-                &amp;lt;ip&amp;gt;10.0.0.0/8&amp;lt;/ip&amp;gt;
-            &amp;lt;/networks&amp;gt;
-            &amp;lt;profile&amp;gt;app&amp;lt;/profile&amp;gt;
-            &amp;lt;quota&amp;gt;app_quota&amp;lt;/quota&amp;gt;
-        &amp;lt;/app_user&amp;gt;
-    &amp;lt;/users&amp;gt;
+        &lt;!-- Application user with limited permissions --&gt;
+        &lt;app_user&gt;
+            &lt;password_sha256_hex&gt;8d969eef6ecad3c29a3a873fba8c4f7f&lt;/password_sha256_hex&gt;
+            &lt;networks&gt;
+                &lt;ip&gt;192.168.1.0/24&lt;/ip&gt;
+                &lt;ip&gt;10.0.0.0/8&lt;/ip&gt;
+            &lt;/networks&gt;
+            &lt;profile&gt;app&lt;/profile&gt;
+            &lt;quota&gt;app_quota&lt;/quota&gt;
+        &lt;/app_user&gt;
+    &lt;/users&gt;
 
-    &amp;lt;!-- Profile definitions (resource limits) --&amp;gt;
-    &amp;lt;profiles&amp;gt;
-        &amp;lt;default&amp;gt;
-            &amp;lt;max_memory_usage&amp;gt;10000000000&amp;lt;/max_memory_usage&amp;gt;
-            &amp;lt;max_connections&amp;gt;100&amp;lt;/max_connections&amp;gt;
-            &amp;lt;max_concurrent_queries_for_user&amp;gt;10&amp;lt;/max_concurrent_queries_for_user&amp;gt;
-        &amp;lt;/default&amp;gt;
-        &amp;lt;app&amp;gt;
-            &amp;lt;max_memory_usage&amp;gt;5000000000&amp;lt;/max_memory_usage&amp;gt;
-            &amp;lt;max_connections&amp;gt;50&amp;lt;/max_connections&amp;gt;
-            &amp;lt;max_concurrent_queries_for_user&amp;gt;5&amp;lt;/max_concurrent_queries_for_user&amp;gt;
-        &amp;lt;/app&amp;gt;
-    &amp;lt;/profiles&amp;gt;
+    &lt;!-- Profile definitions (resource limits) --&gt;
+    &lt;profiles&gt;
+        &lt;default&gt;
+            &lt;max_memory_usage&gt;10000000000&lt;/max_memory_usage&gt;
+            &lt;max_connections&gt;100&lt;/max_connections&gt;
+            &lt;max_concurrent_queries_for_user&gt;10&lt;/max_concurrent_queries_for_user&gt;
+        &lt;/default&gt;
+        &lt;app&gt;
+            &lt;max_memory_usage&gt;5000000000&lt;/max_memory_usage&gt;
+            &lt;max_connections&gt;50&lt;/max_connections&gt;
+            &lt;max_concurrent_queries_for_user&gt;5&lt;/max_concurrent_queries_for_user&gt;
+        &lt;/app&gt;
+    &lt;/profiles&gt;
 
-    &amp;lt;!-- Quota definitions --&amp;gt;
-    &amp;lt;quotas&amp;gt;
-        &amp;lt;default&amp;gt;
-            &amp;lt;interval&amp;gt;
-                &amp;lt;duration&amp;gt;3600&amp;lt;/duration&amp;gt;
-                &amp;lt;queries&amp;gt;0&amp;lt;/queries&amp;gt;
-                &amp;lt;errors&amp;gt;0&amp;lt;/errors&amp;gt;
-            &amp;lt;/interval&amp;gt;
-        &amp;lt;/default&amp;gt;
-        &amp;lt;app_quota&amp;gt;
-            &amp;lt;interval&amp;gt;
-                &amp;lt;duration&amp;gt;3600&amp;lt;/duration&amp;gt;
-                &amp;lt;queries&amp;gt;10000&amp;lt;/queries&amp;gt;
-                &amp;lt;read_rows&amp;gt;1000000000&amp;lt;/read_rows&amp;gt;
-            &amp;lt;/interval&amp;gt;
-        &amp;lt;/app_quota&amp;gt;
-    &amp;lt;/quotas&amp;gt;
-&amp;lt;/clickhouse&amp;gt;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+    &lt;!-- Quota definitions --&gt;
+    &lt;quotas&gt;
+        &lt;default&gt;
+            &lt;interval&gt;
+                &lt;duration&gt;3600&lt;/duration&gt;
+                &lt;queries&gt;0&lt;/queries&gt;
+                &lt;errors&gt;0&lt;/errors&gt;
+            &lt;/interval&gt;
+        &lt;/default&gt;
+        &lt;app_quota&gt;
+            &lt;interval&gt;
+                &lt;duration&gt;3600&lt;/duration&gt;
+                &lt;queries&gt;10000&lt;/queries&gt;
+                &lt;read_rows&gt;1000000000&lt;/read_rows&gt;
+            &lt;/interval&gt;
+        &lt;/app_quota&gt;
+    &lt;/quotas&gt;
+&lt;/clickhouse&gt;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>Step 5: Start Services</h3>
 <div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># Start Keeper on ch1, ch2, ch3
 sudo systemctl start clickhouse-keeper
@@ -857,13 +857,13 @@ sudo chmod 600 /etc/clickhouse-server/certs/server.key
 sudo chown clickhouse:clickhouse /etc/clickhouse-server/certs/*
 
 # Update config.xml
-&amp;lt;https_port&amp;gt;8443&amp;lt;/https_port&amp;gt;
-&amp;lt;openSSL&amp;gt;
-    &amp;lt;server&amp;gt;
-        &amp;lt;certificateFile&amp;gt;/etc/clickhouse-server/certs/server.crt&amp;lt;/certificateFile&amp;gt;
-        &amp;lt;privateKeyFile&amp;gt;/etc/clickhouse-server/certs/server.key&amp;lt;/privateKeyFile&amp;gt;
-    &amp;lt;/server&amp;gt;
-&amp;lt;/openSSL&amp;gt;
+&lt;https_port&gt;8443&lt;/https_port&gt;
+&lt;openSSL&gt;
+    &lt;server&gt;
+        &lt;certificateFile&gt;/etc/clickhouse-server/certs/server.crt&lt;/certificateFile&gt;
+        &lt;privateKeyFile&gt;/etc/clickhouse-server/certs/server.key&lt;/privateKeyFile&gt;
+    &lt;/server&gt;
+&lt;/openSSL&gt;
 
 # Restart ClickHouse
 sudo systemctl restart clickhouse-server
@@ -1004,52 +1004,52 @@ SET max_result_rows = 10000000;</code></pre><div class="fade-overlay"></div></di
 <div class="section-content">
 <h3>Template 1: Production Cluster Configuration</h3>
 <div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs"># config.xml snippet for production 3×2 cluster
-&amp;lt;remote_servers&amp;gt;
-    &amp;lt;prod_cluster&amp;gt;
-        &amp;lt;shard&amp;gt;
-            &amp;lt;weight&amp;gt;1&amp;lt;/weight&amp;gt;
-            &amp;lt;internal_replication&amp;gt;true&amp;lt;/internal_replication&amp;gt;
-            &amp;lt;replica&amp;gt;
-                &amp;lt;host&amp;gt;ch1.prod.local&amp;lt;/host&amp;gt;
-                &amp;lt;port&amp;gt;9000&amp;lt;/port&amp;gt;
-                &amp;lt;priority&amp;gt;1&amp;lt;/priority&amp;gt;
-            &amp;lt;/replica&amp;gt;
-            &amp;lt;replica&amp;gt;
-                &amp;lt;host&amp;gt;ch2.prod.local&amp;lt;/host&amp;gt;
-                &amp;lt;port&amp;gt;9000&amp;lt;/port&amp;gt;
-                &amp;lt;priority&amp;gt;2&amp;lt;/priority&amp;gt;
-            &amp;lt;/replica&amp;gt;
-        &amp;lt;/shard&amp;gt;
-        &amp;lt;shard&amp;gt;
-            &amp;lt;weight&amp;gt;1&amp;lt;/weight&amp;gt;
-            &amp;lt;internal_replication&amp;gt;true&amp;lt;/internal_replication&amp;gt;
-            &amp;lt;replica&amp;gt;
-                &amp;lt;host&amp;gt;ch3.prod.local&amp;lt;/host&amp;gt;
-                &amp;lt;port&amp;gt;9000&amp;lt;/port&amp;gt;
-                &amp;lt;priority&amp;gt;1&amp;lt;/priority&amp;gt;
-            &amp;lt;/replica&amp;gt;
-            &amp;lt;replica&amp;gt;
-                &amp;lt;host&amp;gt;ch4.prod.local&amp;lt;/host&amp;gt;
-                &amp;lt;port&amp;gt;9000&amp;lt;/port&amp;gt;
-                &amp;lt;priority&amp;gt;2&amp;lt;/priority&amp;gt;
-            &amp;lt;/replica&amp;gt;
-        &amp;lt;/shard&amp;gt;
-        &amp;lt;shard&amp;gt;
-            &amp;lt;weight&amp;gt;1&amp;lt;/weight&amp;gt;
-            &amp;lt;internal_replication&amp;gt;true&amp;lt;/internal_replication&amp;gt;
-            &amp;lt;replica&amp;gt;
-                &amp;lt;host&amp;gt;ch5.prod.local&amp;lt;/host&amp;gt;
-                &amp;lt;port&amp;gt;9000&amp;lt;/port&amp;gt;
-                &amp;lt;priority&amp;gt;1&amp;lt;/priority&amp;gt;
-            &amp;lt;/replica&amp;gt;
-            &amp;lt;replica&amp;gt;
-                &amp;lt;host&amp;gt;ch6.prod.local&amp;lt;/host&amp;gt;
-                &amp;lt;port&amp;gt;9000&amp;lt;/port&amp;gt;
-                &amp;lt;priority&amp;gt;2&amp;lt;/priority&amp;gt;
-            &amp;lt;/replica&amp;gt;
-        &amp;lt;/shard&amp;gt;
-    &amp;lt;/prod_cluster&amp;gt;
-&amp;lt;/remote_servers&amp;gt;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
+&lt;remote_servers&gt;
+    &lt;prod_cluster&gt;
+        &lt;shard&gt;
+            &lt;weight&gt;1&lt;/weight&gt;
+            &lt;internal_replication&gt;true&lt;/internal_replication&gt;
+            &lt;replica&gt;
+                &lt;host&gt;ch1.prod.local&lt;/host&gt;
+                &lt;port&gt;9000&lt;/port&gt;
+                &lt;priority&gt;1&lt;/priority&gt;
+            &lt;/replica&gt;
+            &lt;replica&gt;
+                &lt;host&gt;ch2.prod.local&lt;/host&gt;
+                &lt;port&gt;9000&lt;/port&gt;
+                &lt;priority&gt;2&lt;/priority&gt;
+            &lt;/replica&gt;
+        &lt;/shard&gt;
+        &lt;shard&gt;
+            &lt;weight&gt;1&lt;/weight&gt;
+            &lt;internal_replication&gt;true&lt;/internal_replication&gt;
+            &lt;replica&gt;
+                &lt;host&gt;ch3.prod.local&lt;/host&gt;
+                &lt;port&gt;9000&lt;/port&gt;
+                &lt;priority&gt;1&lt;/priority&gt;
+            &lt;/replica&gt;
+            &lt;replica&gt;
+                &lt;host&gt;ch4.prod.local&lt;/host&gt;
+                &lt;port&gt;9000&lt;/port&gt;
+                &lt;priority&gt;2&lt;/priority&gt;
+            &lt;/replica&gt;
+        &lt;/shard&gt;
+        &lt;shard&gt;
+            &lt;weight&gt;1&lt;/weight&gt;
+            &lt;internal_replication&gt;true&lt;/internal_replication&gt;
+            &lt;replica&gt;
+                &lt;host&gt;ch5.prod.local&lt;/host&gt;
+                &lt;port&gt;9000&lt;/port&gt;
+                &lt;priority&gt;1&lt;/priority&gt;
+            &lt;/replica&gt;
+            &lt;replica&gt;
+                &lt;host&gt;ch6.prod.local&lt;/host&gt;
+                &lt;port&gt;9000&lt;/port&gt;
+                &lt;priority&gt;2&lt;/priority&gt;
+            &lt;/replica&gt;
+        &lt;/shard&gt;
+    &lt;/prod_cluster&gt;
+&lt;/remote_servers&gt;</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>Template 2: Production Events Table with Distributed Variant</h3>
 <div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- Create replicated table on all shards
 CREATE TABLE IF NOT EXISTS events ON CLUSTER 'prod_cluster' (
@@ -1119,43 +1119,43 @@ ORDER BY absolute_delay DESC;
 -- Therefore: ensure geographically distributed replicas</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>3. Cross-Datacenter Replication</h3>
 <div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- 3 shards across 2 datacenters (DC1, DC2)
-&amp;lt;remote_servers&amp;gt;
-    &amp;lt;multi_dc_cluster&amp;gt;
-        &amp;lt;!-- Shard 1: DC1 primary, DC2 replica --&amp;gt;
-        &amp;lt;shard&amp;gt;
-            &amp;lt;replica&amp;gt;&amp;lt;host&amp;gt;ch1-dc1&amp;lt;/host&amp;gt;&amp;lt;port&amp;gt;9000&amp;lt;/port&amp;gt;&amp;lt;/replica&amp;gt;
-            &amp;lt;replica&amp;gt;&amp;lt;host&amp;gt;ch1-dc2&amp;lt;/host&amp;gt;&amp;lt;port&amp;gt;9000&amp;lt;/port&amp;gt;&amp;lt;/replica&amp;gt;
-        &amp;lt;/shard&amp;gt;
-        &amp;lt;!-- Shard 2: DC1 primary, DC2 replica --&amp;gt;
-        &amp;lt;shard&amp;gt;
-            &amp;lt;replica&amp;gt;&amp;lt;host&amp;gt;ch2-dc1&amp;lt;/host&amp;gt;&amp;lt;port&amp;gt;9000&amp;lt;/port&amp;gt;&amp;lt;/replica&amp;gt;
-            &amp;lt;replica&amp;gt;&amp;lt;host&amp;gt;ch2-dc2&amp;lt;/host&amp;gt;&amp;lt;port&amp;gt;9000&amp;lt;/port&amp;gt;&amp;lt;/replica&amp;gt;
-        &amp;lt;/shard&amp;gt;
-        &amp;lt;!-- Shard 3: DC1 primary, DC2 replica --&amp;gt;
-        &amp;lt;shard&amp;gt;
-            &amp;lt;replica&amp;gt;&amp;lt;host&amp;gt;ch3-dc1&amp;lt;/host&amp;gt;&amp;lt;port&amp;gt;9000&amp;lt;/port&amp;gt;&amp;lt;/replica&amp;gt;
-            &amp;lt;replica&amp;gt;&amp;lt;host&amp;gt;ch3-dc2&amp;lt;/host&amp;gt;&amp;lt;port&amp;gt;9000&amp;lt;/port&amp;gt;&amp;lt;/replica&amp;gt;
-        &amp;lt;/shard&amp;gt;
-    &amp;lt;/multi_dc_cluster&amp;gt;
-&amp;lt;/remote_servers&amp;gt;
+&lt;remote_servers&gt;
+    &lt;multi_dc_cluster&gt;
+        &lt;!-- Shard 1: DC1 primary, DC2 replica --&gt;
+        &lt;shard&gt;
+            &lt;replica&gt;&lt;host&gt;ch1-dc1&lt;/host&gt;&lt;port&gt;9000&lt;/port&gt;&lt;/replica&gt;
+            &lt;replica&gt;&lt;host&gt;ch1-dc2&lt;/host&gt;&lt;port&gt;9000&lt;/port&gt;&lt;/replica&gt;
+        &lt;/shard&gt;
+        &lt;!-- Shard 2: DC1 primary, DC2 replica --&gt;
+        &lt;shard&gt;
+            &lt;replica&gt;&lt;host&gt;ch2-dc1&lt;/host&gt;&lt;port&gt;9000&lt;/port&gt;&lt;/replica&gt;
+            &lt;replica&gt;&lt;host&gt;ch2-dc2&lt;/host&gt;&lt;port&gt;9000&lt;/port&gt;&lt;/replica&gt;
+        &lt;/shard&gt;
+        &lt;!-- Shard 3: DC1 primary, DC2 replica --&gt;
+        &lt;shard&gt;
+            &lt;replica&gt;&lt;host&gt;ch3-dc1&lt;/host&gt;&lt;port&gt;9000&lt;/port&gt;&lt;/replica&gt;
+            &lt;replica&gt;&lt;host&gt;ch3-dc2&lt;/host&gt;&lt;port&gt;9000&lt;/port&gt;&lt;/replica&gt;
+        &lt;/shard&gt;
+    &lt;/multi_dc_cluster&gt;
+&lt;/remote_servers&gt;
 
 -- Benefit: Survive entire DC failure, query locally in each DC</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 <h3>4. Weighted Shards for Heterogeneous Hardware</h3>
 <div class="code-wrapper"><button class="copy-btn">Copy</button><div class="code-content collapsed"><pre><code class="hljs">-- If nodes have different capacity, use weights
-&amp;lt;remote_servers&amp;gt;
-    &amp;lt;weighted_cluster&amp;gt;
-        &amp;lt;shard&amp;gt;
-            &amp;lt;weight&amp;gt;3&amp;lt;/weight&amp;gt;  &amp;lt;!-- 3x capacity --&amp;gt;
-            &amp;lt;replica&amp;gt;&amp;lt;host&amp;gt;high-capacity-node&amp;lt;/host&amp;gt;&amp;lt;/replica&amp;gt;
-            &amp;lt;replica&amp;gt;&amp;lt;host&amp;gt;high-capacity-replica&amp;lt;/host&amp;gt;&amp;lt;/replica&amp;gt;
-        &amp;lt;/shard&amp;gt;
-        &amp;lt;shard&amp;gt;
-            &amp;lt;weight&amp;gt;1&amp;lt;/weight&amp;gt;  &amp;lt;!-- 1x capacity --&amp;gt;
-            &amp;lt;replica&amp;gt;&amp;lt;host&amp;gt;normal-node&amp;lt;/host&amp;gt;&amp;lt;/replica&amp;gt;
-            &amp;lt;replica&amp;gt;&amp;lt;host&amp;gt;normal-replica&amp;lt;/host&amp;gt;&amp;lt;/replica&amp;gt;
-        &amp;lt;/shard&amp;gt;
-    &amp;lt;/weighted_cluster&amp;gt;
-&amp;lt;/remote_servers&amp;gt;
+&lt;remote_servers&gt;
+    &lt;weighted_cluster&gt;
+        &lt;shard&gt;
+            &lt;weight&gt;3&lt;/weight&gt;  &lt;!-- 3x capacity --&gt;
+            &lt;replica&gt;&lt;host&gt;high-capacity-node&lt;/host&gt;&lt;/replica&gt;
+            &lt;replica&gt;&lt;host&gt;high-capacity-replica&lt;/host&gt;&lt;/replica&gt;
+        &lt;/shard&gt;
+        &lt;shard&gt;
+            &lt;weight&gt;1&lt;/weight&gt;  &lt;!-- 1x capacity --&gt;
+            &lt;replica&gt;&lt;host&gt;normal-node&lt;/host&gt;&lt;/replica&gt;
+            &lt;replica&gt;&lt;host&gt;normal-replica&lt;/host&gt;&lt;/replica&gt;
+        &lt;/shard&gt;
+    &lt;/weighted_cluster&gt;
+&lt;/remote_servers&gt;
 
 -- Sharding key will distribute data by weight (3:1 ratio)</code></pre><div class="fade-overlay"></div></div><button class="toggle-btn visible">Show More</button></div>
 </div>
