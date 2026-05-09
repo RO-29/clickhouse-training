@@ -18,9 +18,13 @@ relative to the HTML file itself — so they work both via file:// and on
 deployed sites regardless of build config.
 """
 from __future__ import annotations
-import re, shutil, json
+import re, shutil, json, sys
 from pathlib import Path
 import markdown
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from ai_prompts import (  # noqa: E402
+    harvest_sections, build_url, html_button, HTML_BUTTON_CSS,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 DEMOS = ROOT / "code-examples" / "demos"
@@ -100,6 +104,7 @@ CSS = """
   gap: 16px; margin: 12px 0;
 }
 .handsOn-card a { color: #1a4480; }
+""" + HTML_BUTTON_CSS + """
 .handsOn-source-tag {
   display: inline-block; background: #e0f2fe; color: #075985;
   padding: 2px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 600;
@@ -220,12 +225,35 @@ def diagram_files(folder: Path) -> tuple[list, list]:
         (anim if p.name.startswith("anim-") else mermaid).append(p)
     return anim, mermaid
 
-def load_readme_as_html(folder: Path) -> str:
-    md = folder / "README.md"
-    if not md.exists(): return "<p><em>README missing.</em></p>"
-    text = md.read_text()
-    text = re.sub(r"```mermaid\n.+?\n```", "<!-- mermaid rendered as SVG above -->", text, flags=re.DOTALL)
-    return markdown.markdown(text, extensions=["fenced_code", "tables", "toc", "sane_lists"])
+def load_readme_as_html(folder: Path, module_dir: str) -> str:
+    md_path = folder / "README.md"
+    if not md_path.exists(): return "<p><em>README missing.</em></p>"
+    text = md_path.read_text()
+
+    # Strip mermaid blocks — already rendered as SVG above this section.
+    text = re.sub(r"```mermaid\n.+?\n```",
+                  "<!-- mermaid rendered as SVG above -->",
+                  text, flags=re.DOTALL)
+
+    html = markdown.markdown(text, extensions=["fenced_code", "tables", "toc", "sane_lists"])
+
+    # Inject 💬 Discuss with AI button next to every <h2>. The Python markdown
+    # library uses h2 for ##; that's our section anchor.
+    sections = {title: excerpt for title, excerpt in harvest_sections(text)}
+
+    def add_btn(match: re.Match) -> str:
+        full_tag = match.group(0)
+        title_html = match.group(2)
+        # Strip HTML tags from the title to get a clean lookup key
+        plain_title = re.sub(r"<[^>]+>", "", title_html).strip()
+        # Drop leading numbering / emojis to match harvest's normalisation
+        normalised = re.sub(r"^[0-9.\s]+", "", plain_title).strip()
+        excerpt = sections.get(normalised) or sections.get(plain_title) or ""
+        url = build_url(module_dir, normalised or plain_title, excerpt)
+        return f'<h2{match.group(1)}>{title_html}{html_button(url)}</h2>'
+
+    html = re.sub(r'<h2([^>]*)>(.+?)</h2>', add_btn, html, flags=re.DOTALL)
+    return html
 
 def slug_for(url: str, idx: int) -> str:
     """Match the slug rules used by fetch-external-images.py."""
@@ -267,7 +295,7 @@ def build_section(folder_name: str, demos_folder: Path, externals: list) -> str:
             ))
         parts.append(EXT_CARD_FOOTER)
 
-    parts.append(README_CARD.format(readme_html=load_readme_as_html(demos_folder)))
+    parts.append(README_CARD.format(readme_html=load_readme_as_html(demos_folder, folder_name)))
     return "\n".join(parts)
 
 def main():

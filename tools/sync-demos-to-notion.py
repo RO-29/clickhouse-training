@@ -49,6 +49,7 @@ from md_to_notion import (  # noqa: E402
     md_to_blocks, heading, paragraph, bullet, divider,
     code_block, image_external,
 )
+from ai_prompts import build_url as ai_build_url  # noqa: E402
 
 NOTION_API_KEY = os.environ.get("NOTION_API_KEY", "")
 NOTION_VERSION = "2022-06-28"
@@ -187,12 +188,17 @@ def build_parent_extension_blocks(folder: Path) -> list[dict]:
                 f"`code-examples/demos/{folder.name}/diagrams/`."
             ))
 
-    # 3. Full module reference (README → native blocks)
+    # 3. Full module reference (README → native blocks, with 'Discuss with AI'
+    #    callout after every h2). Notion caps link.url at 2000 chars; we cap
+    #    the URL so the excerpt gets trimmed to fit.
     readme = folder / "README.md"
     if readme.exists():
         blocks.append(divider())
         blocks.append(heading(2, "📚 Full module reference"))
-        blocks.extend(md_to_blocks(readme.read_text()))
+        ai_link = lambda title, excerpt: ai_build_url(
+            folder.name, title, excerpt, max_url_chars=1990,
+        )
+        blocks.extend(md_to_blocks(readme.read_text(), ai_link_for_h2=ai_link))
 
     # 4. Pointer to the docker-demo child page
     blocks.append(divider())
@@ -267,15 +273,31 @@ def block_first_text(blk: dict) -> str:
     return rt[0].get("plain_text") or rt[0].get("text", {}).get("content", "")
 
 
+_session = requests.Session()
+
+
+def _archive_one(block_id: str) -> bool:
+    try:
+        r = _session.delete(f"{BASE}/blocks/{block_id}",
+                            headers=headers(), timeout=30)
+        return r.ok
+    except requests.RequestException:
+        return False
+
+
 def archive_block(block_id: str) -> bool:
-    r = requests.delete(f"{BASE}/blocks/{block_id}", headers=headers(), timeout=30)
-    return r.ok
+    return _archive_one(block_id)
 
 
 def reset_parent_auto_section(parent_id: str) -> int:
     """Find the sentinel heading on the parent page; archive it and every
     block after it. Returns the number of blocks archived.
+
+    Parallelised — Notion's published rate limit is ~3 r/s average but
+    bursts of 8-16 are tolerated. We use 8 concurrent DELETE requests.
     """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     children = list_existing_children(parent_id)
     sentinel_idx = None
     for i, blk in enumerate(children):
@@ -283,13 +305,12 @@ def reset_parent_auto_section(parent_id: str) -> int:
             if PARENT_SENTINEL in block_first_text(blk):
                 sentinel_idx = i; break
     if sentinel_idx is None: return 0
+
+    targets = [blk["id"] for blk in children[sentinel_idx:]]
     archived = 0
-    # Archive bottom-up so we don't try to archive a block whose parent
-    # context just got removed (Notion handles ordering, but bottom-up is safe).
-    for blk in reversed(children[sentinel_idx:]):
-        if archive_block(blk["id"]):
-            archived += 1
-        time.sleep(0.05)
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        for ok in pool.map(_archive_one, targets):
+            if ok: archived += 1
     return archived
 
 

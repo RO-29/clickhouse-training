@@ -1,5 +1,7 @@
-"""Markdown → Notion blocks converter, focused on the patterns our module
-READMEs use:
+"""Markdown → Notion blocks converter (with optional 'Discuss with AI'
+links injected after each h2 heading).
+
+Focused on the patterns our module READMEs use:
 
   # / ## / ### headings        →  heading_1/2/3
   paragraphs                   →  paragraph
@@ -193,8 +195,15 @@ def _normalize_lang(lang: str) -> str:
     return _LANG_MAP.get(lang.lower().strip(), "plain text")
 
 
-def md_to_blocks(md: str) -> list[dict]:
-    """Convert a markdown document to a list of Notion blocks."""
+def md_to_blocks(md: str, ai_link_for_h2 = None) -> list[dict]:
+    """Convert a markdown document to a list of Notion blocks.
+
+    If ``ai_link_for_h2`` is provided, it's called as ``ai_link_for_h2(title,
+    excerpt)`` for every heading_2 we emit and should return a URL — a
+    callout block with a link is inserted right after the heading.
+    The excerpt is the joined-up paragraph text following the heading
+    (capped at 600 chars).
+    """
     lines = md.splitlines()
     out: list[dict] = []
     i = 0
@@ -237,8 +246,43 @@ def md_to_blocks(md: str) -> list[dict]:
         # Heading
         m = re.match(r"^(#{1,6})\s+(.+)$", stripped)
         if m:
-            out.append(heading(len(m.group(1)), m.group(2).rstrip("# ").strip()))
-            i += 1; continue
+            level = len(m.group(1))
+            title = m.group(2).rstrip("# ").strip()
+            out.append(heading(level, title))
+            i += 1
+            # If this is an h2 and the caller wants AI links, peek ahead to
+            # collect a 600-char excerpt (skipping fenced code, blanks, comments).
+            if level == 2 and ai_link_for_h2:
+                excerpt_buf, budget, j = [], 600, i
+                in_code = False
+                while j < n and budget > 0:
+                    ll = lines[j].strip()
+                    if re.match(r"^##\s+", ll) and not in_code: break
+                    if re.match(r"^```", ll):
+                        in_code = not in_code; j += 1; continue
+                    if in_code: j += 1; continue
+                    if not ll or ll.startswith("<!--") or re.match(r"^[\|+\-:= ]+$", ll) or ll.startswith("!["):
+                        j += 1; continue
+                    excerpt_buf.append(ll); budget -= len(ll) + 1; j += 1
+                excerpt = " ".join(excerpt_buf)[:600]
+                # Strip emoji/numbering for cleaner prompt title
+                normalised = re.sub(r"^[0-9.\s]+", "", title).strip()
+                url = ai_link_for_h2(normalised or title, excerpt)
+                if url:
+                    out.append({
+                        "object": "block",
+                        "type": "callout",
+                        "callout": {
+                            "icon": {"type": "emoji", "emoji": "💬"},
+                            "color": "blue_background",
+                            "rich_text": [
+                                _rt_text("Discuss with AI: ", italic=True),
+                                _rt_text("open in chat", link=url),
+                                _rt_text("  (a context-rich prompt is pre-filled)", italic=True),
+                            ],
+                        },
+                    })
+            continue
 
         # Block quote
         if stripped.startswith(">"):
