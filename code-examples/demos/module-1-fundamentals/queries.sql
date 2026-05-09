@@ -53,7 +53,9 @@ GROUP BY day
 ORDER BY day;
 
 -- 8. how many granules / rows actually got read? Use FORMAT JSON for stats,
---    or look at system.query_log.
+--    or look at system.query_log. The log table is created lazily on the
+--    first periodic flush (~7s); force it now so the SELECT can find rows.
+SYSTEM FLUSH LOGS;
 SELECT
     query_duration_ms,
     read_rows,

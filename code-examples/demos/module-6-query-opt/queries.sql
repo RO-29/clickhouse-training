@@ -34,6 +34,8 @@ WHERE event_time BETWEEN '2026-02-01' AND '2026-02-28' GROUP BY country
 SETTINGS optimize_use_projections = 1;
 
 -- Q5: get the actual measurements out of the log.
+-- query_log is created lazily; flush so the SELECT finds the rows we just wrote.
+SYSTEM FLUSH LOGS;
 SELECT
     substring(query, 1, 80)   AS q,
     query_duration_ms,
