@@ -17,6 +17,9 @@ ch "$(<"$HERE/data.sql")"
 echo "==> queries.sql"
 ch "$(<"$HERE/queries.sql")"
 
+echo "==> extras.sql (VersionedCollapsing, Materialized View, Nested)"
+ch "$(<"$HERE/extras.sql")"
+
 cat <<EOF
 
 ✓ Module 2 demo complete.

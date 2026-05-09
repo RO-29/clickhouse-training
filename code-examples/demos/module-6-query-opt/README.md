@@ -54,6 +54,21 @@ Q2 PROJ: ~0.02 s  read_rows ~3k
   the query.
 - **`system.query_log`** is the source of truth — `tail -f` it during demos.
 
+## Extras (curriculum coverage)
+
+`extras.sql` adds the optimisation tools the core demo skipped:
+
+- **PREWHERE** — explicit and auto-rewritten forms; `EXPLAIN SYNTAX`
+  shows what the planner picks.
+- **SAMPLE** — `SAMPLE BY intHash32(user_id)` table copy; `SAMPLE 0.1`
+  gives an order-of-magnitude faster approximation.
+- **More skip indexes** — `minmax`, `set`, `tokenbf_v1` on the same
+  table; `EXPLAIN indexes = 1` shows which one fires.
+- **JOIN strategies** — `ANY` vs `ALL` vs Dictionary lookup
+  (`dictGetString`).
+- **Materialized View** — `country_daily_mv` with a backfill, so
+  per-country/per-day aggregations come from a tiny precomputed table.
+
 ## Cleanup
 
 `./down.sh` drops the volume. To clear data without tearing down:

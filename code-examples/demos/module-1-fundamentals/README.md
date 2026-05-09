@@ -40,6 +40,21 @@ up.sh · run.sh · down.sh
 3. **`index_granularity = 8192`** is why CH primary keys are tiny.
 4. **`OPTIMIZE FINAL`** forces a merge for the demo. Don't run it routinely.
 
+## Extras (curriculum coverage)
+
+`extras.sql` runs after the main demo and exercises the curriculum topics
+the core demo glossed over:
+
+- **TTL** — `m1.events_ttl` with `TTL event_time + INTERVAL 7 DAY DELETE`.
+- **Codecs** — `Delta`, `T64`, `ZSTD(3)` vs default LZ4 on the same shape
+  of data; `system.columns` shows the resulting compression ratios.
+- **Complex types** — `Enum8`, `Nullable`, `Array`, `Tuple`, `Map`, `Nested`
+  in one table, queried with the appropriate accessors (`mapKeys`,
+  `length`, dot-notation for `Nested`).
+- **Schema introspection** — `DESCRIBE TABLE` and `SHOW CREATE TABLE`.
+- **HTTP API** — `wget -qO- 'http://localhost:8123/?query=...'` from inside
+  the container (the default user is loopback-only, so call from in-pod).
+
 ## Ports
 
 | Service        | Container port | Host port |

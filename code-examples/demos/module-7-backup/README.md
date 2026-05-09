@@ -52,6 +52,22 @@ MinIO console: http://localhost:9101 — `minioadmin / minioadmin`.
 - **`FREEZE` is per-host.** For coordinated cluster snapshots, use
   `BACKUP … ON CLUSTER`.
 
+## Extras (curriculum coverage)
+
+`extras.sql` adds:
+
+- **Async backup** — `SETTINGS async = 1` returns immediately; status
+  visible in `system.backups`. Poll loop included.
+- **Incremental backup** — `SETTINGS base_backup = Disk('backups', '<base>')`
+  writes only changed parts; the resulting zip is far smaller than the
+  full backup.
+- **RESTORE chain** — restoring an incremental backup automatically
+  walks back to the base.
+- **`clickhouse-backup` CLI** (Altinity) — note on the operational tool
+  most teams use; wraps BACKUP/RESTORE with S3 upload/download and
+  manifest tracking.
+- **`BACKUP ON CLUSTER`** — single-line note for the cluster modules.
+
 ## Cleanup
 
 `./down.sh` drops volumes including the MinIO bucket. To clear data without

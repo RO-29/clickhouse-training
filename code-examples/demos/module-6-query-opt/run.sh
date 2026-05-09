@@ -17,6 +17,9 @@ time ch "$(<"$HERE/data.sql")"
 echo "==> queries.sql"
 ch "$(<"$HERE/queries.sql")"
 
+echo "==> extras.sql (PREWHERE, SAMPLE, more skip indexes, JOINs, MV)"
+ch "$(<"$HERE/extras.sql")"
+
 cat <<EOF
 
 ✓ Module 6 demo complete.

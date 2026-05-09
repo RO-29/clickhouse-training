@@ -37,7 +37,7 @@ CREATE TABLE m2.events_agg
     country         LowCardinality(String),
     uniq_users_state AggregateFunction(uniq, UInt32),
     revenue_state    AggregateFunction(sum, Float64),
-    p99_state        AggregateFunction(quantileTDigest(0.99), Float32)
+    p99_state        AggregateFunction(quantileTDigest(0.99), Float64)
 )
 ENGINE = AggregatingMergeTree
 ORDER BY (bucket_date, country);

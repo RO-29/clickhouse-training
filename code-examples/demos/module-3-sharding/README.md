@@ -44,6 +44,18 @@ Cluster name: `clickhouse_cluster`.
 4. **Replica equivalence**: both replicas of shard 1 store equal byte counts.
 5. **Query routing**: `WHERE user_id = 42` hits exactly one shard.
 
+## Extras (curriculum coverage)
+
+`extras.sql` adds:
+
+- **Weighted shards** — a second cluster definition `weighted_cluster`
+  with weights `1, 1, 4` over the same hosts. New inserts go ~66% to
+  shard 3; visible via `clusterAllReplicas` count.
+- **Alternative sharding keys** — `rand()` (even but no locality),
+  `intDiv(user_id, 100000)` (range-style, good for range scans), and
+  `xxHash64(user_id)` (drop-in for `cityHash64`). `EXPLAIN` shows how
+  each affects shard pruning.
+
 ## Cleanup
 
 `./down.sh` drops everything including volumes. To clear data without

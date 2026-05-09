@@ -1,0 +1,92 @@
+<?xml version="1.0"?>
+<!-- Module 5: example users.xml with profiles, quotas, and roles.
+     Three users:
+       admin    — full access, large quota
+       analyst  — readonly on analytics.* via role
+       app      — INSERT-only on analytics.page_views_distributed
+-->
+<clickhouse>
+    <profiles>
+        <default>
+            <max_threads>8</max_threads>
+            <load_balancing>random</load_balancing>
+            <log_queries>1</log_queries>
+        </default>
+
+        <heavy>
+            <max_memory_usage>4000000000</max_memory_usage>
+            <max_threads>16</max_threads>
+            <max_execution_time>120</max_execution_time>
+        </heavy>
+
+        <readonly>
+            <readonly>1</readonly>
+            <max_threads>4</max_threads>
+        </readonly>
+    </profiles>
+
+    <quotas>
+        <default>
+            <interval>
+                <duration>3600</duration>
+                <queries>0</queries>
+                <errors>0</errors>
+                <result_rows>0</result_rows>
+                <read_rows>0</read_rows>
+                <execution_time>0</execution_time>
+            </interval>
+        </default>
+        <analyst_quota>
+            <interval>
+                <duration>3600</duration>
+                <queries>1000</queries>
+                <errors>50</errors>
+                <result_rows>0</result_rows>
+                <read_rows>1000000000</read_rows>
+                <execution_time>1800</execution_time>
+            </interval>
+        </analyst_quota>
+    </quotas>
+
+    <users>
+        <default>
+            <password></password>
+            <networks><ip>::/0</ip></networks>
+            <profile>default</profile>
+            <quota>default</quota>
+            <access_management>1</access_management>
+        </default>
+
+        <admin>
+            <password_sha256_hex>8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918</password_sha256_hex>
+            <!-- sha256('admin') above; rotate before any real use. -->
+            <networks><ip>::/0</ip></networks>
+            <profile>heavy</profile>
+            <quota>default</quota>
+            <access_management>1</access_management>
+        </admin>
+
+        <analyst>
+            <password_sha256_hex>8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918</password_sha256_hex>
+            <networks><ip>::/0</ip></networks>
+            <profile>readonly</profile>
+            <quota>analyst_quota</quota>
+            <databases>
+                <analytics />
+                <system />
+            </databases>
+        </analyst>
+
+        <app>
+            <password_sha256_hex>8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918</password_sha256_hex>
+            <networks><ip>::/0</ip></networks>
+            <profile>default</profile>
+            <quota>default</quota>
+            <databases>
+                <analytics />
+            </databases>
+            <!-- Granular SQL grants are best done with CREATE ROLE/GRANT
+                 in SQL once the user exists; see extras.sql. -->
+        </app>
+    </users>
+</clickhouse>

@@ -27,7 +27,7 @@ SELECT
     arrayElement(['US','IN','DE','BR'], 1 + number % 4) AS country,
     uniqState(toUInt32(1 + number % 50000))             AS uniq_users_state,
     sumState(toFloat64(rand(number) % 1000) / 7)        AS revenue_state,
-    quantileTDigestState(0.99)(toFloat32(rand(number) % 5000) / 13) AS p99_state
+    quantileTDigestState(0.99)(toFloat64(rand(number) % 5000) / 13) AS p99_state
 FROM numbers(200000)
 GROUP BY bucket_date, country;
 

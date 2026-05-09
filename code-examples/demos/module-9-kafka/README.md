@@ -66,6 +66,49 @@ Both MVs read from the same Kafka source — single consumer, two writes.
   diagnosis.
 - **Stop ingestion**: `DETACH TABLE m9.events_mv` (resume via `ATTACH`).
 
+## Extras (curriculum coverage)
+
+`extras.sql` adds three more curriculum topics, exercised by `run.sh`:
+
+- **DLQ pattern** — a second Kafka source `events_kafka_safe` with
+  `kafka_handle_error_mode = 'stream'` exposes `_error` /
+  `_raw_message` virtual columns. Two MVs split the stream:
+  good rows → `events_safe`, bad rows → `events_dlq` (with topic /
+  partition / offset for replay).
+- **Exactly-once via ReplacingMergeTree** — `events_unique` keyed by
+  `(user_id, event_time)` with `ingested_at` as the version. Use `FINAL`
+  or `argMax` to read deduped.
+- **Bad-message demo** — `run.sh` produces 50 invalid JSON lines after
+  the valid batch; you should see ~50 rows in `events_dlq`.
+
+### Replay / offset-reset operations
+
+```bash
+# Inspect the consumer group lag (run inside the Kafka container)
+docker exec m9-kafka \
+  kafka-consumer-groups --bootstrap-server localhost:9092 \
+    --group ch_consumer --describe
+
+# Rewind to earliest — re-consumes the entire topic
+docker exec m9-kafka \
+  kafka-consumer-groups --bootstrap-server localhost:9092 \
+    --group ch_consumer --reset-offsets --to-earliest \
+    --topic events --execute
+```
+
+In ClickHouse you can pause/resume consumption without losing offset:
+
+```sql
+DETACH TABLE m9.events_mv;   -- stops the Kafka consumer
+ATTACH TABLE m9.events_mv;   -- resumes from last committed offset
+```
+
+### Other formats (text-only)
+
+The demo uses `JSONEachRow`. Swap `kafka_format` to `Protobuf`, `Avro`,
+`AvroConfluent`, `CSV`, or `TabSeparated` and provide
+`format_schema = '<file>:<MessageType>'` for the schema-bound formats.
+
 ## Cleanup
 
 `./down.sh` drops the whole stack including volumes. To reset Kafka without

@@ -41,6 +41,10 @@ ch_node m4-s1r2 "SELECT count() FROM sensor_local"
 echo "  replication state:"
 ch_node m4-s1r1 "SELECT replica_name, queue_size, absolute_delay FROM system.replicas WHERE table='sensor_local'"
 
+echo
+echo "==> extras.sql (insert_quorum, sequential consistency, DROP REPLICA, Keeper note)"
+ch_node m4-s1r1 "$(<"$HERE/extras.sql")"
+
 cat <<EOF
 
 ✓ Module 4 demo complete. m4-s1r2 caught up after restart.

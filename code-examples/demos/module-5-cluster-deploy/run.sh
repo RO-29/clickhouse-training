@@ -21,6 +21,13 @@ done
 echo "==> queries.sql"
 ch_node m5-s1r1 "$(<"$HERE/queries.sql")"
 
+echo "==> extras.sql (roles, grants, quotas, Prometheus endpoint)"
+ch_node m5-s1r1 "$(<"$HERE/extras.sql")"
+
+echo "==> Prometheus endpoint smoke test (from inside m5-s1r1)"
+docker exec m5-s1r1 wget -qO- http://localhost:9363/metrics 2>/dev/null \
+    | head -5 || echo "  (endpoint not reachable — check 02-prometheus.xml mount)"
+
 cat <<EOF
 
 ✓ Module 5 demo complete.

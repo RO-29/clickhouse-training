@@ -42,6 +42,23 @@ Self-contained 3×2 cluster (prefix `m5-`) for `ON CLUSTER` DDL,
 - **`prefer_localhost_replica`** — keep the query on the same host when
   possible (default 1).
 
+## Extras (curriculum coverage)
+
+`configs/users.xml` ships three users — `admin`, `analyst`, `app`
+(all with password `admin`, sha256-hashed) — plus profiles `default`,
+`heavy`, `readonly` and quota `analyst_quota`. `extras.sql` then layers
+SQL-managed roles/grants on top:
+
+- `reader` role with `SELECT` on `analytics.*` → granted to `analyst`.
+- `writer` role with `INSERT` on `analytics.page_views_*` → granted to
+  `app`.
+- Inspection via `system.users`, `system.roles`, `system.role_grants`,
+  `system.grants`, `system.quotas_usage`.
+- **Prometheus endpoint** — `configs/prometheus.xml` enables `/metrics`
+  on port `9363`. `run.sh` verifies it inside `m5-s1r1`.
+- **TLS (port 9440)** — sketch only (no certs in repo). Use `mkcert` or
+  `step-ca` to generate, then add the `<openSSL>` block.
+
 ## Cleanup
 
 `./down.sh` drops everything. To clear data without tearing down:

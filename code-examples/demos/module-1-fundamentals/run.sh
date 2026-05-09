@@ -19,6 +19,14 @@ ch "$(<"$HERE/data.sql")"
 echo "==> queries.sql"
 ch "$(<"$HERE/queries.sql")"
 
+echo "==> extras.sql (TTL, codecs, complex types, DESCRIBE)"
+ch "$(<"$HERE/extras.sql")"
+
+# HTTP API smoke test. From the host, default user is locked to local
+# loopback (no password set), so we curl from inside the container.
+echo "==> HTTP API smoke test (curl from inside the container)"
+echo "    -> $(docker exec m1-clickhouse wget -qO- 'http://localhost:8123/?query=SELECT+count()+FROM+m1.events')"
+
 cat <<EOF
 
 ✓ Module 1 demo complete.

@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<!-- Module 5: enable the built-in Prometheus exporter.
+     Scrape from outside the container via http://localhost:9363/metrics
+     (mapped per-replica in the compose file if needed). -->
+<clickhouse>
+    <prometheus>
+        <endpoint>/metrics</endpoint>
+        <port>9363</port>
+        <metrics>true</metrics>
+        <events>true</events>
+        <asynchronous_metrics>true</asynchronous_metrics>
+        <status_info>true</status_info>
+    </prometheus>
+</clickhouse>

@@ -110,17 +110,17 @@ cd code-examples/demos/module-1-fundamentals/
 `./run.sh` self-bootstraps — if the stack isn't already up, it calls
 `up.sh` first.
 
-| Module | Demo                                              | Stack             | Host ports                          |
-|--------|---------------------------------------------------|-------------------|-------------------------------------|
-| 1      | MergeTree basics, parts, partitions               | single (`m1-`)    | 8123, 9000                          |
-| 2      | Replacing/Summing/Aggregating/Collapsing engines  | single (`m2-`)    | 8123, 9000                          |
-| 3      | Distributed table, sharding key, balance          | cluster (`m3-`)   | 8123-8128, 9000-9005                |
-| 4      | ReplicatedMergeTree, ZK, kill-replica drill       | cluster (`m4-`)   | 8123-8128, 9000-9005                |
-| 5      | ON CLUSTER DDL, cluster()/remote()/clusterAll     | cluster (`m5-`)   | 8123-8128, 9000-9005                |
-| 6      | Query optimization on 60M rows                    | single (`m6-`)    | 8123, 9000                          |
-| 7      | BACKUP/RESTORE: local disk + S3 (MinIO)           | single (`m7-`)    | 8123, 9000, 9100/9101 (MinIO)       |
-| 8      | 4 disaster-recovery drills                        | cluster (`m8-`)   | 8123-8128, 9000-9005                |
-| 9      | Kafka engine + materialized-view pipeline         | kafka (`m9-`)     | 8123, 9000, 9092, 8080 (UI)         |
+| Module | Demo (core + extras)                                                                                              | Stack             | Host ports                          |
+|--------|------------------------------------------------------------------------------------------------------------------|-------------------|-------------------------------------|
+| 1      | MergeTree, parts, partitions, OPTIMIZE · **TTL · codecs · Array/Tuple/Map/Nested/Enum · HTTP API**               | single (`m1-`)    | 8123, 9000                          |
+| 2      | Replacing/Summing/Aggregating/Collapsing/Log/Memory/Buffer · **VersionedCollapsing · Materialized View · Nested**| single (`m2-`)    | 8123, 9000                          |
+| 3      | Distributed, cityHash64 sharding, internal_replication · **weighted shards · alt hash keys (rand/intDiv/xxHash)**| cluster (`m3-`)   | 8123-8128, 9000-9005                |
+| 4      | ReplicatedMergeTree, ZK, kill-replica drill · **insert_quorum · select_sequential_consistency · Keeper note**    | cluster (`m4-`)   | 8123-8128, 9000-9005                |
+| 5      | ON CLUSTER DDL, cluster()/remote()/clusterAll · **users/roles/quotas · Prometheus endpoint · TLS sketch**        | cluster (`m5-`)   | 8123-8128, 9000-9005                |
+| 6      | PK/sorting key, projections, bloom-filter skip-idx · **PREWHERE · SAMPLE · ANY/ALL/Dictionary JOINs · MV**       | single (`m6-`)    | 8123, 9000                          |
+| 7      | FREEZE, BACKUP/RESTORE Disk + S3 (MinIO) · **async · incremental (base_backup) · clickhouse-backup CLI ref**     | single (`m7-`)    | 8123, 9000, 9100/9101 (MinIO)       |
+| 8      | Replica/shard/ZK kill, replica disk-loss rebuild · **insert_quorum drill · BACKUP-RESTORE recovery · multi-DC sketch** | cluster (`m8-`)   | 8123-8128, 9000-9005                |
+| 9      | Kafka engine + MV pipeline · **DLQ via handle_error_mode=stream · Replacing exactly-once · offset reset**        | kafka (`m9-`)     | 8123, 9000, 9092, 8080 (UI)         |
 
 > **Run one module at a time.** Most modules bind host port `8123`. Tear
 > down with `./down.sh` before starting the next module.

@@ -34,6 +34,7 @@
     </zookeeper>
 
     <remote_servers>
+        <!-- 1. Equal-weight 3×2 cluster (default for the demo). -->
         <clickhouse_cluster>
             <shard>
                 <internal_replication>true</internal_replication>
@@ -51,6 +52,31 @@
                 <replica><host>m3-s3r2</host><port>9000</port></replica>
             </shard>
         </clickhouse_cluster>
+
+        <!-- 2. Weighted version of the same hosts.
+             Shard 3 has 4× the weight of shards 1 and 2, so ~4/6=66% of
+             rows go there. Demonstrates how to send more traffic to a
+             beefier node. -->
+        <weighted_cluster>
+            <shard>
+                <weight>1</weight>
+                <internal_replication>true</internal_replication>
+                <replica><host>m3-s1r1</host><port>9000</port></replica>
+                <replica><host>m3-s1r2</host><port>9000</port></replica>
+            </shard>
+            <shard>
+                <weight>1</weight>
+                <internal_replication>true</internal_replication>
+                <replica><host>m3-s2r1</host><port>9000</port></replica>
+                <replica><host>m3-s2r2</host><port>9000</port></replica>
+            </shard>
+            <shard>
+                <weight>4</weight>
+                <internal_replication>true</internal_replication>
+                <replica><host>m3-s3r1</host><port>9000</port></replica>
+                <replica><host>m3-s3r2</host><port>9000</port></replica>
+            </shard>
+        </weighted_cluster>
     </remote_servers>
 
     <distributed_ddl><path>/clickhouse/task_queue/ddl</path></distributed_ddl>

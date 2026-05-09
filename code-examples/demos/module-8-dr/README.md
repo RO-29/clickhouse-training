@@ -47,6 +47,32 @@ is safe.
 - `detached/` under each table dir holds parts CH refused to attach
   (corruption, schema drift). `ALTER … ATTACH PART` brings them back.
 
+## Extras (curriculum coverage)
+
+The script also runs two more drills:
+
+- **Drill 5 — `insert_quorum` durability gate.** With `insert_quorum = 2`
+  and only one replica of shard 1 alive, the INSERT correctly *times out
+  and fails*. Brings the replica back, retries — succeeds. This is the
+  RPO=0 knob.
+- **Drill 6 — Restore-from-backup recovery path.** `BACKUP TABLE …
+  ON CLUSTER` snapshots to a per-node `File()` location, drops the table
+  cluster-wide, then `RESTORE` rebuilds it. The cluster compose's
+  containers don't share `/tmp`, so the cluster-wide restore step shows
+  the expected "use S3" pointer (Module 7 does the S3 round-trip).
+
+### Multi-datacenter architecture (not exercised, sketch only)
+
+A typical CH multi-DC layout:
+
+- 1× CH cluster per DC, ZK quorum spans DCs (3 nodes minimum, 5 better,
+  with at least one ZK observer in a third site for tie-break).
+- Cross-DC replication via `ReplicatedMergeTree`'s ZK paths — a `<shard>`
+  with one `<replica>` per DC.
+- Application traffic via DNS or a load balancer, fail-over flips the
+  CNAME to the surviving DC. RPO≈0 if you also use `insert_quorum`,
+  RPO≈seconds otherwise.
+
 ## Cleanup
 
 `./down.sh` drops the whole stack including volumes.

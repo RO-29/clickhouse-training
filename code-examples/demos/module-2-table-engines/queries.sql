@@ -11,9 +11,9 @@ SELECT user_id, name, email, version FROM m2.users_replacing FINAL ORDER BY user
 -- The "production" pattern: argMax in the query.
 SELECT
     user_id,
-    argMax(name,    version) AS name,
-    argMax(email,   version) AS email,
-    max(version)             AS version
+    argMax(name,    version) AS latest_name,
+    argMax(email,   version) AS latest_email,
+    max(version)             AS latest_version
 FROM m2.users_replacing
 GROUP BY user_id ORDER BY user_id;
 
@@ -70,7 +70,7 @@ SELECT count() AS memory_rows FROM m2.tmp_uploads;
 -- ============================================================
 SELECT count() AS buffer_rows  FROM m2.facts_buffer;
 SELECT count() AS dest_rows    FROM m2.facts_dest;
-SYSTEM FLUSH DISTRIBUTED m2.facts_buffer; -- harmless if not distributed
+-- OPTIMIZE on a Buffer table flushes its rows down to the underlying table.
 OPTIMIZE TABLE m2.facts_buffer;
 SELECT count() AS buffer_after FROM m2.facts_buffer;
 SELECT count() AS dest_after   FROM m2.facts_dest;

@@ -38,3 +38,17 @@ work. Insert into one replica, watch the other catch up; kill it, recover.
   rendered per node from `configs/macros/macros-sNrM.xml`.
 - **`absolute_delay`** is a great SLO signal — alert above some threshold.
 - **`SYSTEM RESTART REPLICA`** is the heavy reset for ZK/disk skew.
+
+## Extras (curriculum coverage)
+
+`extras.sql` adds:
+
+- **`insert_quorum`** — `INSERT` blocks until N replicas have committed.
+  Combined with `insert_quorum_timeout_ms`, this is the durability/latency
+  knob.
+- **`select_sequential_consistency`** — reads only consider data the
+  quorum has seen. Pairs with `insert_quorum` for linearisable reads.
+- **`SYSTEM DROP REPLICA`** — read-only listing here (M8 runs the
+  destructive variant).
+- **ClickHouse Keeper** — note on swapping ZK for Keeper (Raft-based,
+  same client protocol; migrate with `clickhouse-keeper-converter`).

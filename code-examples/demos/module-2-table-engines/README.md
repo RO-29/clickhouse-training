@@ -29,6 +29,18 @@ concrete: Replacing, Summing, Aggregating, Collapsing, plus Log, Memory, Buffer.
 | **Memory**                  | Survives queries; gone on restart.                                                      |
 | **Buffer**                  | Rows in `facts_buffer` until threshold; `facts_dest` is the durable target.             |
 
+## Extras (curriculum coverage)
+
+`extras.sql` exercises three more curriculum topics:
+
+- **VersionedCollapsingMergeTree** — out-of-order +1/-1 rows resolved by
+  the `version` column, not insertion order.
+- **Materialized View** — `events_src` → `events_per_minute_mv` → 
+  `events_per_minute` (SummingMergeTree). The MV runs at INSERT time, not
+  query time.
+- **Nested** — `invoices.line_items.{sku,qty,price}` stored as parallel
+  arrays, queried both with dot-notation and `ARRAY JOIN`.
+
 ## When to pick which
 
 - **MergeTree** — default. Insert wins; never updates in place.

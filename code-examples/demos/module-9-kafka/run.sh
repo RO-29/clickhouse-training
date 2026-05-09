@@ -21,16 +21,31 @@ docker exec m9-kafka \
 echo "==> setup.sql"
 ch "$(<"$HERE/setup.sql")"
 
-echo "==> producing $ROWS messages → events topic"
+echo "==> extras.sql (DLQ pipeline + exactly-once Replacing + safe consumer)"
+ch "$(<"$HERE/extras.sql")"
+
+echo "==> producing $ROWS valid messages → events topic"
 python3 "$HERE/produce.py" --rows "$ROWS" \
     | docker exec -i m9-kafka \
         kafka-console-producer --bootstrap-server localhost:9092 --topic events
 
-echo "==> letting the MV catch up (5s)"
-sleep 5
+echo "==> producing 50 deliberately-broken messages (DLQ exercise)"
+for i in $(seq 1 50); do
+    echo "{not valid json #$i"
+done | docker exec -i m9-kafka \
+        kafka-console-producer --bootstrap-server localhost:9092 --topic events
+
+echo "==> letting MVs catch up (8s)"
+sleep 8
 
 echo "==> queries.sql"
 ch "$(<"$HERE/queries.sql")"
+
+echo "==> DLQ + exactly-once verification"
+ch "SELECT 'events_dlq rows', count() FROM m9.events_dlq;
+    SELECT 'events_safe rows', count() FROM m9.events_safe;
+    SELECT 'events_unique rows (FINAL)', count() FROM m9.events_unique FINAL;
+    SELECT error, count() FROM m9.events_dlq GROUP BY error ORDER BY count() DESC LIMIT 3;"
 
 cat <<EOF
 

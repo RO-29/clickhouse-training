@@ -95,9 +95,53 @@ ch_node m8-s1r2 "SYSTEM SYNC REPLICA dr_local"
 echo "  m8-s1r2 rebuilt from peer:"
 ch_node m8-s1r2 "SELECT count() FROM dr_local"
 
+echo
+echo "============================================================"
+echo "DRILL 5 — insert_quorum: writes block when quorum unreachable."
+echo "============================================================"
+# Stop one of the two replicas of shard 1 so quorum=2 cannot be reached.
+docker stop m8-s1r2 >/dev/null
+echo "  insert_quorum=2 with only 1/2 replicas alive (must time out):"
+ch_node m8-s1r1 "SET insert_quorum=2, insert_quorum_timeout_ms=3000;
+                 INSERT INTO dr_local VALUES (now(), 88888, 'quorum_test')" \
+    && echo "    (unexpected: insert succeeded)" \
+    || echo "    ✓ insert correctly failed under quorum=2"
+
+docker start m8-s1r2 >/dev/null
+sleep 5
+ch_node m8-s1r2 "SYSTEM SYNC REPLICA dr_local" || true
+echo "  same insert with both replicas back:"
+ch_node m8-s1r1 "SET insert_quorum=2, insert_quorum_timeout_ms=3000;
+                 INSERT INTO dr_local VALUES (now(), 88888, 'quorum_after_recovery');
+                 SELECT count() FROM dr_local WHERE payload = 'quorum_after_recovery'"
+
+echo
+echo "============================================================"
+echo "DRILL 6 — Restore-from-backup recovery path."
+echo "  Snapshot table → drop everywhere → restore from backup."
+echo "============================================================"
+# Use ON CLUSTER backup to a node-local disk on every replica. We rely on
+# the default 'backups' disk if present; otherwise this dumps to /tmp.
+ch_node m8-s1r1 "BACKUP TABLE dr_local ON CLUSTER clickhouse_cluster
+                 TO File('/tmp/dr_local_backup_$$')" 2>&1 | head -3 || true
+
+ch_node m8-s1r1 "SELECT count() AS pre_drop FROM dr_distributed"
+
+ch_node m8-s1r1 "DROP TABLE dr_local ON CLUSTER clickhouse_cluster SYNC"
+
+ch_node m8-s1r1 "RESTORE TABLE dr_local ON CLUSTER clickhouse_cluster
+                 FROM File('/tmp/dr_local_backup_$$')" 2>&1 | head -3 || \
+    echo "  (note: BACKUP/RESTORE on cluster requires the same File path on every node;
+        if your topology doesn't share /tmp, use S3 — see Module 7.)"
+
+ch_node m8-s1r1 "SELECT count() AS post_restore FROM dr_distributed" 2>&1 | head -1 || true
+
 cat <<EOF
 
 ✓ Module 8 disaster-recovery drills complete.
+
+Multi-DC architecture: not exercised here (single docker host) — the design
+sketch is in the README.
 
 Stack still running. Tear down with:  ./down.sh
 EOF

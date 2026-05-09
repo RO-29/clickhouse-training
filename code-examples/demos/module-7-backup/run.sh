@@ -17,6 +17,9 @@ ch "$(<"$HERE/queries.sql")"
 echo "==> queries-s3.sql (BACKUP TO S3 against m7-minio + RESTORE)"
 ch "$(<"$HERE/queries-s3.sql")"
 
+echo "==> extras.sql (async + incremental backup, RESTORE chain)"
+ch "$(<"$HERE/extras.sql")"
+
 cat <<EOF
 
 ✓ Module 7 demo complete.

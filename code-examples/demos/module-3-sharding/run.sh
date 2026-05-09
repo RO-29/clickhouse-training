@@ -23,6 +23,9 @@ done
 echo "==> queries.sql"
 ch_node m3-s1r1 "$(<"$HERE/queries.sql")"
 
+echo "==> extras.sql (weighted shards + alternative sharding keys)"
+ch_node m3-s1r1 "$(<"$HERE/extras.sql")"
+
 cat <<EOF
 
 ✓ Module 3 demo complete.
