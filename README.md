@@ -48,94 +48,112 @@ clickhouse-ks/
 │   └── module-10-migration.md
 │
 └── code-examples/                      # Production-ready code examples
-    ├── sql/                           # SQL examples organized by module
-    │   ├── module-1/
-    │   ├── module-2/
-    │   ├── module-3/
-    │   ├── module-4/
-    │   ├── module-5/
-    │   ├── module-6/
-    │   ├── module-7/
-    │   ├── module-8/
-    │   ├── module-9/
-    │   └── module-10/
+    ├── demos/                         # ⭐ Self-contained per-module demos (recommended)
+    │   ├── README.md                 # Index + standard lifecycle
+    │   ├── module-1-fundamentals/    # single  · MergeTree, parts, partitions
+    │   ├── module-2-table-engines/   # single  · Replacing/Summing/Aggregating/...
+    │   ├── module-3-sharding/        # cluster · Distributed, sharding key
+    │   ├── module-4-replication/     # cluster · ReplicatedMergeTree + ZK + drills
+    │   ├── module-5-cluster-deploy/  # cluster · ON CLUSTER, cluster()/remote()
+    │   ├── module-6-query-opt/       # single  · 60M rows, projections, skip-idx
+    │   ├── module-7-backup/          # single + MinIO · BACKUP/RESTORE Disk + S3
+    │   ├── module-8-dr/              # cluster · 4 disaster-recovery drills
+    │   └── module-9-kafka/           # kafka   · Kafka engine + MV pipeline
     │
-    ├── configs/                       # ClickHouse configuration files
-    │   ├── config.xml                # Main server configuration
-    │   ├── users.xml                 # User management & permissions
-    │   ├── metrika.xml               # ZooKeeper/Keeper config
-    │   ├── keeper_config.xml         # ClickHouse Keeper config
-    │   └── macros.xml                # Replication macros
+    ├── sql/                          # Stand-alone SQL snippets per module
+    │   └── module-1/ ... module-10/
     │
-    ├── docker/                        # Docker Compose setups
-    │   ├── docker-compose-single.yml
-    │   ├── docker-compose-cluster.yml
-    │   ├── docker-compose-kafka.yml
-    │   ├── docker-compose-migration.yml
-    │   ├── docker-compose-monitoring.yml
-    │   ├── Dockerfile-custom
-    │   ├── init-scripts/
-    │   └── configs/
+    ├── configs/                      # Reference ClickHouse configs (legacy)
+    │   ├── config.xml · users.xml · metrika.xml
+    │   ├── keeper_config.xml · macros.xml
     │
-    └── scripts/                       # Automation scripts
-        ├── backup/
-        ├── monitoring/
-        └── migration/
+    └── docker/                       # Legacy shared Docker stacks
+        ├── docker-compose-single.yml · -cluster.yml · -kafka.yml
+        ├── docker-compose-migration.yml · -monitoring.yml
+        ├── init-scripts/ · configs/
+
+ai-changes-md/                       # Archived AI-generated artefacts
+                                     # (notion-sync scripts, status summaries,
+                                     # one-shot HTML fixers — kept for history)
 ```
+
+> **Prefer `code-examples/demos/`.** Each module folder there is a complete,
+> standalone Docker example with its own compose file, configs, and
+> `up.sh / run.sh / down.sh`. The legacy `code-examples/docker/` stacks
+> are still around for reference but aren't required.
 
 ## 🚀 Quick Start
 
-### Option 1: Interactive HTML Learning (Recommended)
+There are three ways to engage with the material — pick whichever matches
+how you learn:
 
-1. **Open the landing page:**
-   ```bash
-   open index.html
-   # or double-click index.html in your file browser
-   ```
+| Path                    | Best for                          | Where                             |
+|-------------------------|-----------------------------------|-----------------------------------|
+| 🐳 **Hands-on demos**   | Learn by running real ClickHouse  | `code-examples/demos/module-N-*/` |
+| 🌐 **Interactive HTML** | Theory + diagrams in your browser | `index.html`                      |
+| 📝 **Notion guides**    | Quick reference / cheat-sheets    | `notion-guides/module-N-*.md`     |
 
-2. **Follow the modules sequentially:**
-   - Start with Module 1: Fundamentals & Architecture
-   - Progress through each module in order
-   - Each module includes: theory, examples, best practices, and templates
+### 🐳 Hands-on demos (recommended)
 
-### Option 2: Notion-Style Quick Guides
-
-For concise theory and quick references:
+Each module under `code-examples/demos/` is a **self-contained** Docker
+example: its own compose file, configs, SQL, and lifecycle scripts. No shared
+root infrastructure.
 
 ```bash
-# View markdown guides
-cd notion-guides/
-open module-1-fundamentals.md
+cd code-examples/demos/module-1-fundamentals/
+
+./up.sh        # docker compose up -d, wait for health
+./run.sh       # run the demo (idempotent — re-runnable)
+./down.sh      # docker compose down -v  (drops volumes)
 ```
 
-These guides are:
-- ✅ Concise (200-500 lines each)
-- ✅ Notion-formatted with emojis and callouts
-- ✅ Perfect for quick reference
-- ✅ Include ASCII architecture diagrams
-- ✅ Portable and easy to import into Notion
+`./run.sh` self-bootstraps — if the stack isn't already up, it calls
+`up.sh` first.
 
-### Option 3: Hands-On with Docker
+| Module | Demo                                              | Stack             | Host ports                          |
+|--------|---------------------------------------------------|-------------------|-------------------------------------|
+| 1      | MergeTree basics, parts, partitions               | single (`m1-`)    | 8123, 9000                          |
+| 2      | Replacing/Summing/Aggregating/Collapsing engines  | single (`m2-`)    | 8123, 9000                          |
+| 3      | Distributed table, sharding key, balance          | cluster (`m3-`)   | 8123-8128, 9000-9005                |
+| 4      | ReplicatedMergeTree, ZK, kill-replica drill       | cluster (`m4-`)   | 8123-8128, 9000-9005                |
+| 5      | ON CLUSTER DDL, cluster()/remote()/clusterAll     | cluster (`m5-`)   | 8123-8128, 9000-9005                |
+| 6      | Query optimization on 60M rows                    | single (`m6-`)    | 8123, 9000                          |
+| 7      | BACKUP/RESTORE: local disk + S3 (MinIO)           | single (`m7-`)    | 8123, 9000, 9100/9101 (MinIO)       |
+| 8      | 4 disaster-recovery drills                        | cluster (`m8-`)   | 8123-8128, 9000-9005                |
+| 9      | Kafka engine + materialized-view pipeline         | kafka (`m9-`)     | 8123, 9000, 9092, 8080 (UI)         |
 
-Get a ClickHouse environment running immediately:
+> **Run one module at a time.** Most modules bind host port `8123`. Tear
+> down with `./down.sh` before starting the next module.
+
+See **`code-examples/demos/README.md`** for the full module map.
+
+### 🌐 Interactive HTML modules
+
+```bash
+open index.html        # or double-click in Finder/Explorer
+```
+
+Theory, diagrams, examples, and templates per module.
+
+### 📝 Notion-style quick guides
+
+```bash
+ls notion-guides/      # one .md per module, 200-500 lines each
+```
+
+Concise, callout-formatted, portable into Notion.
+
+### 🗄️ Legacy shared Docker stacks (optional)
+
+The original "one big stack" compose files still exist:
 
 ```bash
 cd code-examples/docker/
-
-# Single node (development)
-docker-compose -f docker-compose-single.yml up -d
-
-# Full cluster (3 shards × 2 replicas)
-docker-compose -f docker-compose-cluster.yml up -d
-
-# Kafka streaming setup
-docker-compose -f docker-compose-kafka.yml up -d
-
-# Complete migration stack
-docker-compose -f docker-compose-migration.yml up -d
-
-# Monitoring stack (Grafana + Prometheus)
-docker-compose -f docker-compose-monitoring.yml up -d
+docker compose -f docker-compose-single.yml up -d      # single node
+docker compose -f docker-compose-cluster.yml up -d     # 3×2 cluster
+docker compose -f docker-compose-kafka.yml up -d       # Kafka
+docker compose -f docker-compose-migration.yml up -d   # MongoDB/MySQL CDC
+docker compose -f docker-compose-monitoring.yml up -d  # Grafana + Prometheus
 ```
 
 ## 📚 Module Breakdown
@@ -218,82 +236,42 @@ docker-compose -f docker-compose-monitoring.yml up -d
 - Historical + live streaming
 - Data validation and cutover
 
-## 💻 Using the Code Examples
+## 💻 Reference Material
 
-### SQL Examples
+### Production-grade configs
 
-Navigate to any module's SQL directory:
+Reference XML configs in `code-examples/configs/` — useful for copying into a
+real ClickHouse installation, not for the demos (those have their own
+configs in `code-examples/demos/module-*/configs/`).
+
+| File                | Purpose                                                      |
+|---------------------|--------------------------------------------------------------|
+| `config.xml`        | Main server config: ports, memory, cluster, ZK, compression. |
+| `users.xml`         | Users, quotas, network restrictions, password hashing.       |
+| `metrika.xml`       | ZooKeeper / Keeper config.                                   |
+| `keeper_config.xml` | ClickHouse Keeper config.                                    |
+| `macros.xml`        | Replication macros (per-node identity).                      |
 
 ```bash
-cd code-examples/sql/module-1/
-
-# Run examples
-clickhouse-client --multiquery < 01-basic-tables.sql
-clickhouse-client --multiquery < 02-data-insertion.sql
-clickhouse-client --multiquery < 03-queries.sql
-```
-
-Each SQL file contains:
-- ✅ Well-commented, production-ready code
-- ✅ Step-by-step examples
-- ✅ Best practices
-- ✅ Common patterns and anti-patterns
-
-### Configuration Files
-
-Production-ready configurations in `code-examples/configs/`:
-
-**config.xml** - Main server configuration
-- HTTP/TCP port configuration
-- Memory and thread limits
-- Cluster definitions (3 shards × 2 replicas)
-- ZooKeeper/Keeper configuration
-- Compression and logging settings
-
-**users.xml** - User management
-- Multiple users: default, admin, readonly, app_user
-- Quotas and resource limits
-- Network restrictions
-- Password hashing
-
-**Usage:**
-```bash
-# Copy configurations to ClickHouse directory
 sudo cp code-examples/configs/config.xml /etc/clickhouse-server/
-sudo cp code-examples/configs/users.xml /etc/clickhouse-server/
+sudo cp code-examples/configs/users.xml  /etc/clickhouse-server/
 sudo systemctl restart clickhouse-server
 ```
 
-### Docker Environments
+### Stand-alone SQL snippets
 
-**Single Node Setup:**
+`code-examples/sql/module-N/` contains module-specific `.sql` files you can
+run directly against any ClickHouse instance:
+
 ```bash
-cd code-examples/docker/
-docker-compose -f docker-compose-single.yml up -d
-docker exec -it clickhouse-server clickhouse-client
+clickhouse-client --multiquery < code-examples/sql/module-1/01-basic-tables.sql
 ```
 
-**Full Cluster (3×2 with ZooKeeper):**
-```bash
-docker-compose -f docker-compose-cluster.yml up -d
-# Access any shard
-docker exec -it clickhouse-shard1-replica1 clickhouse-client
-```
+### Archive of generation artifacts
 
-**Kafka Streaming:**
-```bash
-docker-compose -f docker-compose-kafka.yml up -d
-# Kafka UI available at http://localhost:8080
-```
-
-**Migration Stack:**
-```bash
-docker-compose -f docker-compose-migration.yml up -d
-# MongoDB: localhost:27017
-# MySQL: localhost:3306
-# ClickHouse: localhost:9000
-# Kafka UI: localhost:8080
-```
+`ai-changes-md/` holds the AI-generated summary docs and one-shot fix
+scripts that produced this curriculum (Notion sync, HTML cleanups, etc.).
+Kept for traceability; not needed to use the course.
 
 ## 🎯 Learning Paths
 
