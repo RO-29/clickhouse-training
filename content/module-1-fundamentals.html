@@ -1392,632 +1392,8 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
 
 
 
-<div class="handsOn">
-  <div class="handsOn-card">
-    <h2>📚 Full module reference</h2>
-    <h1 id="module-1-clickhouse-fundamentals">Module 1 — ClickHouse Fundamentals</h1>
-<blockquote>
-<p><strong>Audience:</strong> engineers who'll deploy, query, or operate ClickHouse in
-production. <strong>Prerequisites:</strong> any prior SQL experience, a working Docker
-install. <strong>Time:</strong> ~45 min reading + 30 min hands-on.</p>
-</blockquote>
-<p>This module establishes the mental model for <em>everything</em> that follows. By
-the end you will be able to:</p>
-<ul>
-<li>Explain why ClickHouse is fast (and where it isn't).</li>
-<li>Read on-disk part naming and tell active parts from inactive ones.</li>
-<li>Pick a sensible <code>ORDER BY</code> / <code>PARTITION BY</code> / <code>PRIMARY KEY</code>.</li>
-<li>Choose appropriate codecs for time-series and integer columns.</li>
-<li>Use TTL to drop or move aging data automatically.</li>
-<li>Use <code>system.*</code> tables to see exactly what the engine is doing.</li>
-</ul>
-<hr />
-<h2 id="1-the-30-second-pitch">1. The 30-second pitch</h2>
-<p>ClickHouse is a <strong>column-oriented OLAP DBMS</strong> designed for one job: scan
-huge tables fast, returning aggregations in milliseconds. Three properties
-make it work:</p>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>What it buys you</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Columnar storage</strong></td>
-<td>Each column is its own file → analytical queries read only the columns they touch.</td>
-</tr>
-<tr>
-<td><strong>Vectorised execution</strong></td>
-<td>Operators process arrays of values, not rows-one-at-a-time → SIMD-friendly, cache-friendly.</td>
-</tr>
-<tr>
-<td><strong>Sparse primary index</strong></td>
-<td>One mark per ~8192 rows → indexes stay tiny even on trillion-row tables.</td>
-</tr>
-<tr>
-<td><strong>Aggressive compression</strong></td>
-<td>Per-column codecs (LZ4, ZSTD, Delta, T64) typically reach 10–100× compression on real data.</td>
-</tr>
-</tbody>
-</table>
-<p>It is <em>not</em> a transactional database. There is no row-level UPDATE/DELETE
-in the traditional sense, no foreign keys, no MVCC. It excels at append-mostly
-analytical workloads.</p>
-<hr />
-<h2 id="2-storage-architecture">2. Storage architecture</h2>
-<pre><code>┌────────────────────────────────────────────────────────────────┐
-│                         ClickHouse Server                      │
-└────────────────────────────────────────────────────────────────┘
-        │                    │                       │
-        ▼                    ▼                       ▼
-┌──────────────┐    ┌────────────────┐    ┌─────────────────────┐
-│  HTTP :8123  │    │   TCP :9000    │    │  Inter-server :9009 │
-│  (REST/JSON) │    │ (native binary)│    │  (replica fetches)  │
-└──────────────┘    └────────────────┘    └─────────────────────┘
-        │                    │                       │
-        └────────────────────┴───────────────────────┘
-                             │
-                             ▼
-                    ┌────────────────┐
-                    │ Query Pipeline │  parser → analyzer → planner →
-                    │                │  pipeline → vectorised execution
-                    └────────────────┘
-                             │
-                             ▼
-                    ┌────────────────┐
-                    │  Storage Layer │
-                    │   (MergeTree)  │
-                    └────────────────┘
-                             │
-        ┌────────────────────┼────────────────────┐
-        ▼                    ▼                    ▼
-   /var/lib/clickhouse/  /var/lib/clickhouse/  /var/lib/clickhouse/
-   data/&lt;db&gt;/&lt;table&gt;/    metadata/&lt;db&gt;/        store/&lt;...uuid&gt;/
-   ├─ &lt;part_name&gt;/       ├─ &lt;table&gt;.sql        (atomic-engine table data)
-   │  ├─ columns.txt     └─ &lt;table&gt;.sql.bak
-   │  ├─ checksums.txt
-   │  ├─ count.txt
-   │  ├─ default_compression_codec.txt
-   │  ├─ minmax_&lt;col&gt;.idx (per partition column)
-   │  ├─ partition.dat
-   │  ├─ primary.idx     ← sparse PK (one entry per granule)
-   │  ├─ &lt;col&gt;.bin       ← column data, compressed
-   │  └─ &lt;col&gt;.mrk2      ← marks: offsets into &lt;col&gt;.bin
-   ├─ &lt;part_name&gt;/
-   └─ ...
-</code></pre>
-<h3 id="files-inside-one-part-what-each-is-for">Files inside one part — what each is for</h3>
-<table>
-<thead>
-<tr>
-<th>File</th>
-<th>Purpose</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>&lt;column&gt;.bin</code></td>
-<td>The column's compressed data, in granule order.</td>
-</tr>
-<tr>
-<td><code>&lt;column&gt;.mrk2</code> (or <code>.mrk</code>)</td>
-<td>Marks: byte offset into <code>.bin</code> for each granule (so reads can seek).</td>
-</tr>
-<tr>
-<td><code>primary.idx</code></td>
-<td>Sparse primary key — one row per granule.</td>
-</tr>
-<tr>
-<td><code>count.txt</code></td>
-<td>Cached row count of this part.</td>
-</tr>
-<tr>
-<td><code>columns.txt</code></td>
-<td>Column-name → type mapping for this part.</td>
-</tr>
-<tr>
-<td><code>checksums.txt</code></td>
-<td>SHA1 of every other file. Reads against this to detect corruption.</td>
-</tr>
-<tr>
-<td><code>default_compression_codec.txt</code></td>
-<td>Codec used for any column that didn't specify one.</td>
-</tr>
-<tr>
-<td><code>minmax_&lt;col&gt;.idx</code></td>
-<td>Min/max of partition columns — partition-pruning input.</td>
-</tr>
-<tr>
-<td><code>partition.dat</code></td>
-<td>Serialized partition value (e.g. <code>202601</code>).</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="3-the-mergetree-engine">3. The MergeTree engine</h2>
-<p><code>MergeTree</code> is <em>the</em> default table engine. Everything that does
-replication, deduplication, TTL, or sharding is a variant of it.</p>
-<h3 id="required-optional-clauses">Required + optional clauses</h3>
-<pre><code class="language-sql">CREATE TABLE events (
-    event_time  DateTime,
-    user_id     UInt32,
-    revenue     Float64
-)
-ENGINE = MergeTree
-ORDER BY (event_time, user_id)        -- 1. defines on-disk sort + default PK
-PARTITION BY toYYYYMM(event_time)     -- 2. optional. keeps related rows together
-PRIMARY KEY (event_time)              -- 3. optional. must be PREFIX of ORDER BY
-SAMPLE BY intHash32(user_id)          -- 4. optional. enables SAMPLE clause
-TTL event_time + INTERVAL 90 DAY      -- 5. optional. auto-delete or move
-SETTINGS
-    index_granularity = 8192,         -- rows per mark (default)
-    min_rows_for_wide_part = 10000000;
-</code></pre>
-<h3 id="how-order-by-interacts-with-primary-key">How <code>ORDER BY</code> interacts with <code>PRIMARY KEY</code></h3>
-<ul>
-<li><code>ORDER BY</code> is required and defines <strong>on-disk sort order</strong>.</li>
-<li><code>PRIMARY KEY</code> is the <strong>sparse index</strong>. If omitted (the common case), it
-  equals <code>ORDER BY</code>. If specified, <strong>it must be a prefix of ORDER BY</strong>.</li>
-<li>Common pattern: <code>PRIMARY KEY (a, b)</code> + <code>ORDER BY (a, b, c, d)</code> — the
-  index is small (only <code>a, b</code> go into <code>primary.idx</code>) but rows are
-  fully sorted, so <code>c, d</code> filters still get sequential reads.</li>
-</ul>
-<h3 id="index_granularity-8192"><code>index_granularity = 8192</code></h3>
-<ul>
-<li>One <strong>mark</strong> is written per 8192 rows in the part.</li>
-<li>The <strong>primary key</strong> has one entry per mark, <strong>not per row</strong>. That's why
-  PK on a 100-billion-row table fits in a few hundred MB instead of TB.</li>
-<li>Tradeoff: highly selective point lookups can't be more selective than a
-  granule. For point lookups, add a skip-index or a secondary table.</li>
-</ul>
-<pre><code>                     ┌───── granule 0 (8192 rows) ─────┐
-                     │                                  │
-events.event_time:   2026-01-01 00:00:00 ...  2026-01-01 09:23:11
-events.user_id:      4321 ............................. 9087
-                     ▲
-                     │  one entry in primary.idx points here:
-                     │     (2026-01-01 00:00:00, 4321)
-                     │
-                     ┌───── granule 1 (8192 rows) ─────┐
-                     │                                  │
-                     2026-01-01 09:23:11 ...  2026-01-01 18:42:55
-</code></pre>
-<p>A <code>WHERE event_time BETWEEN '2026-01-01 06:00' AND '2026-01-01 12:00'</code>
-query reads <code>primary.idx</code>, finds <strong>only the granules that could contain
-matching rows</strong>, and reads just those <code>&lt;col&gt;.bin</code> byte ranges. A 2-billion-row
-scan becomes a 100K-row scan.</p>
-<hr />
-<h2 id="4-parts-partitions-merges">4. Parts, partitions, merges</h2>
-<p>A <strong>part</strong> is an immutable directory under
-<code>/var/lib/clickhouse/data/&lt;db&gt;/&lt;table&gt;/</code>. Every <code>INSERT</code> produces a new
-part. Background workers later <strong>merge</strong> small parts into bigger ones,
-sorted by the table's <code>ORDER BY</code>. This is the engine's name.</p>
-<pre><code>INSERT 1 ──► all_1_1_0/   (rows 1..500k)
-INSERT 2 ──► all_2_2_0/   (rows 500k..1M)
-INSERT 3 ──► all_3_3_0/   (rows 1M..2M)
-
-   background merge ─────────────► all_1_3_1/   (rows 1..2M, sorted)
-
-   later, the originals are removed:
-                                 │
-                                 ▼
-                        active parts:  all_1_3_1/
-                        inactive parts: all_1_1_0/, all_2_2_0/, all_3_3_0/  (deleted soon)
-</code></pre>
-<h3 id="decoding-a-part-name">Decoding a part name</h3>
-<pre><code>        all_  1_3_1
-        ─┬─   ─┬───
-         │     │  └── merge level (0 = freshly inserted, 1 = 1st merge, …)
-         │     │
-         │     └── min_block..max_block of source parts
-         │
-         └── partition (here, all rows in one partition called 'all')
-</code></pre>
-<p>If the table has <code>PARTITION BY toYYYYMM(...)</code>, parts look like
-<code>202601_5_5_0</code> instead — partition <code>202601</code>, blocks 5..5, level 0.</p>
-<h3 id="why-merges-matter">Why merges matter</h3>
-<ul>
-<li>Without merges: one tiny part per insert → millions of small files →
-  the file system and the engine both choke.</li>
-<li>With merges: a logarithmic number of parts; reads stream sequentially;
-  query planning visits few directories.</li>
-<li><strong>Don't insert one row at a time</strong> — batch! 1k–100k rows per insert is
-  the sweet spot. Single-row inserts are the #1 cause of "ClickHouse is
-  slow" tickets.</li>
-</ul>
-<h3 id="partitions-shards">Partitions ≠ shards</h3>
-<p>A <strong>partition</strong> is a <em>logical group of parts within one node</em> (one
-directory tree per partition value). A <strong>shard</strong> is a <em>whole node</em> in a
-cluster. Use partitioning to drop old data cheaply (<code>DROP PARTITION</code>) and
-to bound merge work; use sharding to spread data across machines.</p>
-<p>Rule of thumb: <strong>partition by month</strong> for most workloads. Day-partitioning
-is for very high-throughput tables (&gt;1B rows/day). Year-partitioning is
-for cold archival. Anything more granular than the access pattern is
-counterproductive — too many partitions = slow merges + metadata bloat.</p>
-<hr />
-<h2 id="5-compression-and-codecs">5. Compression and codecs</h2>
-<p>Every column is compressed independently. Codecs can be <strong>stacked</strong>.</p>
-<pre><code class="language-sql">CREATE TABLE metrics (
-    ts        DateTime CODEC(Delta(4), LZ4),    -- delta-of-delta, then LZ4
-    cpu       UInt32   CODEC(T64, LZ4),         -- bit-pack, then LZ4
-    rps       UInt64   CODEC(T64, ZSTD(3)),     -- bit-pack, then ZSTD level 3
-    label     String   CODEC(ZSTD(6))           -- ZSTD level 6 for text
-)
-ENGINE = MergeTree ORDER BY ts;
-</code></pre>
-<table>
-<thead>
-<tr>
-<th>Codec</th>
-<th>Best for</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>LZ4</code> (default)</td>
-<td>Anything; very fast, ~2× compression on text, more on integers.</td>
-</tr>
-<tr>
-<td><code>ZSTD(level)</code></td>
-<td>Larger compression than LZ4 (~30–50% smaller), slower. Levels 1–22.</td>
-</tr>
-<tr>
-<td><code>Delta(N)</code></td>
-<td>Monotonic series (timestamps, counters). Stores differences.</td>
-</tr>
-<tr>
-<td><code>DoubleDelta</code></td>
-<td>Timestamps with regular intervals (e.g. metrics every 1s).</td>
-</tr>
-<tr>
-<td><code>Gorilla</code></td>
-<td>Float time-series (Facebook's Gorilla algorithm).</td>
-</tr>
-<tr>
-<td><code>T64</code></td>
-<td>Integer columns where most values fit in fewer bits than the type.</td>
-</tr>
-<tr>
-<td><code>LowCardinality(T)</code></td>
-<td>Not a codec — a <em>type</em> wrapper for high-repetition strings.</td>
-</tr>
-</tbody>
-</table>
-<p>The demo's <code>extras.sql</code> shows the actual ratios on identical data:
-<code>Delta + LZ4</code> reaches <strong>0.5 % of raw</strong> on a monotonic timestamp column
-(199× compression).</p>
-<hr />
-<h2 id="6-ttl-automatic-data-lifecycle">6. TTL — automatic data lifecycle</h2>
-<p>Three flavours, all expressed on a date/time column:</p>
-<pre><code class="language-sql">-- Whole-row TTL: delete rows after 90 days
-ENGINE = MergeTree
-ORDER BY (...)
-TTL event_time + INTERVAL 90 DAY DELETE;
-
--- Column-level TTL: drop the column, keep the row
-ENGINE = MergeTree ORDER BY (...)
-( ...
-    payload String TTL event_time + INTERVAL 30 DAY,
-    ...);
-
--- Move-to-cold-disk TTL (with a multi-disk storage policy):
-TTL event_time + INTERVAL 30 DAY TO VOLUME 'cold',
-    event_time + INTERVAL 1 YEAR DELETE;
-</code></pre>
-<p>TTL runs <strong>at merge time</strong> in the background. It's not instant; for the
-demo we use <code>merge_with_ttl_timeout = 60</code> so the next <code>OPTIMIZE</code> actually
-purges old rows.</p>
-<hr />
-<h2 id="7-the-system-tables-youll-live-in">7. The <code>system.*</code> tables you'll live in</h2>
-<p>These are CH's introspection surface. Memorise the shape of each.</p>
-<table>
-<thead>
-<tr>
-<th>Table</th>
-<th>Use when…</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>system.tables</code></td>
-<td>"What's the schema, ORDER BY, partition key?"</td>
-</tr>
-<tr>
-<td><code>system.parts</code></td>
-<td>"How many parts? Active vs inactive? Sizes? Compressed/uncompressed?"</td>
-</tr>
-<tr>
-<td><code>system.parts_columns</code></td>
-<td>Per-column sizes within each part.</td>
-</tr>
-<tr>
-<td><code>system.columns</code></td>
-<td>Schema-level column info: type, codec, default expression.</td>
-</tr>
-<tr>
-<td><code>system.merges</code></td>
-<td>Currently-running merges. Empty when idle.</td>
-</tr>
-<tr>
-<td><code>system.mutations</code></td>
-<td><code>ALTER UPDATE/DELETE</code> jobs. They run async.</td>
-</tr>
-<tr>
-<td><code>system.query_log</code></td>
-<td>One row per finished query: duration, rows read, memory.</td>
-</tr>
-<tr>
-<td><code>system.query_thread_log</code></td>
-<td>Per-thread breakdown of each query.</td>
-</tr>
-<tr>
-<td><code>system.events</code></td>
-<td>Lifetime counters: <code>InsertedRows</code>, <code>MergedRows</code>, etc.</td>
-</tr>
-<tr>
-<td><code>system.metrics</code></td>
-<td>Current values: connections, queued queries.</td>
-</tr>
-<tr>
-<td><code>system.asynchronous_metrics</code></td>
-<td>Sampled gauges: cache size, FS free.</td>
-</tr>
-<tr>
-<td><code>system.processes</code></td>
-<td>Currently-running queries (the SHOW PROCESSLIST equivalent).</td>
-</tr>
-<tr>
-<td><code>system.settings</code></td>
-<td>Every server/session setting and its current value.</td>
-</tr>
-<tr>
-<td><code>system.disks</code> / <code>system.storage_policies</code></td>
-<td>Multi-disk configuration.</td>
-</tr>
-</tbody>
-</table>
-<p><code>SYSTEM FLUSH LOGS;</code> forces the buffered logs to disk so the next SELECT
-finds them.</p>
-<hr />
-<h2 id="8-the-hands-on-demo">8. The hands-on demo</h2>
-<h3 id="what-you-get">What you get</h3>
-<pre><code>docker-compose.yml          m1-clickhouse · ports 8123/9000
-configs/clickhouse-config.xml
-setup.sql · data.sql · queries.sql · extras.sql
-up.sh · run.sh · down.sh
-</code></pre>
-<h3 id="run">Run</h3>
-<pre><code class="language-bash">./up.sh        # docker compose up -d, waits for /ping
-./run.sh       # creates DB, inserts ~2M rows, runs demo queries
-./down.sh      # docker compose down -v  (drops volumes)
-</code></pre>
-<p><code>./run.sh</code> self-bootstraps — if the container isn't up, it calls <code>up.sh</code>.</p>
-<h3 id="execution-flow-what-runs-in-order">Execution flow — what runs, in order</h3>
-<table>
-<thead>
-<tr>
-<th>#</th>
-<th>Step</th>
-<th>What happens</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>0</td>
-<td>self-bootstrap</td>
-<td>If <code>m1-clickhouse</code> isn't responding to <code>/ping</code>, the script calls <code>up.sh</code> first. <code>up.sh</code> tears down any other demo module that's holding port 8123, then <code>docker compose up -d</code>.</td>
-</tr>
-<tr>
-<td>1</td>
-<td><code>setup.sql</code></td>
-<td>Creates database <code>m1</code> and one MergeTree table <code>m1.events</code> partitioned by month, ordered by <code>(event_time, user_id)</code>, default <code>index_granularity = 8192</code>.</td>
-</tr>
-<tr>
-<td>2</td>
-<td><code>data.sql</code> (~2M rows in 3 inserts)</td>
-<td>Three <code>INSERT … SELECT FROM numbers(...)</code> (500k + 500k + 1M). Three on purpose: leaves three active parts so merges have something to do.</td>
-</tr>
-<tr>
-<td>3</td>
-<td><code>queries.sql</code></td>
-<td>Eight observation queries: row count, <code>system.parts</code>, partitions/sizes, PK vs sorting key, <code>OPTIMIZE FINAL</code>, post-merge part count, date-range aggregation, and <code>SYSTEM FLUSH LOGS</code> + <code>system.query_log</code> to see how many rows the previous SELECT actually read.</td>
-</tr>
-<tr>
-<td>4</td>
-<td><code>extras.sql</code></td>
-<td>Curriculum extras: TTL table, codec-comparison table (<code>Delta</code>, <code>T64</code>, <code>ZSTD(3)</code> vs LZ4), complex-types table (<code>Enum</code>, <code>Nullable</code>, <code>Array</code>, <code>Tuple</code>, <code>Map</code>, <code>Nested</code>), <code>DESCRIBE TABLE</code>, <code>SHOW CREATE TABLE</code>.</td>
-</tr>
-<tr>
-<td>5</td>
-<td>HTTP API smoke test</td>
-<td><code>wget -qO- 'http://localhost:8123/?query=SELECT count() FROM m1.events'</code> from inside the container — should return <code>2000000</code>.</td>
-</tr>
-</tbody>
-</table>
-<h3 id="what-to-look-for">What to look for</h3>
-<table>
-<thead>
-<tr>
-<th>Step</th>
-<th>What you should see</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>3 sequential INSERTs</td>
-<td>3 active parts in <code>system.parts</code> initially.</td>
-</tr>
-<tr>
-<td>Partition by <code>toYYYYMM</code></td>
-<td>Parts grouped under <code>202601</code>, <code>202602</code>, <code>202603</code>.</td>
-</tr>
-<tr>
-<td><code>OPTIMIZE TABLE … FINAL</code></td>
-<td>Active part count drops; bytes per part rise.</td>
-</tr>
-<tr>
-<td><code>system.tables</code></td>
-<td><code>primary_key</code> and <code>sorting_key</code> both <code>event_time, user_id</code>.</td>
-</tr>
-<tr>
-<td>Codec comparison</td>
-<td><code>Delta(4)+LZ4</code> ≈ 0.5 % of raw on monotonic timestamps; <code>T64+LZ4</code> ≈ 3 % of raw on monotonic UInt64.</td>
-</tr>
-<tr>
-<td>Date-range query</td>
-<td><code>read_rows</code> in <code>query_log</code> is <em>much</em> less than 2M — proof that PK pruning works.</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="9-configuration-reference-the-demos-config">9. Configuration reference (the demo's config)</h2>
-<p><code>configs/clickhouse-config.xml</code> is bind-mounted into the container under
-<code>/etc/clickhouse-server/config.d/00-custom.xml</code>. CH layers <code>config.d/</code>
-files on top of the base <code>config.xml</code>.</p>
-<pre><code class="language-xml">&lt;clickhouse&gt;
-    &lt;logger&gt;
-        &lt;level&gt;notice&lt;/level&gt;
-        &lt;log&gt;/var/log/clickhouse-server/clickhouse-server.log&lt;/log&gt;
-        &lt;errorlog&gt;/var/log/clickhouse-server/clickhouse-server.err.log&lt;/errorlog&gt;
-        &lt;size&gt;1000M&lt;/size&gt;&lt;count&gt;10&lt;/count&gt;
-    &lt;/logger&gt;
-
-    &lt;!-- Persistent system logs: one row per query/part/merge. Without
-         these, system.query_log and friends are empty after restart. --&gt;
-    &lt;query_log&gt;&lt;database&gt;system&lt;/database&gt;&lt;table&gt;query_log&lt;/table&gt;&lt;/query_log&gt;
-    &lt;query_thread_log&gt;&lt;database&gt;system&lt;/database&gt;&lt;table&gt;query_thread_log&lt;/table&gt;&lt;/query_thread_log&gt;
-    &lt;part_log&gt;&lt;database&gt;system&lt;/database&gt;&lt;table&gt;part_log&lt;/table&gt;&lt;/part_log&gt;
-
-    &lt;listen_host&gt;0.0.0.0&lt;/listen_host&gt;     &lt;!-- accept TCP from anywhere --&gt;
-    &lt;http_port&gt;8123&lt;/http_port&gt;
-    &lt;tcp_port&gt;9000&lt;/tcp_port&gt;
-    &lt;interserver_http_port&gt;9009&lt;/interserver_http_port&gt;
-
-    &lt;max_connections&gt;4096&lt;/max_connections&gt;
-    &lt;background_pool_size&gt;16&lt;/background_pool_size&gt;          &lt;!-- merge workers --&gt;
-    &lt;background_schedule_pool_size&gt;16&lt;/background_schedule_pool_size&gt;
-
-    &lt;path&gt;/var/lib/clickhouse/&lt;/path&gt;
-    &lt;tmp_path&gt;/var/lib/clickhouse/tmp/&lt;/tmp_path&gt;
-    &lt;user_files_path&gt;/var/lib/clickhouse/user_files/&lt;/user_files_path&gt;
-&lt;/clickhouse&gt;
-</code></pre>
-<blockquote>
-<p><strong>Important on CH 26.x</strong>: user-level settings (<code>max_memory_usage</code>,
-<code>max_rows_to_read</code>, etc.) cannot live at the top level of <code>config.xml</code>
-any more — they belong in <code>users.d/&lt;file&gt;.xml</code> under
-<code>&lt;profiles&gt;&lt;default&gt;...&lt;/default&gt;&lt;/profiles&gt;</code>. Putting them at the top
-level used to work; on 26.4+ the server refuses to start.</p>
-</blockquote>
-<hr />
-<h2 id="10-common-pitfalls">10. Common pitfalls</h2>
-<table>
-<thead>
-<tr>
-<th>Symptom</th>
-<th>Cause</th>
-<th>Fix</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Inserts get progressively slower; CPU spent in merges</td>
-<td>Many small inserts → too many parts.</td>
-<td>Batch inserts (1k–100k rows). Use Buffer engine <em>only</em> if you can't.</td>
-</tr>
-<tr>
-<td><code>Too many parts (N). Merges are processing significantly slower than inserts</code></td>
-<td>Same as above, but now hard-failing.</td>
-<td>Slow down inserts; raise <code>parts_to_throw_insert</code> only as a temporary lifeline.</td>
-</tr>
-<tr>
-<td>Tiny query reads millions of rows</td>
-<td>PK doesn't cover the filter; or filter isn't on a PK-prefix column.</td>
-<td>Re-shape <code>ORDER BY</code>, or add a skip-index/projection (Module 6).</td>
-</tr>
-<tr>
-<td><code>Memory limit exceeded</code></td>
-<td>Aggregation needs more than <code>max_memory_usage</code> (default 10 GB).</td>
-<td>Raise the limit, or use <code>max_bytes_before_external_group_by</code> to spill to disk.</td>
-</tr>
-<tr>
-<td><code>Code: 60. Unknown table 'system.query_log'</code></td>
-<td>First <code>SELECT</code> on <code>query_log</code> arrives before its periodic flush.</td>
-<td><code>SYSTEM FLUSH LOGS;</code> before the SELECT.</td>
-</tr>
-<tr>
-<td>INSERT VALUES hangs forever via <code>clickhouse-client</code></td>
-<td><code>--multiquery --query "..."</code> + open stdin → CH waits for more data.</td>
-<td>Pipe the SQL via <code>printf %s "$SQL" | clickhouse-client</code> (this demo does that already).</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="11-talking-points-for-the-live-session">11. Talking points for the live session</h2>
-<ol>
-<li><strong>Why columnar?</strong> Walk through "SELECT avg(revenue) FROM events
-   WHERE country = 'US'": only 2 columns are read; rows are processed in
-   batches; the entire query touches ~kilobytes of memory.</li>
-<li><strong>Why merges?</strong> Show <code>system.merges</code> mid-INSERT — there's almost always
-   a background job running.</li>
-<li><strong>Sorting key vs primary key.</strong> Most tables use only <code>ORDER BY</code> and let
-   the PK equal it. The split is a tuning knob for the rare case where
-   ORDER BY has high-cardinality trailing columns you don't want in the
-   index.</li>
-<li><strong><code>index_granularity = 8192</code></strong> is why the PK is tiny. Demonstrate by
-   showing <code>primary.idx</code> size vs row count.</li>
-<li><strong><code>OPTIMIZE FINAL</code></strong> is a debugging convenience. <strong>Never</strong> run it from
-   cron — it'll take down a busy server.</li>
-<li><strong>Append-only mindset.</strong> Every INSERT writes a fresh part. Conventional
-   "UPDATE" is done via Replacing/Collapsing engines (Module 2) or
-   <code>ALTER TABLE … UPDATE</code> (which writes an async mutation, <em>not</em> an UPDATE).</li>
-</ol>
-<hr />
-<h2 id="12-container-ports">12. Container ports</h2>
-<table>
-<thead>
-<tr>
-<th>Service</th>
-<th>Container port</th>
-<th>Host port</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>HTTP</td>
-<td>8123</td>
-<td>8123</td>
-</tr>
-<tr>
-<td>Native (TCP)</td>
-<td>9000</td>
-<td>9000</td>
-</tr>
-<tr>
-<td>Inter-server</td>
-<td>9009</td>
-<td>(not exposed; cluster-only)</td>
-</tr>
-</tbody>
-</table>
-<p>The default user is loopback-only when no <code>CLICKHOUSE_PASSWORD</code> is set,
-so the demo's HTTP smoke test runs <code>wget</code> from <em>inside</em> the container.
-Production: define users in <code>users.d/</code> (Module 5 walks through this).</p>
-<hr />
-<h2 id="13-going-deeper">13. Going deeper</h2>
-<ul>
-<li><strong>Module 2</strong> — every <code>*MergeTree</code> variant in detail.</li>
-<li><strong>Module 6</strong> — the same primary-key/projection knobs, with measured
-  query timings on 60M rows.</li>
-<li><strong>ClickHouse docs</strong> — <a href="https://clickhouse.com/docs">https://clickhouse.com/docs</a> (especially the
-  MergeTree, Codecs, and System Tables sections).</li>
-</ul>
-<p>When you're comfortable with this module, tear down (<code>./down.sh</code>) and
-move to Module 2.</p>
-  </div>
 </div>
+
 
 
 <style>
@@ -2029,9 +1405,7 @@ move to Module 2.</p>
   background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 28px 32px; margin-bottom: 24px;
 }
-.handsOn-card h2 {
-  margin: 0 0 8px 0; font-size: 1.6em; color: #0f172a;
-}
+.handsOn-card h2 { margin: 0 0 8px 0; font-size: 1.6em; color: #0f172a; }
 .handsOn-card h3 {
   margin: 24px 0 8px 0; font-size: 1.2em; color: #1a4480;
   border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;
@@ -2060,27 +1434,31 @@ move to Module 2.</p>
   padding: 28px 32px; border-radius: 12px; margin-bottom: 20px;
 }
 .handsOn-banner h2 { color: white; margin: 0 0 8px 0; }
-.handsOn-banner code {
-  background: rgba(0,0,0,0.25); color: #f1f5f9;
-}
-.handsOn-banner pre {
-  background: rgba(0,0,0,0.30); color: #f1f5f9;
-}
+.handsOn-banner code { background: rgba(0,0,0,0.25); color: #f1f5f9; }
+.handsOn-banner pre  { background: rgba(0,0,0,0.30); color: #f1f5f9; }
 .handsOn-figure {
   margin: 16px 0; padding: 12px; background: #f8fafc;
   border: 1px solid #e2e8f0; border-radius: 8px; text-align: center;
 }
-.handsOn-figure img, .handsOn-figure object {
-  max-width: 100%; height: auto; border-radius: 4px;
+.handsOn-figure img {
+  max-width: 100%; height: auto; border-radius: 4px; display: inline-block;
 }
 .handsOn-figure figcaption {
   margin-top: 8px; color: #475569; font-size: 0.9em; font-style: italic;
+}
+.handsOn-figure figcaption a {
+  color: #1a4480; text-decoration: none; border-bottom: 1px dotted #94a3b8;
 }
 .handsOn-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
   gap: 16px; margin: 12px 0;
 }
 .handsOn-card a { color: #1a4480; }
+.handsOn-source-tag {
+  display: inline-block; background: #e0f2fe; color: #075985;
+  padding: 2px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 600;
+  margin-right: 6px;
+}
 </style>
 
 
@@ -2101,8 +1479,8 @@ move to Module 2.</p>
     <h2>📺 Live demo capture</h2>
     <p>Recorded with <a href="https://github.com/charmbracelet/vhs" target="_blank" rel="noopener">vhs</a>: the actual terminal output from <code>./run.sh</code> running on this very stack.</p>
     <figure class="handsOn-figure">
-      <img src="../code-examples/demos/module-1-fundamentals/diagrams/demo.gif" alt="Module demo GIF" loading="lazy">
-      <figcaption>Click to view full-size. Animated GIF, ~566 KB.</figcaption>
+      <img src="demo-assets/module-1-fundamentals/demo.gif" alt="Module demo GIF" loading="lazy">
+      <figcaption>Animated GIF, ~566 KB. Right-click → open in new tab to view full-size.</figcaption>
     </figure>
   </div>
 </div>
@@ -2116,10 +1494,75 @@ move to Module 2.</p>
 
 
       <figure class="handsOn-figure">
-        <object type="image/svg+xml" data="../code-examples/demos/module-1-fundamentals/diagrams/anim-parts-merge.svg" aria-label="Parts merge"></object>
+        <img src="demo-assets/module-1-fundamentals/anim-parts-merge.svg" alt="Parts merge" loading="lazy">
         <figcaption>Parts merge</figcaption>
       </figure>
 
+    </div>
+  </div>
+</div>
+
+
+<div class="handsOn">
+  <div class="handsOn-card">
+    <h2>📚 ClickHouse reference visuals</h2>
+    <p>Curated from the official ClickHouse documentation and engineering blog (and Altinity's docs/blog) — the same diagrams the broader CH community uses to explain these concepts. Click any image to read the source.</p>
+    <div class="handsOn-grid">
+
+
+      <figure class="handsOn-figure">
+        <a href="https://clickhouse.com/docs/faq/general/columnar-database" target="_blank" rel="noopener">
+          <img src="demo-assets/module-1-fundamentals/external/01-row-oriented.gif" alt="Animated row-oriented storage layout (data laid out per-row)" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">ClickHouse Docs</span>
+          Animated row-oriented storage layout (data laid out per-row)
+        </figcaption>
+      </figure>
+
+
+      <figure class="handsOn-figure">
+        <a href="https://clickhouse.com/docs/faq/general/columnar-database" target="_blank" rel="noopener">
+          <img src="demo-assets/module-1-fundamentals/external/02-column-oriented.gif" alt="Animated columnar storage layout (data laid out per-column)" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">ClickHouse Docs</span>
+          Animated columnar storage layout (data laid out per-column)
+        </figcaption>
+      </figure>
+
+
+      <figure class="handsOn-figure">
+        <a href="https://clickhouse.com/resources/engineering/what-is-columnar-database" target="_blank" rel="noopener">
+          <img src="demo-assets/module-1-fundamentals/external/03-eng_resource_0_columnstore_1c09a6321a.png" alt="Row store vs column store: how the same table is physically laid out" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">ClickHouse Engineering</span>
+          Row store vs column store: how the same table is physically laid out
+        </figcaption>
+      </figure>
+
+
+      <figure class="handsOn-figure">
+        <a href="https://clickhouse.com/resources/engineering/what-is-columnar-database" target="_blank" rel="noopener">
+          <img src="demo-assets/module-1-fundamentals/external/04-eng_resource_1_columnstore_d112ba4cd7.png" alt="Why columns compress better than rows" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">ClickHouse Engineering</span>
+          Why columns compress better than rows
+        </figcaption>
+      </figure>
+
+
+      <figure class="handsOn-figure">
+        <a href="https://clickhouse.com/resources/engineering/what-is-columnar-database" target="_blank" rel="noopener">
+          <img src="demo-assets/module-1-fundamentals/external/05-eng_resource_2_columnstore_b1ea68941f.png" alt="Columnar layout enables vectorised execution over batches" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">ClickHouse Engineering</span>
+          Columnar layout enables vectorised execution over batches
+        </figcaption>
+      </figure>
 
     </div>
   </div>

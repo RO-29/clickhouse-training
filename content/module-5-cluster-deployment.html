@@ -1279,538 +1279,8 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
 
 
 
-<div class="handsOn">
-  <div class="handsOn-card">
-    <h2>📚 Full module reference</h2>
-    <h1 id="module-5-cluster-deployment-operations">Module 5 — Cluster Deployment &amp; Operations</h1>
-<blockquote>
-<p><strong>Audience:</strong> anyone responsible for deploying / running CH clusters.
-<strong>Prerequisites:</strong> Modules 1–4. <strong>Time:</strong> ~70 min reading + 30 min hands-on.</p>
-</blockquote>
-<p>By the end you will be able to:</p>
-<ul>
-<li>Drive a CH cluster as a single thing via <code>ON CLUSTER</code> DDL.</li>
-<li>Audit cluster operations via <code>system.distributed_ddl_queue</code>.</li>
-<li>Use <code>cluster()</code>, <code>clusterAllReplicas()</code>, <code>remote()</code> table functions for
-  ad-hoc cross-shard queries.</li>
-<li>Configure users, profiles, quotas, and roles.</li>
-<li>Enable the built-in Prometheus exporter.</li>
-<li>Sketch a TLS-secured production deployment.</li>
-</ul>
-<hr />
-<h2 id="1-the-cluster-as-one-thing-mental-model">1. The "cluster as one thing" mental model</h2>
-<p>A ClickHouse cluster is <em>not</em> a unified service like Kafka or Postgres
-streaming replication. It's <strong>a set of independent CH processes that
-share a <code>&lt;remote_servers&gt;</code> definition and a ZK ensemble</strong>. There is no
-"primary" or "controller". Every node knows the same cluster shape.</p>
-<!-- mermaid rendered as SVG above -->
-
-<p>Coordination boundaries:</p>
-<table>
-<thead>
-<tr>
-<th>Concern</th>
-<th>Coordinated via</th>
-<th>Stored in</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Replication queue</td>
-<td>ZooKeeper / Keeper</td>
-<td><code>/clickhouse/tables/...</code></td>
-</tr>
-<tr>
-<td>ON CLUSTER DDL</td>
-<td>ZooKeeper / Keeper</td>
-<td><code>/clickhouse/task_queue/ddl/...</code></td>
-</tr>
-<tr>
-<td>Sharding metadata</td>
-<td>static XML on each node</td>
-<td><code>&lt;remote_servers&gt;</code> in config</td>
-</tr>
-<tr>
-<td>User / role data</td>
-<td>static XML or SQL in <code>users.d</code></td>
-<td>per-node by default, or in ZK</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="2-on-cluster-ddl-fanout">2. <code>ON CLUSTER</code> — DDL fanout</h2>
-<pre><code class="language-sql">CREATE TABLE analytics.page_views_local ON CLUSTER clickhouse_cluster (
-    ts DateTime, user_id UInt64, page LowCardinality(String), ...
-)
-ENGINE = ReplicatedMergeTree(
-    '/clickhouse/tables/{shard}/page_views_local',
-    '{replica}'
-)
-ORDER BY (page, user_id, ts);
-</code></pre>
-<p>What happens when you run that:</p>
-<!-- mermaid rendered as SVG above -->
-
-<p>The audit trail lives in <code>system.distributed_ddl_queue</code>:</p>
-<pre><code class="language-sql">SELECT entry, host_name, port, status, exception_text, query_create_time
-FROM system.distributed_ddl_queue
-ORDER BY query_create_time DESC LIMIT 10;
-</code></pre>
-<blockquote>
-<p><strong>Tuning:</strong> <code>distributed_ddl_task_timeout</code> (default 180 s) bounds the
-wait. For big clusters bump it; for CI it can be tighter.</p>
-</blockquote>
-<hr />
-<h2 id="3-the-cluster-aware-table-functions">3. The cluster-aware table functions</h2>
-<p>You don't always want a Distributed table. For one-shot queries, use:</p>
-<table>
-<thead>
-<tr>
-<th>Function</th>
-<th>Hits</th>
-<th>Use for</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>cluster('cluster_name', db, tbl)</code></td>
-<td>one replica per shard</td>
-<td>one-off fan-out aggregation</td>
-</tr>
-<tr>
-<td><code>clusterAllReplicas('...', db, tbl)</code></td>
-<td>every replica of every shard</td>
-<td>replica-equivalence checks (NOT aggregations)</td>
-</tr>
-<tr>
-<td><code>remote('host:port', db, tbl)</code></td>
-<td>one specific host</td>
-<td>cross-cluster spot reads</td>
-</tr>
-<tr>
-<td><code>remoteSecure('host:port', db, tbl)</code></td>
-<td>same, over TLS</td>
-<td>production cross-cluster</td>
-</tr>
-</tbody>
-</table>
-<pre><code class="language-sql">-- Quick &quot;what's on each shard?&quot; without creating a Distributed table:
-SELECT shardNum() AS shard, count()
-FROM cluster('clickhouse_cluster', analytics, page_views_local)
-GROUP BY shard;
-
--- Replica-equivalence check (don't aggregate raw data over this):
-SELECT hostName(), count()
-FROM clusterAllReplicas('clickhouse_cluster', analytics, page_views_local)
-GROUP BY hostName();
-
--- Pin to one specific host for diagnosis:
-SELECT count() FROM remote('m5-s2r1:9000', analytics, page_views_local);
-</code></pre>
-<hr />
-<h2 id="4-users-profiles-quotas-roles">4. Users, profiles, quotas, roles</h2>
-<p>XML defines users; SQL defines roles and grants. Both live for the
-lifetime of the server; for dynamic auth, use the SQL form.</p>
-<h3 id="anatomy-of-usersxml">Anatomy of <code>users.xml</code></h3>
-<pre><code class="language-xml">&lt;clickhouse&gt;
-    &lt;profiles&gt;            &lt;!-- session-level settings --&gt;
-        &lt;default&gt;
-            &lt;max_threads&gt;8&lt;/max_threads&gt;
-            &lt;load_balancing&gt;random&lt;/load_balancing&gt;
-            &lt;log_queries&gt;1&lt;/log_queries&gt;
-        &lt;/default&gt;
-        &lt;heavy&gt;
-            &lt;max_memory_usage&gt;4000000000&lt;/max_memory_usage&gt;
-            &lt;max_threads&gt;16&lt;/max_threads&gt;
-            &lt;max_execution_time&gt;120&lt;/max_execution_time&gt;
-        &lt;/heavy&gt;
-        &lt;readonly&gt;
-            &lt;readonly&gt;1&lt;/readonly&gt;
-        &lt;/readonly&gt;
-    &lt;/profiles&gt;
-
-    &lt;quotas&gt;              &lt;!-- rolling limits --&gt;
-        &lt;analyst_quota&gt;
-            &lt;interval&gt;
-                &lt;duration&gt;3600&lt;/duration&gt;
-                &lt;queries&gt;1000&lt;/queries&gt;
-                &lt;read_rows&gt;1000000000&lt;/read_rows&gt;
-                &lt;execution_time&gt;1800&lt;/execution_time&gt;
-            &lt;/interval&gt;
-        &lt;/analyst_quota&gt;
-    &lt;/quotas&gt;
-
-    &lt;users&gt;
-        &lt;admin&gt;
-            &lt;password_sha256_hex&gt;...&lt;/password_sha256_hex&gt;
-            &lt;networks&gt;&lt;ip&gt;::/0&lt;/ip&gt;&lt;/networks&gt;
-            &lt;profile&gt;heavy&lt;/profile&gt;
-            &lt;quota&gt;default&lt;/quota&gt;
-            &lt;access_management&gt;1&lt;/access_management&gt;
-        &lt;/admin&gt;
-        &lt;analyst&gt;
-            &lt;password_sha256_hex&gt;...&lt;/password_sha256_hex&gt;
-            &lt;networks&gt;&lt;ip&gt;::/0&lt;/ip&gt;&lt;/networks&gt;
-            &lt;profile&gt;readonly&lt;/profile&gt;
-            &lt;quota&gt;analyst_quota&lt;/quota&gt;
-            &lt;databases&gt;&lt;analytics/&gt;&lt;system/&gt;&lt;/databases&gt;
-        &lt;/analyst&gt;
-        &lt;app&gt;
-            &lt;password_sha256_hex&gt;...&lt;/password_sha256_hex&gt;
-            &lt;networks&gt;&lt;ip&gt;::/0&lt;/ip&gt;&lt;/networks&gt;
-            &lt;profile&gt;default&lt;/profile&gt;
-            &lt;quota&gt;default&lt;/quota&gt;
-            &lt;databases&gt;&lt;analytics/&gt;&lt;/databases&gt;
-        &lt;/app&gt;
-    &lt;/users&gt;
-&lt;/clickhouse&gt;
-</code></pre>
-<h3 id="sql-roles-grants">SQL roles + grants</h3>
-<p>Once users exist, grants are the SQL way:</p>
-<pre><code class="language-sql">CREATE ROLE reader      ON CLUSTER clickhouse_cluster;
-CREATE ROLE writer      ON CLUSTER clickhouse_cluster;
-
-GRANT SELECT ON analytics.*                       TO reader  ON CLUSTER clickhouse_cluster;
-GRANT INSERT ON analytics.page_views_distributed   TO writer  ON CLUSTER clickhouse_cluster;
-
-GRANT reader TO analyst ON CLUSTER clickhouse_cluster;
-GRANT writer TO app     ON CLUSTER clickhouse_cluster;
-</code></pre>
-<p>Inspect:</p>
-<pre><code class="language-sql">SELECT name, storage FROM system.users  ORDER BY name;
-SELECT name, storage FROM system.roles  ORDER BY name;
-SELECT user_name, role_name, granted_role_is_default
-FROM system.role_grants ORDER BY user_name;
-SELECT * FROM system.quotas_usage WHERE name = 'analyst_quota';
-</code></pre>
-<blockquote>
-<p><strong>Production tip:</strong> keep <code>&lt;users&gt;</code> in XML for the <em>bootstrap</em> user
-(<code>admin</code>); manage everything else via SQL <code>CREATE USER … GRANT …</code>. SQL
-users go into ZK if <code>&lt;user_directories&gt;</code> includes
-<code>&lt;replicated&gt;&lt;zookeeper_path&gt;...</code>.</p>
-</blockquote>
-<hr />
-<h2 id="5-the-prometheus-endpoint">5. The Prometheus endpoint</h2>
-<p>CH ships a built-in exporter. Two lines of config:</p>
-<pre><code class="language-xml">&lt;clickhouse&gt;
-    &lt;prometheus&gt;
-        &lt;endpoint&gt;/metrics&lt;/endpoint&gt;
-        &lt;port&gt;9363&lt;/port&gt;
-        &lt;metrics&gt;true&lt;/metrics&gt;
-        &lt;events&gt;true&lt;/events&gt;
-        &lt;asynchronous_metrics&gt;true&lt;/asynchronous_metrics&gt;
-        &lt;status_info&gt;true&lt;/status_info&gt;
-    &lt;/prometheus&gt;
-&lt;/clickhouse&gt;
-</code></pre>
-<p>What it exposes:</p>
-<table>
-<thead>
-<tr>
-<th>Metric kind</th>
-<th>Examples</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Cumulative events</td>
-<td><code>ClickHouseProfileEvents_Query</code>, <code>ClickHouseProfileEvents_InsertedRows</code></td>
-</tr>
-<tr>
-<td>Current values (gauges)</td>
-<td><code>ClickHouseMetrics_Query</code>, <code>ClickHouseMetrics_PartsActive</code></td>
-</tr>
-<tr>
-<td>Async metrics</td>
-<td><code>ClickHouseAsyncMetrics_jemalloc_resident</code>, <code>..._FilesystemMainPath_AvailableINodes</code></td>
-</tr>
-<tr>
-<td>Status (custom)</td>
-<td><code>ClickHouseStatusInfo_DictionaryStatus</code></td>
-</tr>
-</tbody>
-</table>
-<p>Smoke test:</p>
-<pre><code class="language-bash">docker exec m5-s1r1 wget -qO- http://localhost:9363/metrics | head
-</code></pre>
-<p>A minimal Prometheus scrape config:</p>
-<pre><code class="language-yaml">scrape_configs:
-  - job_name: clickhouse
-    static_configs:
-      - targets:
-          - m5-s1r1:9363
-          - m5-s1r2:9363
-          - m5-s2r1:9363
-          - m5-s2r2:9363
-          - m5-s3r1:9363
-          - m5-s3r2:9363
-</code></pre>
-<p>Grafana has a community dashboard (ID 14192) tuned to these metrics.</p>
-<hr />
-<h2 id="6-tls-securing-the-cluster">6. TLS — securing the cluster</h2>
-<p>The demo doesn't ship certs (kept out of source control), but here's the
-production sketch:</p>
-<pre><code class="language-xml">&lt;clickhouse&gt;
-    &lt;https_port&gt;8443&lt;/https_port&gt;
-    &lt;tcp_port_secure&gt;9440&lt;/tcp_port_secure&gt;
-    &lt;interserver_https_port&gt;9010&lt;/interserver_https_port&gt;
-
-    &lt;openSSL&gt;
-        &lt;server&gt;
-            &lt;certificateFile&gt;/etc/clickhouse-server/server.crt&lt;/certificateFile&gt;
-            &lt;privateKeyFile&gt;/etc/clickhouse-server/server.key&lt;/privateKeyFile&gt;
-            &lt;dhParamsFile&gt;/etc/clickhouse-server/dhparam.pem&lt;/dhParamsFile&gt;
-            &lt;verificationMode&gt;none&lt;/verificationMode&gt;      &lt;!-- or 'strict' for mTLS --&gt;
-            &lt;loadDefaultCAFile&gt;true&lt;/loadDefaultCAFile&gt;
-            &lt;cacheSessions&gt;true&lt;/cacheSessions&gt;
-            &lt;disableProtocols&gt;sslv2,sslv3,tlsv1,tlsv1_1&lt;/disableProtocols&gt;
-            &lt;preferServerCiphers&gt;true&lt;/preferServerCiphers&gt;
-        &lt;/server&gt;
-    &lt;/openSSL&gt;
-&lt;/clickhouse&gt;
-</code></pre>
-<p>Generate dev certs with <code>mkcert</code> (one-liner) or <code>step-ca</code>. Production
-should use real certs from your PKI, with mTLS for inter-server traffic.</p>
-<p>Connect with TLS:</p>
-<pre><code class="language-bash">clickhouse-client --secure --port 9440 \
-    --user admin --password '...' \
-    -h cluster.example.com
-</code></pre>
-<hr />
-<h2 id="7-the-hands-on-demo">7. The hands-on demo</h2>
-<h3 id="what-you-get">What you get</h3>
-<pre><code>docker-compose.yml                 9 containers (3 ZK + 6 CH, prefix m5-)
-configs/cluster-node.xml           &lt;remote_servers&gt; + ZK
-configs/users.xml                  3 users / 3 profiles / 2 quotas
-configs/prometheus.xml             /metrics on :9363
-configs/macros/macros-sNrM.xml     per-node {shard}/{replica}
-setup.sql · data.sql · queries.sql · extras.sql
-up.sh · run.sh · down.sh
-</code></pre>
-<h3 id="container-map">Container map</h3>
-<p>Same shape as M3/M4 with the <code>m5-</code> prefix; ports <code>8123-8128</code> HTTP, <code>9000-9005</code> TCP.</p>
-<h3 id="execution-flow-what-runs-in-order">Execution flow — what runs, in order</h3>
-<table>
-<thead>
-<tr>
-<th>#</th>
-<th>Step</th>
-<th>What happens</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>0</td>
-<td>self-bootstrap</td>
-<td><code>up.sh</code> brings up the cluster (9 containers) and tears down peer demo modules. <code>users.xml</code>, <code>prometheus.xml</code>, and the cluster + macros XMLs are bind-mounted into each CH node at startup.</td>
-</tr>
-<tr>
-<td>1</td>
-<td><code>setup.sql</code> (via <code>m5-s1r1</code>)</td>
-<td><code>ON CLUSTER</code> creates database <code>analytics</code>, table <code>analytics.page_views_local</code> (ReplicatedMergeTree), and Distributed wrapper <code>analytics.page_views_distributed</code>. Every replica gets all three.</td>
-</tr>
-<tr>
-<td>2</td>
-<td><code>data.sql</code> (via <code>m5-s1r1</code>)</td>
-<td>Inserts 3M rows via the Distributed table.</td>
-</tr>
-<tr>
-<td>3</td>
-<td><code>SYSTEM FLUSH DISTRIBUTED</code> × 6</td>
-<td>Drains the Distributed spool on every node so the next reads are exact.</td>
-</tr>
-<tr>
-<td>4</td>
-<td><code>queries.sql</code> (via <code>m5-s1r1</code>)</td>
-<td>Six queries: <code>system.distributed_ddl_queue</code>, <code>cluster()</code> table function, <code>clusterAllReplicas()</code> per-replica row count, <code>remote('m5-s2r1:9000', …)</code> direct-to-host query, distributed <code>EXPLAIN</code>, <code>system.clusters</code>.</td>
-</tr>
-<tr>
-<td>5</td>
-<td><code>extras.sql</code> (via <code>m5-s1r1</code>)</td>
-<td>Layers SQL-managed access on top of <code>users.xml</code>: creates roles <code>reader</code> and <code>writer</code> <code>ON CLUSTER</code>, grants <code>reader</code> to <code>analyst</code> and <code>writer</code> to <code>app</code>. Inspects <code>system.users</code>, <code>system.roles</code>, <code>system.role_grants</code>, <code>system.grants</code>, <code>system.quotas_usage</code>. Prints Prometheus + TLS notes.</td>
-</tr>
-<tr>
-<td>6</td>
-<td>Prometheus endpoint smoke test (in run.sh)</td>
-<td><code>docker exec m5-s1r1 wget -qO- http://localhost:9363/metrics</code> — first 5 lines should be Prometheus-formatted metrics. Confirms the <code>&lt;prometheus&gt;</code> block from <code>02-prometheus.xml</code> is active.</td>
-</tr>
-</tbody>
-</table>
-<h3 id="what-to-look-for">What to look for</h3>
-<table>
-<thead>
-<tr>
-<th>Step</th>
-<th>What you should see</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>system.distributed_ddl_queue</code></td>
-<td>One row per <code>ON CLUSTER</code> DDL × every host = 6 rows for each <code>CREATE</code>.</td>
-</tr>
-<tr>
-<td><code>cluster()</code> aggregation</td>
-<td>One pass, results from every shard.</td>
-</tr>
-<tr>
-<td><code>clusterAllReplicas()</code></td>
-<td>Two rows per shard (one per replica).</td>
-</tr>
-<tr>
-<td><code>system.users</code></td>
-<td><code>default</code>, <code>admin</code>, <code>analyst</code>, <code>app</code> — all from <code>users.xml</code>.</td>
-</tr>
-<tr>
-<td>Role grants</td>
-<td><code>reader → analyst</code>, <code>writer → app</code>.</td>
-</tr>
-<tr>
-<td>Prometheus smoke test</td>
-<td>Lines like <code># HELP ClickHouseProfileEvents_Query ...</code>.</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="8-operational-sql-cheatsheet">8. Operational SQL cheatsheet</h2>
-<pre><code class="language-sql">-- &quot;Show me the cluster&quot;
-SELECT cluster, shard_num, replica_num, host_name, host_address, port,
-       errors_count, slowdowns_count
-FROM system.clusters WHERE cluster = 'clickhouse_cluster'
-ORDER BY shard_num, replica_num;
-
--- &quot;Show me everyone who can do anything&quot;
-SELECT user_name, role_name, access_type, database, table
-FROM system.grants ORDER BY user_name, database;
-
--- &quot;Did the last DDL succeed everywhere?&quot;
-SELECT host_name, status, exception_text
-FROM system.distributed_ddl_queue
-WHERE entry = 'query-0000000023';
-
--- &quot;Quota usage right now&quot;
-SELECT name, queries, errors, read_rows, execution_time
-FROM system.quotas_usage WHERE name != 'default';
-
--- &quot;Recent slow queries cluster-wide&quot;
-SELECT hostName() AS host, query_duration_ms, query
-FROM clusterAllReplicas('clickhouse_cluster', system, query_log)
-WHERE event_time &gt; now() - INTERVAL 1 HOUR
-  AND type = 'QueryFinish'
-ORDER BY query_duration_ms DESC LIMIT 20;
-</code></pre>
-<hr />
-<h2 id="9-settings-worth-knowing">9. Settings worth knowing</h2>
-<table>
-<thead>
-<tr>
-<th>Setting</th>
-<th>Default</th>
-<th>What it controls</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>distributed_ddl_task_timeout</code></td>
-<td>180</td>
-<td>Seconds the initiator waits for every node to ack an ON CLUSTER DDL.</td>
-</tr>
-<tr>
-<td><code>distributed_ddl_entry_format_version</code></td>
-<td>latest</td>
-<td>Compat shim during version upgrades.</td>
-</tr>
-<tr>
-<td><code>distributed_product_mode</code></td>
-<td><code>'deny'</code></td>
-<td>How <code>IN</code>/<code>JOIN</code> between two Distributed tables expands. <code>'global'</code> rewrites to GLOBAL IN.</td>
-</tr>
-<tr>
-<td><code>prefer_localhost_replica</code></td>
-<td>1</td>
-<td>When the query runs, prefer the same-host replica over a remote one.</td>
-</tr>
-<tr>
-<td><code>connect_timeout_with_failover_ms</code></td>
-<td>50</td>
-<td>Inter-node TCP connect timeout before failover.</td>
-</tr>
-<tr>
-<td><code>load_balancing</code></td>
-<td>random</td>
-<td>Replica selection strategy: random, in_order, first_or_random, round_robin, nearest_hostname.</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="10-common-pitfalls">10. Common pitfalls</h2>
-<table>
-<thead>
-<tr>
-<th>Symptom</th>
-<th>Cause</th>
-<th>Fix</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>ON CLUSTER</code> DDL hangs</td>
-<td>One host unreachable; <code>distributed_ddl_task_timeout</code> exceeded.</td>
-<td><code>system.distributed_ddl_queue.exception_text</code> shows which host; fix it; rerun.</td>
-</tr>
-<tr>
-<td><code>Code: 359. Table is already exists</code> after recreate-with-same-zk-path</td>
-<td>ZK still holds the old table's metadata.</td>
-<td><code>DROP TABLE … ON CLUSTER … SYNC;</code> (note SYNC).</td>
-</tr>
-<tr>
-<td><code>Code: 81. Database 'analytics' doesn't exist</code></td>
-<td>Created database without <code>ON CLUSTER</code>; only the initiator has it.</td>
-<td>Always <code>CREATE DATABASE … ON CLUSTER …;</code>.</td>
-</tr>
-<tr>
-<td><code>Authentication failed: password is incorrect, or there is no user with such name</code> from outside</td>
-<td>Default user is loopback-only when no password set.</td>
-<td>Define users in <code>users.d/</code>. The demo's <code>users.xml</code> does this.</td>
-</tr>
-<tr>
-<td>Prometheus scrape returns 404</td>
-<td><code>&lt;prometheus&gt;</code> block missing or pointing to wrong port.</td>
-<td>Verify <code>02-prometheus.xml</code> mounted; <code>wget -qO- http://node:9363/metrics</code> from inside.</td>
-</tr>
-<tr>
-<td>Quota seems ignored</td>
-<td>User didn't have <code>&lt;quota&gt;</code> set in <code>users.xml</code>; defaults to <code>default</code> quota (no limits).</td>
-<td>Add <code>&lt;quota&gt;name&lt;/quota&gt;</code> to the user.</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="11-talking-points-for-the-live-session">11. Talking points for the live session</h2>
-<ol>
-<li><strong>There's no "primary" CH node.</strong> Pick any healthy replica as the
-   initiator for ON CLUSTER DDL. They all have the same view.</li>
-<li><strong><code>system.distributed_ddl_queue</code> is your audit log.</strong> Show it before
-   and after a <code>CREATE TABLE ON CLUSTER</code>.</li>
-<li><strong><code>cluster()</code> is for one-shot fan-outs.</strong> No need to create a
-   Distributed table for every diagnostic query.</li>
-<li><strong>Profiles + quotas are CH's RBAC v0.</strong> Roles + grants are the
-   modern way; XML profiles are the bootstrap.</li>
-<li><strong>Prometheus is one config block away.</strong> Same metrics format every
-   monitoring tool in the world speaks.</li>
-<li><strong>TLS in production</strong> isn't optional. Show the <code>&lt;openSSL&gt;</code> block;
-   generate dev certs in 60 s with <code>mkcert</code>.</li>
-</ol>
-<hr />
-<h2 id="12-going-deeper">12. Going deeper</h2>
-<ul>
-<li><strong>Module 6</strong> — query optimisation against this cluster's workload.</li>
-<li><strong>Module 7</strong> — coordinated <code>BACKUP TABLE … ON CLUSTER</code>.</li>
-<li><strong>Module 8</strong> — what happens when this cluster catches fire.</li>
-<li>ClickHouse docs: <a href="https://clickhouse.com/docs/en/operations/access-rights">https://clickhouse.com/docs/en/operations/access-rights</a></li>
-</ul>
-  </div>
 </div>
+
 
 
 <style>
@@ -1822,9 +1292,7 @@ ORDER BY query_duration_ms DESC LIMIT 20;
   background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 28px 32px; margin-bottom: 24px;
 }
-.handsOn-card h2 {
-  margin: 0 0 8px 0; font-size: 1.6em; color: #0f172a;
-}
+.handsOn-card h2 { margin: 0 0 8px 0; font-size: 1.6em; color: #0f172a; }
 .handsOn-card h3 {
   margin: 24px 0 8px 0; font-size: 1.2em; color: #1a4480;
   border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;
@@ -1853,27 +1321,31 @@ ORDER BY query_duration_ms DESC LIMIT 20;
   padding: 28px 32px; border-radius: 12px; margin-bottom: 20px;
 }
 .handsOn-banner h2 { color: white; margin: 0 0 8px 0; }
-.handsOn-banner code {
-  background: rgba(0,0,0,0.25); color: #f1f5f9;
-}
-.handsOn-banner pre {
-  background: rgba(0,0,0,0.30); color: #f1f5f9;
-}
+.handsOn-banner code { background: rgba(0,0,0,0.25); color: #f1f5f9; }
+.handsOn-banner pre  { background: rgba(0,0,0,0.30); color: #f1f5f9; }
 .handsOn-figure {
   margin: 16px 0; padding: 12px; background: #f8fafc;
   border: 1px solid #e2e8f0; border-radius: 8px; text-align: center;
 }
-.handsOn-figure img, .handsOn-figure object {
-  max-width: 100%; height: auto; border-radius: 4px;
+.handsOn-figure img {
+  max-width: 100%; height: auto; border-radius: 4px; display: inline-block;
 }
 .handsOn-figure figcaption {
   margin-top: 8px; color: #475569; font-size: 0.9em; font-style: italic;
+}
+.handsOn-figure figcaption a {
+  color: #1a4480; text-decoration: none; border-bottom: 1px dotted #94a3b8;
 }
 .handsOn-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
   gap: 16px; margin: 12px 0;
 }
 .handsOn-card a { color: #1a4480; }
+.handsOn-source-tag {
+  display: inline-block; background: #e0f2fe; color: #075985;
+  padding: 2px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 600;
+  margin-right: 6px;
+}
 </style>
 
 
@@ -1894,8 +1366,8 @@ ORDER BY query_duration_ms DESC LIMIT 20;
     <h2>📺 Live demo capture</h2>
     <p>Recorded with <a href="https://github.com/charmbracelet/vhs" target="_blank" rel="noopener">vhs</a>: the actual terminal output from <code>./run.sh</code> running on this very stack.</p>
     <figure class="handsOn-figure">
-      <img src="../code-examples/demos/module-5-cluster-deploy/diagrams/demo.gif" alt="Module demo GIF" loading="lazy">
-      <figcaption>Click to view full-size. Animated GIF, ~716 KB.</figcaption>
+      <img src="demo-assets/module-5-cluster-deploy/demo.gif" alt="Module demo GIF" loading="lazy">
+      <figcaption>Animated GIF, ~716 KB. Right-click → open in new tab to view full-size.</figcaption>
     </figure>
   </div>
 </div>
@@ -1904,25 +1376,79 @@ ORDER BY query_duration_ms DESC LIMIT 20;
 <div class="handsOn">
   <div class="handsOn-card">
     <h2>🗂️ Architecture diagrams</h2>
-    <p>Rendered from the README's Mermaid sources. Static, but click any to view the source SVG full-size.</p>
+    <p>Rendered from the README's Mermaid sources. Click any to open the source SVG full-size.</p>
     <div class="handsOn-grid">
 
 
       <figure class="handsOn-figure">
-        <a href="../code-examples/demos/module-5-cluster-deploy/diagrams/01-flowchart-subgraph-app-application-tier.svg" target="_blank" rel="noopener">
-          <img src="../code-examples/demos/module-5-cluster-deploy/diagrams/01-flowchart-subgraph-app-application-tier.svg" alt="Subgraph app application tier" loading="lazy">
+        <a href="demo-assets/module-5-cluster-deploy/01-flowchart-subgraph-app-application-tier.svg" target="_blank" rel="noopener">
+          <img src="demo-assets/module-5-cluster-deploy/01-flowchart-subgraph-app-application-tier.svg" alt="Subgraph app application tier" loading="lazy">
         </a>
         <figcaption>Subgraph app application tier</figcaption>
       </figure>
 
 
       <figure class="handsOn-figure">
-        <a href="../code-examples/demos/module-5-cluster-deploy/diagrams/02-sequencediagram-actor-op-as-operator.svg" target="_blank" rel="noopener">
-          <img src="../code-examples/demos/module-5-cluster-deploy/diagrams/02-sequencediagram-actor-op-as-operator.svg" alt="Actor op as operator" loading="lazy">
+        <a href="demo-assets/module-5-cluster-deploy/02-sequencediagram-actor-op-as-operator.svg" target="_blank" rel="noopener">
+          <img src="demo-assets/module-5-cluster-deploy/02-sequencediagram-actor-op-as-operator.svg" alt="Actor op as operator" loading="lazy">
         </a>
         <figcaption>Actor op as operator</figcaption>
       </figure>
 
+    </div>
+  </div>
+</div>
+
+
+<div class="handsOn">
+  <div class="handsOn-card">
+    <h2>📚 ClickHouse reference visuals</h2>
+    <p>Curated from the official ClickHouse documentation and engineering blog (and Altinity's docs/blog) — the same diagrams the broader CH community uses to explain these concepts. Click any image to read the source.</p>
+    <div class="handsOn-grid">
+
+
+      <figure class="handsOn-figure">
+        <a href="https://clickhouse.com/docs/shards" target="_blank" rel="noopener">
+          <img src="demo-assets/module-5-cluster-deploy/external/01-shards_replicas_01.f8da341.2048.png" alt="Sharded + replicated cluster (3 shards x 2 replicas) with Keeper" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">ClickHouse Docs</span>
+          Sharded + replicated cluster (3 shards x 2 replicas) with Keeper
+        </figcaption>
+      </figure>
+
+
+      <figure class="handsOn-figure">
+        <a href="https://clickhouse.com/docs/architecture/cluster-deployment" target="_blank" rel="noopener">
+          <img src="demo-assets/module-5-cluster-deploy/external/02-both.ab6f28d.1024.png" alt="Combined sharding and replication architecture" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">ClickHouse Docs</span>
+          Combined sharding and replication architecture
+        </figcaption>
+      </figure>
+
+
+      <figure class="handsOn-figure">
+        <a href="https://clickhouse.com/blog/clickhouse-cloud-boosts-performance-with-sharedmergetree-and-lightweight-updates" target="_blank" rel="noopener">
+          <img src="demo-assets/module-5-cluster-deploy/external/03-smt_09_52c758d36c.png" alt="Shared-nothing cluster: 3 shards x 2 replicas (typical layout)" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">ClickHouse Blog</span>
+          Shared-nothing cluster: 3 shards x 2 replicas (typical layout)
+        </figcaption>
+      </figure>
+
+
+      <figure class="handsOn-figure">
+        <a href="https://docs.altinity.com/operationsguide/availability-and-recovery/availability-architecture/" target="_blank" rel="noopener">
+          <img src="demo-assets/module-5-cluster-deploy/external/04-availabilityarchitecture.png" alt="Production HA architecture with replicas and Keeper ensemble" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">Altinity Docs</span>
+          Production HA architecture with replicas and Keeper ensemble
+        </figcaption>
+      </figure>
 
     </div>
   </div>

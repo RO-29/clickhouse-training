@@ -1506,524 +1506,8 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
 
 
 
-<div class="handsOn">
-  <div class="handsOn-card">
-    <h2>📚 Full module reference</h2>
-    <h1 id="module-7-backup-recovery">Module 7 — Backup &amp; Recovery</h1>
-<blockquote>
-<p><strong>Audience:</strong> anyone whose job depends on the data not vanishing.
-<strong>Prerequisites:</strong> Modules 1–4. <strong>Time:</strong> ~60 min reading + 30 min hands-on.</p>
-</blockquote>
-<p>By the end you will be able to:</p>
-<ul>
-<li>Choose between FREEZE, BACKUP, and <code>clickhouse-backup</code> for a workload.</li>
-<li>Set up a backups disk (local) and an S3-backed backup (MinIO here).</li>
-<li>Build incremental backup chains.</li>
-<li>Run async backups and poll their status.</li>
-<li>Restore from a chain into a clean database.</li>
-<li>Plan a backup schedule and restore drill cadence.</li>
-</ul>
-<hr />
-<h2 id="1-the-backup-options-at-a-glance">1. The backup options at a glance</h2>
-<!-- mermaid rendered as SVG above -->
-
-<table>
-<thead>
-<tr>
-<th>Mechanism</th>
-<th>Time</th>
-<th>Portable</th>
-<th>Cluster-aware</th>
-<th>Best for</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>ALTER TABLE … FREEZE</code></td>
-<td>instant</td>
-<td>no</td>
-<td>no</td>
-<td>"I'm about to do something risky, snap it now."</td>
-</tr>
-<tr>
-<td><code>BACKUP … TO Disk('backups', ...)</code></td>
-<td>seconds</td>
-<td>yes</td>
-<td>with <code>ON CLUSTER</code></td>
-<td>scheduled local backups; nightly cron.</td>
-</tr>
-<tr>
-<td><code>BACKUP … TO S3(...)</code></td>
-<td>seconds-minutes</td>
-<td>yes</td>
-<td>with <code>ON CLUSTER</code></td>
-<td>production durable backups.</td>
-</tr>
-<tr>
-<td><code>clickhouse-backup</code> (Altinity CLI)</td>
-<td>depends</td>
-<td>yes</td>
-<td>yes</td>
-<td>full ops layer: retention, S3 lifecycle, scheduling.</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="2-freeze-hardlinked-instant-snapshots">2. FREEZE — hardlinked instant snapshots</h2>
-<pre><code class="language-sql">ALTER TABLE m7.transactions FREEZE WITH NAME 'demo_snap';
-</code></pre>
-<p>What it actually does:</p>
-<pre><code>/var/lib/clickhouse/data/m7/transactions/
-├── 202601_1_1_0/
-│   ├── columns.txt
-│   ├── ... (data)
-└── ...
-
-/var/lib/clickhouse/shadow/demo_snap/
-└── data/m7/transactions/
-    ├── 202601_1_1_0/   ← hardlinks to the same inodes
-    └── ...
-</code></pre>
-<ul>
-<li><strong>Hardlinks</strong>, not copies. Constant time, zero extra disk while the
-  source parts still exist.</li>
-<li>Once a part is merged away, the hardlink in <code>shadow/</code> is the <em>only</em>
-  remaining reference — at which point the inode survives until you
-  delete the shadow dir.</li>
-<li>Recovery: copy the hardlinks somewhere safe, then re-import via
-  <code>ALTER TABLE … ATTACH PART</code>.</li>
-</ul>
-<blockquote>
-<p><strong>FREEZE is local-only.</strong> It doesn't help against host loss. Use it
-for "I'm about to do something I might regret" — not as your DR plan.</p>
-</blockquote>
-<hr />
-<h2 id="3-the-backup-restore-sql">3. The <code>BACKUP</code> / <code>RESTORE</code> SQL</h2>
-<p>This is the modern, portable way. Targets a registered "backup
-destination": a local disk, an S3 bucket, or an HTTP endpoint.</p>
-<h3 id="configure-a-destination">Configure a destination</h3>
-<p>The destination must be in the server config:</p>
-<pre><code class="language-xml">&lt;storage_configuration&gt;
-    &lt;disks&gt;
-        &lt;backups&gt;
-            &lt;type&gt;local&lt;/type&gt;
-            &lt;path&gt;/var/lib/clickhouse/backups/&lt;/path&gt;
-        &lt;/backups&gt;
-    &lt;/disks&gt;
-&lt;/storage_configuration&gt;
-
-&lt;backups&gt;
-    &lt;allowed_disk&gt;backups&lt;/allowed_disk&gt;
-    &lt;allowed_path&gt;/var/lib/clickhouse/backups/&lt;/allowed_path&gt;
-&lt;/backups&gt;
-</code></pre>
-<p>Without <code>&lt;backups&gt;&lt;allowed_disk&gt;</code> ClickHouse refuses any BACKUP /
-RESTORE command. This is a safety net.</p>
-<h3 id="full-backup-restore">Full backup → restore</h3>
-<pre><code class="language-sql">BACKUP TABLE m7.transactions TO Disk('backups', 'transactions_disk_v1.zip');
-
--- Verify what got written
-SELECT id, name, status, total_size, num_files
-FROM system.backups WHERE name LIKE '%transactions_disk_v1%';
-
--- Drop and restore
-DROP TABLE m7.transactions;
-RESTORE TABLE m7.transactions FROM Disk('backups', 'transactions_disk_v1.zip');
-SELECT count() FROM m7.transactions;
-</code></pre>
-<h3 id="async-backup">Async backup</h3>
-<p>For tables larger than your HTTP timeout:</p>
-<pre><code class="language-sql">BACKUP TABLE m7.transactions
-TO Disk('backups', 'transactions_async.zip')
-SETTINGS async = 1;
-
--- Poll
-SELECT status FROM system.backups
-WHERE name LIKE '%transactions_async%' ORDER BY start_time DESC LIMIT 1;
--- Wait until it's BACKUP_CREATED.
-</code></pre>
-<h3 id="incremental-backup">Incremental backup</h3>
-<p>Reference the previous full as <code>base_backup</code>. Only changed parts are
-written.</p>
-<pre><code class="language-sql">-- Full
-BACKUP TABLE t TO Disk('backups', 't_full.zip');
-
--- New rows...
-INSERT INTO t SELECT ...;
-
--- Incremental
-BACKUP TABLE t
-TO Disk('backups', 't_inc_v2.zip')
-SETTINGS base_backup = Disk('backups', 't_full.zip');
-
--- Restore: just point at the most recent incremental;
--- CH walks the chain back to the base automatically.
-RESTORE TABLE t FROM Disk('backups', 't_inc_v2.zip');
-</code></pre>
-<h3 id="backup-specific-partitions">Backup specific partitions</h3>
-<pre><code class="language-sql">BACKUP TABLE t
-PARTITIONS '202601', '202602'
-TO Disk('backups', 't_jan_feb.zip');
-</code></pre>
-<p>Useful for "back up just the changed month".</p>
-<h3 id="backup-on-cluster"><code>BACKUP ON CLUSTER</code></h3>
-<p>For a Replicated table on a cluster, <code>BACKUP ON CLUSTER</code> coordinates
-across replicas so the snapshot is consistent:</p>
-<pre><code class="language-sql">BACKUP TABLE analytics.page_views_local
-ON CLUSTER clickhouse_cluster
-TO Disk('backups', 'page_views.zip');
-</code></pre>
-<p>Each replica writes to its local <code>Disk('backups', ...)</code> — so for cluster
-backups you typically point at S3 instead, where every replica writes to
-the same bucket.</p>
-<hr />
-<h2 id="4-s3-backups-the-production-path">4. S3 backups (the production path)</h2>
-<pre><code class="language-sql">BACKUP TABLE m7.transactions
-TO S3(
-    'http://m7-minio:9000/clickhouse-backups/transactions_s3_v1',
-    'minioadmin',
-    'minioadmin'
-);
-</code></pre>
-<p>Argument layout: <code>S3('&lt;endpoint&gt;/&lt;bucket&gt;/&lt;key-prefix&gt;', '&lt;access_key&gt;',
-'&lt;secret_key&gt;')</code>. The endpoint can be AWS S3, MinIO, GCS S3-compat, R2, etc.</p>
-<p>What MinIO actually receives:</p>
-<pre><code>clickhouse-backups/
-└── transactions_s3_v1/
-    ├── .backup           ← manifest (JSON-ish)
-    ├── data/
-    │   └── m7/transactions/
-    │       └── &lt;part_name&gt;/
-    │           ├── columns.txt
-    │           ├── checksums.txt
-    │           └── ... .bin / .mrk2
-    └── metadata/
-        └── m7/
-            └── transactions.sql
-</code></pre>
-<p>The format is <em>part-level</em>. That means:
-- Incremental backups across S3 share parts (no double-copy).
-- A reasonably-equipped human can extract data by hand if needed.</p>
-<h3 id="restoring-from-s3">Restoring from S3</h3>
-<pre><code class="language-sql">RESTORE TABLE m7.transactions
-FROM S3(
-    'http://m7-minio:9000/clickhouse-backups/transactions_s3_v1',
-    'minioadmin',
-    'minioadmin'
-);
-</code></pre>
-<hr />
-<h2 id="5-clickhouse-backup-the-operations-layer">5. <code>clickhouse-backup</code> — the operations layer</h2>
-<p>The Altinity tool wraps BACKUP/RESTORE plus operational concerns:</p>
-<pre><code class="language-bash">clickhouse-backup create   nightly-2026-05-09
-clickhouse-backup upload   nightly-2026-05-09       # to remote storage
-clickhouse-backup download nightly-2026-05-09
-clickhouse-backup restore  nightly-2026-05-09
-
-# Maintenance
-clickhouse-backup list                              # local + remote
-clickhouse-backup delete   local nightly-2026-04-01
-clickhouse-backup delete   remote nightly-2026-04-01
-</code></pre>
-<p>What it adds beyond raw SQL:</p>
-<ul>
-<li>A YAML config (<code>clickhouse-backup.yml</code>) per environment.</li>
-<li>Retention rules (keep N daily, M weekly, K monthly).</li>
-<li>Pre/post hooks (notify on success, run integrity checks).</li>
-<li>Schema-only restore (<code>--schema</code>).</li>
-<li>Differential semantics on top of CH's incremental.</li>
-</ul>
-<p>Repo: <a href="https://github.com/Altinity/clickhouse-backup">https://github.com/Altinity/clickhouse-backup</a>.</p>
-<hr />
-<h2 id="6-partition-operations-the-cheap-surrogate">6. Partition operations — the cheap surrogate</h2>
-<p>For tables you partition by date:</p>
-<pre><code class="language-sql">-- Snapshot a partition (still hardlinks under shadow/)
-ALTER TABLE t FREEZE PARTITION '202601';
-
--- Detach a partition (moves to detached/, queries don't see it)
-ALTER TABLE t DETACH PARTITION '202601';
-
--- Re-attach when ready
-ALTER TABLE t ATTACH PARTITION '202601';
-
--- Drop irrevocably (use with caution; ATTACH FROM detached still possible briefly)
-ALTER TABLE t DROP PARTITION '202601';
-
--- Move a partition between two same-schema tables
-ALTER TABLE t_archive ATTACH PARTITION '202601' FROM t;
-</code></pre>
-<p><code>ATTACH PARTITION FROM</code> is the single most useful trick for "promote a
-staging table into the live table" — fully atomic, no rewrites.</p>
-<hr />
-<h2 id="7-the-hands-on-demo">7. The hands-on demo</h2>
-<h3 id="what-you-get">What you get</h3>
-<pre><code>docker-compose.yml          m7-clickhouse + m7-minio + m7-minio-init
-configs/clickhouse-config.xml      includes &lt;backups&gt; + &lt;storage_configuration&gt;
-setup.sql · queries.sql · queries-s3.sql · extras.sql
-up.sh · run.sh · down.sh
-</code></pre>
-<h3 id="container-map">Container map</h3>
-<table>
-<thead>
-<tr>
-<th>Service</th>
-<th>Container</th>
-<th>Host ports</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>ClickHouse</td>
-<td><code>m7-clickhouse</code></td>
-<td>8123, 9000</td>
-</tr>
-<tr>
-<td>MinIO</td>
-<td><code>m7-minio</code></td>
-<td>9100 (S3), 9101 (console)</td>
-</tr>
-<tr>
-<td>Bootstrap</td>
-<td><code>m7-minio-init</code></td>
-<td>(one-shot)</td>
-</tr>
-</tbody>
-</table>
-<p>MinIO console: <a href="http://localhost:9101">http://localhost:9101</a>, login <code>minioadmin</code> / <code>minioadmin</code>.</p>
-<h3 id="execution-flow-what-runs-in-order">Execution flow — what runs, in order</h3>
-<table>
-<thead>
-<tr>
-<th>#</th>
-<th>Step</th>
-<th>What happens</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>0</td>
-<td>self-bootstrap</td>
-<td><code>up.sh</code> brings up CH + MinIO + the bucket bootstrap (<code>m7-minio-init</code> creates <code>clickhouse-backups</code>). Both share <code>m7-net</code>, so CH can reach <code>http://m7-minio:9000</code>.</td>
-</tr>
-<tr>
-<td>1</td>
-<td><code>setup.sql</code></td>
-<td>Creates database <code>m7</code>, table <code>m7.transactions</code> (MergeTree partitioned by month, ordered by <code>(account_id, txn_time, txn_id)</code>), inserts 2M synthetic rows.</td>
-</tr>
-<tr>
-<td>2</td>
-<td><code>queries.sql</code> — local-disk backup path</td>
-<td><code>ALTER TABLE … FREEZE WITH NAME 'demo_snap'</code> (instant hardlinks under <code>/var/lib/clickhouse/shadow/</code>), <code>BACKUP TABLE … TO Disk('backups', 'transactions_disk_v1.zip')</code>, <code>DROP TABLE</code>, <code>RESTORE TABLE … FROM Disk(…)</code>, then per-partition <code>DETACH PARTITION '202601'</code> + <code>ATTACH PARTITION '202601'</code>.</td>
-</tr>
-<tr>
-<td>3</td>
-<td><code>queries-s3.sql</code> — S3 backup path</td>
-<td><code>BACKUP TABLE … TO S3('http://m7-minio:9000/clickhouse-backups/transactions_s3_v1', 'minioadmin', 'minioadmin')</code>, look up the backup row in <code>system.backups</code>, <code>DROP TABLE</code>, <code>RESTORE … FROM S3(…)</code>. Verify row count returns to 2M.</td>
-</tr>
-<tr>
-<td>4</td>
-<td><code>extras.sql</code> — async + incremental</td>
-<td><code>BACKUP TABLE … SETTINGS async = 1</code> (returns immediately), poll loop on <code>system.backups.status</code> until <code>BACKUP_CREATED</code>. Insert 50k more rows, then <code>BACKUP … SETTINGS base_backup = Disk('backups', 'transactions_disk_v1.zip')</code> — the resulting incremental zip is much smaller. <code>DROP TABLE</code>, <code>RESTORE FROM Disk('backups', 'transactions_inc_v2.zip')</code> — CH walks the chain to the base. Prints notes on <code>clickhouse-backup</code> CLI and <code>BACKUP ON CLUSTER</code>.</td>
-</tr>
-</tbody>
-</table>
-<h3 id="what-you-should-observe">What you should observe</h3>
-<table>
-<thead>
-<tr>
-<th>Step</th>
-<th>Outcome</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>FREEZE</code></td>
-<td><code>/var/lib/clickhouse/shadow/demo_snap/</code> exists with hardlinks; same inodes as live data.</td>
-</tr>
-<tr>
-<td><code>BACKUP TO Disk</code></td>
-<td>Zip file under <code>/var/lib/clickhouse/backups/</code>; <code>system.backups.status = 'BACKUP_CREATED'</code>.</td>
-</tr>
-<tr>
-<td><code>DROP</code> + <code>RESTORE</code></td>
-<td>Row count returns to 2,000,000.</td>
-</tr>
-<tr>
-<td>Partition detach/attach</td>
-<td>Row count drops then returns; no data rewrite.</td>
-</tr>
-<tr>
-<td><code>BACKUP TO S3</code></td>
-<td>Visible in MinIO console at <a href="http://localhost:9101">http://localhost:9101</a>; nested under <code>clickhouse-backups/transactions_s3_v1/</code>.</td>
-</tr>
-<tr>
-<td>Async backup</td>
-<td>Returns immediately; status flips through <code>CREATING_BACKUP</code> → <code>BACKUP_CREATED</code>.</td>
-</tr>
-<tr>
-<td>Incremental</td>
-<td><code>total_size</code> of <code>transactions_inc_v2.zip</code> ≪ <code>transactions_disk_v1.zip</code>.</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="8-a-reasonable-production-schedule">8. A reasonable production schedule</h2>
-<table>
-<thead>
-<tr>
-<th>Cadence</th>
-<th>What</th>
-<th>Where</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Daily</td>
-<td>Full <code>BACKUP ON CLUSTER</code> to S3</td>
-<td><code>s3://backups/clickhouse/&lt;env&gt;/&lt;date&gt;/full</code></td>
-</tr>
-<tr>
-<td>Hourly</td>
-<td>Incremental against the day's full</td>
-<td><code>s3://.../&lt;date&gt;/inc-NN</code></td>
-</tr>
-<tr>
-<td>Weekly</td>
-<td>Restore drill into a sandbox cluster</td>
-<td>scratch S3 path; verify counts</td>
-</tr>
-<tr>
-<td>30 days</td>
-<td>Lifecycle to Glacier / Coldline</td>
-<td>bucket lifecycle rule</td>
-</tr>
-</tbody>
-</table>
-<blockquote>
-<p><strong>A backup you have never restored is not a backup.</strong> Run a restore
-drill at least monthly. Module 8's drill 6 exercises this end-to-end.</p>
-</blockquote>
-<hr />
-<h2 id="9-operational-sql-cheatsheet">9. Operational SQL cheatsheet</h2>
-<pre><code class="language-sql">-- &quot;What backups exist?&quot;
-SELECT id, name, status, formatReadableSize(total_size) AS size,
-       num_files, start_time, end_time
-FROM system.backups ORDER BY start_time DESC LIMIT 20;
-
--- &quot;What's running right now?&quot;
-SELECT id, name, status, num_files, processed_files
-FROM system.backups WHERE status IN ('CREATING_BACKUP','RESTORING') ;
-
--- &quot;Which freezes are still on disk?&quot;
--- (no system table; check the shadow/ dir)
--- docker exec m7-clickhouse ls /var/lib/clickhouse/shadow/
-
--- &quot;Drop a stuck async backup&quot;
-SYSTEM SHUTDOWN BACKUP &lt;backup_id&gt;;       -- newer CH; varies by version
-</code></pre>
-<hr />
-<h2 id="10-settings-worth-knowing">10. Settings worth knowing</h2>
-<table>
-<thead>
-<tr>
-<th>Setting</th>
-<th>Effect</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>async = 1</code> on BACKUP</td>
-<td>Returns immediately; poll <code>system.backups</code>.</td>
-</tr>
-<tr>
-<td><code>base_backup = Disk('...', 'name')</code></td>
-<td>Make this an incremental against the named base.</td>
-</tr>
-<tr>
-<td><code>compression_method = 'zstd'</code></td>
-<td>Compress the backup file (default depends on destination).</td>
-</tr>
-<tr>
-<td><code>password = '...'</code></td>
-<td>Encrypt the backup (file destination only).</td>
-</tr>
-<tr>
-<td><code>s3_max_connections</code></td>
-<td>Concurrency for S3 backup/restore I/O.</td>
-</tr>
-<tr>
-<td><code>allow_drop_detached</code></td>
-<td>Allow <code>DROP DETACHED PART</code> (safety knob; off by default).</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="11-common-pitfalls">11. Common pitfalls</h2>
-<table>
-<thead>
-<tr>
-<th>Symptom</th>
-<th>Cause</th>
-<th>Fix</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>Code: 605. The maximum size of file system disk is allowed for backups...</code></td>
-<td>Backup destination not in <code>&lt;allowed_disk&gt;</code> / <code>&lt;allowed_path&gt;</code>.</td>
-<td>Add it to <code>&lt;backups&gt;</code> in config.</td>
-</tr>
-<tr>
-<td><code>BACKUP TO Disk(...)</code> works but takes forever</td>
-<td>Tons of small parts (single-row INSERTs from upstream).</td>
-<td>Optimise / batch upstream. Backup time scales with part count.</td>
-</tr>
-<tr>
-<td><code>RESTORE</code> fails with "Backup data not found"</td>
-<td>Pointed at the wrong base or chain broken.</td>
-<td>Verify <code>system.backups</code> knows the chain; restore from the highest layer.</td>
-</tr>
-<tr>
-<td>FREEZE makes disk usage spike when old parts merge</td>
-<td>Hardlinks still reference old part files; merges can't reclaim.</td>
-<td>Clear <code>shadow/</code> directories you no longer need.</td>
-</tr>
-<tr>
-<td>S3 backup with self-signed MinIO fails on TLS</td>
-<td>The S3 endpoint URL uses <code>https://</code> and the cert isn't trusted.</td>
-<td>Use <code>http://</code> for MinIO, or mount the CA into CH and trust it.</td>
-</tr>
-<tr>
-<td><code>BACKUP ON CLUSTER</code> fails on one node</td>
-<td>That node can't reach the destination.</td>
-<td>Verify per-node connectivity (e.g. all hosts can resolve the S3 endpoint).</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="12-talking-points-for-the-live-session">12. Talking points for the live session</h2>
-<ol>
-<li><strong>Three layers, three uses.</strong> FREEZE for "oh wait, hold on";
-   BACKUP/RESTORE for routine; <code>clickhouse-backup</code> for ops scale.</li>
-<li><strong>Backups are part-level.</strong> Show MinIO contents; the directory tree
-   matches the live data layout.</li>
-<li><strong>Incrementals are nearly free</strong> if your data is mostly append.</li>
-<li><strong>Restore drills are the test.</strong> Without monthly drills you don't
-   have backups, you have hopes.</li>
-<li><strong>Partition operations</strong> (DETACH / ATTACH) are the secret weapon for
-   archive workflows.</li>
-<li><strong><code>ON CLUSTER</code></strong> for replicated tables — coordinated snapshot.</li>
-</ol>
-<hr />
-<h2 id="13-going-deeper">13. Going deeper</h2>
-<ul>
-<li><strong>Module 8</strong> — DR drills, including end-to-end backup-restore over
-  a cluster.</li>
-<li>ClickHouse docs: <a href="https://clickhouse.com/docs/en/operations/backup">https://clickhouse.com/docs/en/operations/backup</a></li>
-<li><code>clickhouse-backup</code>: <a href="https://github.com/Altinity/clickhouse-backup">https://github.com/Altinity/clickhouse-backup</a></li>
-</ul>
-  </div>
 </div>
+
 
 
 <style>
@@ -2035,9 +1519,7 @@ SYSTEM SHUTDOWN BACKUP &lt;backup_id&gt;;       -- newer CH; varies by version
   background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 28px 32px; margin-bottom: 24px;
 }
-.handsOn-card h2 {
-  margin: 0 0 8px 0; font-size: 1.6em; color: #0f172a;
-}
+.handsOn-card h2 { margin: 0 0 8px 0; font-size: 1.6em; color: #0f172a; }
 .handsOn-card h3 {
   margin: 24px 0 8px 0; font-size: 1.2em; color: #1a4480;
   border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;
@@ -2066,27 +1548,31 @@ SYSTEM SHUTDOWN BACKUP &lt;backup_id&gt;;       -- newer CH; varies by version
   padding: 28px 32px; border-radius: 12px; margin-bottom: 20px;
 }
 .handsOn-banner h2 { color: white; margin: 0 0 8px 0; }
-.handsOn-banner code {
-  background: rgba(0,0,0,0.25); color: #f1f5f9;
-}
-.handsOn-banner pre {
-  background: rgba(0,0,0,0.30); color: #f1f5f9;
-}
+.handsOn-banner code { background: rgba(0,0,0,0.25); color: #f1f5f9; }
+.handsOn-banner pre  { background: rgba(0,0,0,0.30); color: #f1f5f9; }
 .handsOn-figure {
   margin: 16px 0; padding: 12px; background: #f8fafc;
   border: 1px solid #e2e8f0; border-radius: 8px; text-align: center;
 }
-.handsOn-figure img, .handsOn-figure object {
-  max-width: 100%; height: auto; border-radius: 4px;
+.handsOn-figure img {
+  max-width: 100%; height: auto; border-radius: 4px; display: inline-block;
 }
 .handsOn-figure figcaption {
   margin-top: 8px; color: #475569; font-size: 0.9em; font-style: italic;
+}
+.handsOn-figure figcaption a {
+  color: #1a4480; text-decoration: none; border-bottom: 1px dotted #94a3b8;
 }
 .handsOn-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
   gap: 16px; margin: 12px 0;
 }
 .handsOn-card a { color: #1a4480; }
+.handsOn-source-tag {
+  display: inline-block; background: #e0f2fe; color: #075985;
+  padding: 2px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 600;
+  margin-right: 6px;
+}
 </style>
 
 
@@ -2107,8 +1593,8 @@ SYSTEM SHUTDOWN BACKUP &lt;backup_id&gt;;       -- newer CH; varies by version
     <h2>📺 Live demo capture</h2>
     <p>Recorded with <a href="https://github.com/charmbracelet/vhs" target="_blank" rel="noopener">vhs</a>: the actual terminal output from <code>./run.sh</code> running on this very stack.</p>
     <figure class="handsOn-figure">
-      <img src="../code-examples/demos/module-7-backup/diagrams/demo.gif" alt="Module demo GIF" loading="lazy">
-      <figcaption>Click to view full-size. Animated GIF, ~566 KB.</figcaption>
+      <img src="demo-assets/module-7-backup/demo.gif" alt="Module demo GIF" loading="lazy">
+      <figcaption>Animated GIF, ~566 KB. Right-click → open in new tab to view full-size.</figcaption>
     </figure>
   </div>
 </div>
@@ -2117,17 +1603,49 @@ SYSTEM SHUTDOWN BACKUP &lt;backup_id&gt;;       -- newer CH; varies by version
 <div class="handsOn">
   <div class="handsOn-card">
     <h2>🗂️ Architecture diagrams</h2>
-    <p>Rendered from the README's Mermaid sources. Static, but click any to view the source SVG full-size.</p>
+    <p>Rendered from the README's Mermaid sources. Click any to open the source SVG full-size.</p>
     <div class="handsOn-grid">
 
 
       <figure class="handsOn-figure">
-        <a href="../code-examples/demos/module-7-backup/diagrams/01-flowchart-need-need-a-backup.svg" target="_blank" rel="noopener">
-          <img src="../code-examples/demos/module-7-backup/diagrams/01-flowchart-need-need-a-backup.svg" alt="Need need a backup" loading="lazy">
+        <a href="demo-assets/module-7-backup/01-flowchart-need-need-a-backup.svg" target="_blank" rel="noopener">
+          <img src="demo-assets/module-7-backup/01-flowchart-need-need-a-backup.svg" alt="Need need a backup" loading="lazy">
         </a>
         <figcaption>Need need a backup</figcaption>
       </figure>
 
+    </div>
+  </div>
+</div>
+
+
+<div class="handsOn">
+  <div class="handsOn-card">
+    <h2>📚 ClickHouse reference visuals</h2>
+    <p>Curated from the official ClickHouse documentation and engineering blog (and Altinity's docs/blog) — the same diagrams the broader CH community uses to explain these concepts. Click any image to read the source.</p>
+    <div class="handsOn-grid">
+
+
+      <figure class="handsOn-figure">
+        <a href="https://docs.altinity.com/operationsguide/availability-and-recovery/recovery-architecture/" target="_blank" rel="noopener">
+          <img src="demo-assets/module-7-backup/external/01-disasterrecoveryarchitecture_highres.png" alt="ClickHouse disaster-recovery architecture (primary + warm standby + backups)" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">Altinity Docs</span>
+          ClickHouse disaster-recovery architecture (primary + warm standby + backups)
+        </figcaption>
+      </figure>
+
+
+      <figure class="handsOn-figure">
+        <a href="https://clickhouse.com/blog/clickhouse-cloud-boosts-performance-with-sharedmergetree-and-lightweight-updates" target="_blank" rel="noopener">
+          <img src="demo-assets/module-7-backup/external/02-smt_04_712af233a0.png" alt="Object-storage-backed parts: backup is essentially a metadata snapshot" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">ClickHouse Blog</span>
+          Object-storage-backed parts: backup is essentially a metadata snapshot
+        </figcaption>
+      </figure>
 
     </div>
   </div>

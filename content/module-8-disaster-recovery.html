@@ -1223,571 +1223,8 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
 
 
 
-<div class="handsOn">
-  <div class="handsOn-card">
-    <h2>📚 Full module reference</h2>
-    <h1 id="module-8-disaster-recovery-business-continuity">Module 8 — Disaster Recovery &amp; Business Continuity</h1>
-<blockquote>
-<p><strong>Audience:</strong> people with pagers. <strong>Prerequisites:</strong> Modules 1, 3, 4, 7.
-<strong>Time:</strong> ~75 min reading + 30 min hands-on chaos drills.</p>
-</blockquote>
-<p>By the end you will be able to:</p>
-<ul>
-<li>Define and measure RTO / RPO for each failure class.</li>
-<li>Run six destructive drills against a real cluster without flinching.</li>
-<li>Recover a wiped replica from a peer.</li>
-<li>Use <code>insert_quorum</code> to harden writes against partial-replica failure.</li>
-<li>Sketch a multi-DC topology and cut-over procedure.</li>
-</ul>
-<hr />
-<h2 id="1-failure-modes-you-should-be-ready-for">1. Failure modes you should be ready for</h2>
-<!-- mermaid rendered as SVG above -->
-
-<table>
-<thead>
-<tr>
-<th>#</th>
-<th>Class</th>
-<th>Likelihood</th>
-<th>Blast radius</th>
-<th>Recovery primitive</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>1</td>
-<td>Single replica down</td>
-<td>high</td>
-<td>none (peer covers)</td>
-<td>restart + <code>SYSTEM SYNC REPLICA</code></td>
-</tr>
-<tr>
-<td>2</td>
-<td>Whole shard down</td>
-<td>medium</td>
-<td>partial reads</td>
-<td><code>skip_unavailable_shards = 1</code></td>
-</tr>
-<tr>
-<td>3</td>
-<td>ZK / Keeper quorum lost</td>
-<td>medium</td>
-<td>writes blocked</td>
-<td>restore ZK quorum</td>
-</tr>
-<tr>
-<td>4</td>
-<td>Replica disk loss</td>
-<td>medium</td>
-<td>one replica empty</td>
-<td><code>SYSTEM DROP REPLICA</code> + recreate</td>
-</tr>
-<tr>
-<td>5</td>
-<td>Bad DROP / TRUNCATE</td>
-<td>high</td>
-<td>catastrophic if no backup</td>
-<td>RESTORE from backup</td>
-</tr>
-<tr>
-<td>6</td>
-<td>Whole DC outage</td>
-<td>low</td>
-<td>total in that DC</td>
-<td>failover to peer DC</td>
-</tr>
-<tr>
-<td>7</td>
-<td>Cluster-wide corruption</td>
-<td>very low</td>
-<td>catastrophic</td>
-<td>RESTORE from backup</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="2-rto-and-rpo">2. RTO and RPO</h2>
-<table>
-<thead>
-<tr>
-<th>Term</th>
-<th>Definition</th>
-<th>How CH lets you tune it</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>RTO</td>
-<td><strong>Recovery Time Objective</strong> — how long until service resumes.</td>
-<td>Replicas (instant), backup restore time (minutes-hours), DR cluster (seconds with prior sync).</td>
-</tr>
-<tr>
-<td>RPO</td>
-<td><strong>Recovery Point Objective</strong> — how much data you can afford to lose.</td>
-<td><code>insert_quorum</code> (zero loss in shard), backup cadence (minutes-hours), cross-DC replication (zero with quorum).</td>
-</tr>
-</tbody>
-</table>
-<p>A two-replica shard with <code>insert_quorum = 2</code> has <strong>RPO=0 within the
-shard</strong> and <strong>RTO≈0</strong> for single-replica failure. Add nightly S3 backups
-and you have <strong>RPO≤24h</strong> for the bad-DROP case with <strong>RTO≤restore time</strong>.</p>
-<hr />
-<h2 id="3-drill-1-single-replica-down">3. Drill 1 — single replica down</h2>
-<p>The most common, least scary failure.</p>
-<pre><code class="language-bash">docker stop m8-s1r2
-</code></pre>
-<p>Then on <code>m8-s1r1</code>:</p>
-<pre><code class="language-sql">-- Cluster sees one bad replica
-SELECT host_name, errors_count FROM system.clusters
-WHERE cluster='clickhouse_cluster' ORDER BY shard_num, replica_num;
-
--- Reads still work via the surviving replica
-SELECT count() FROM dr_distributed;
-
--- Inserts also work (routed to s1r1, replicated later)
-INSERT INTO dr_local VALUES (now(), 999999999, 'during_outage_1');
-</code></pre>
-<p>Recovery:</p>
-<pre><code class="language-bash">docker start m8-s1r2
-</code></pre>
-<pre><code class="language-sql">SYSTEM SYNC REPLICA dr_local;        -- on m8-s1r2
-SELECT count() FROM dr_local WHERE key &gt;= 999999998;
-</code></pre>
-<p><code>absolute_delay</code> should drop to 0. The replication queue drains.</p>
-<hr />
-<h2 id="4-drill-2-whole-shard-outage">4. Drill 2 — whole shard outage</h2>
-<pre><code class="language-bash">docker stop m8-s2r1 m8-s2r2
-</code></pre>
-<p>Reads:</p>
-<pre><code class="language-sql">-- Partial — returns rows from shards 1 and 3 only
-SELECT count() FROM dr_distributed SETTINGS skip_unavailable_shards = 1;
-
--- Without it: errors out
-SELECT count() FROM dr_distributed;
--- Code: 279. NETWORK_ERROR ... All connection tries failed
-</code></pre>
-<p><code>skip_unavailable_shards</code> is a <em>per-query</em> policy decision. Use it for
-dashboards that prefer "stale + visible" over "blank". Don't use it for
-financial reports.</p>
-<p>Recovery: bring the shard back, run <code>SYSTEM SYNC REPLICA</code> on each replica.</p>
-<hr />
-<h2 id="5-drill-3-zk-quorum-partial-loss">5. Drill 3 — ZK quorum partial loss</h2>
-<p>A 3-node ZK ensemble survives 1 failure. Lose 1, the cluster keeps
-working. Lose 2 of 3 and replicated tables go read-only.</p>
-<p>Drill the safe case:</p>
-<pre><code class="language-bash">docker stop m8-zk1
-</code></pre>
-<pre><code class="language-sql">-- Inserts still work — ZK quorum is 2 of 3
-INSERT INTO dr_local VALUES (now(), 1, 'zk1_down');
-SELECT count() FROM dr_local WHERE payload = 'zk1_down';
-</code></pre>
-<pre><code class="language-bash">docker start m8-zk1
-</code></pre>
-<blockquote>
-<p><strong>Production:</strong> run 3 ZK / Keeper nodes for small clusters, 5 for big
-ones. Spread them across availability zones.</p>
-</blockquote>
-<hr />
-<h2 id="6-drill-4-replica-disk-loss-the-hard-one">6. Drill 4 — replica disk loss (the hard one)</h2>
-<p>What happens: one replica's <code>/var/lib/clickhouse/data</code> is gone. ZK still
-remembers it as a registered replica. Trying to start it fresh would
-conflict with that ZK record.</p>
-<p>The recovery procedure:</p>
-<!-- mermaid rendered as SVG above -->
-
-<p>The demo's <code>run.sh</code> does exactly this. Look for <strong>DRILL 4</strong> output.</p>
-<blockquote>
-<p><strong>The mistake to avoid:</strong> simply restarting the wiped node and hoping
-ZK reconciles. The ZK record carries baggage (queue entries, log
-pointer) that no longer applies — you have to drop it first.</p>
-</blockquote>
-<hr />
-<h2 id="7-drill-5-insert_quorum-durability-gate">7. Drill 5 — <code>insert_quorum</code> durability gate</h2>
-<p>Drill 4 protects against losing data already on disk. <code>insert_quorum</code>
-protects against <em>writing</em> data that only one replica ever sees.</p>
-<pre><code class="language-sql">SET insert_quorum = 2;
-SET insert_quorum_timeout_ms = 3000;
-
--- With both replicas alive: succeeds in &lt;100 ms
-INSERT INTO dr_local VALUES (now(), 88888, 'ok_quorum');
-</code></pre>
-<p>Now stop one replica:</p>
-<pre><code class="language-bash">docker stop m8-s1r2
-</code></pre>
-<pre><code class="language-sql">-- Same INSERT now FAILS at 3 s
-INSERT INTO dr_local VALUES (now(), 88888, 'must_fail');
--- Code: 319. Quorum for previous write has not been satisfied yet.
-</code></pre>
-<p>This is the trade you make: writes block when redundancy isn't available.
-For RPO=0 systems that's the right choice; for high-throughput analytics
-it's the wrong one. <strong>Choose per table.</strong></p>
-<hr />
-<h2 id="8-drill-6-restore-from-backup-recovery">8. Drill 6 — restore-from-backup recovery</h2>
-<p>The "I dropped the wrong table" or "the prod cluster was corrupted"
-scenario. Recovery requires a backup.</p>
-<pre><code class="language-sql">-- Snapshot now (in real life: this is from your scheduled backups)
-BACKUP TABLE dr_local
-ON CLUSTER clickhouse_cluster
-TO Disk('backups', 'pre_disaster.zip');
-
--- The disaster
-DROP TABLE dr_local ON CLUSTER clickhouse_cluster SYNC;
-
--- Recovery
-RESTORE TABLE dr_local
-ON CLUSTER clickhouse_cluster
-FROM Disk('backups', 'pre_disaster.zip');
-
-SELECT count() FROM dr_distributed;
-</code></pre>
-<blockquote>
-<p><strong>Important:</strong> <code>BACKUP ON CLUSTER</code> to a <em>node-local</em> disk only works
-if the destination path exists on every node. For real cluster-wide
-backups, point at S3 / GCS instead — see Module 7. The demo runs the
-SQL anyway and prints the expected limitation note.</p>
-</blockquote>
-<hr />
-<h2 id="9-broken-parts-when-ch-refuses-to-load-a-part">9. Broken parts — when CH refuses to load a part</h2>
-<p>If a part on disk is corrupt (bad checksum, missing file), CH refuses
-to load it on startup and moves it to <code>detached/&lt;part_name&gt;</code> under the
-table directory. You'll see an error like:</p>
-<pre><code>Part all_5_5_0 is broken. Moved to detached/.
-</code></pre>
-<p>Recovery:</p>
-<pre><code class="language-sql">-- See what's in detached/
-SELECT name, reason, disk_name
-FROM system.detached_parts
-WHERE database = 'default' AND table = 'dr_local';
-
--- If you trust the part: re-attach
-ALTER TABLE dr_local ATTACH PART 'all_5_5_0';
-
--- If you don't: ditch it; the replica will fetch a clean copy from a peer
-ALTER TABLE dr_local DROP DETACHED PART 'all_5_5_0' SETTINGS allow_drop_detached = 1;
-SYSTEM SYNC REPLICA dr_local;
-</code></pre>
-<hr />
-<h2 id="10-multi-dc-topology-sketch">10. Multi-DC topology (sketch)</h2>
-<p>The demo runs everything on one Docker host, so it can't truly drill
-multi-DC failover. Here's what production looks like:</p>
-<!-- mermaid rendered as SVG above -->
-
-<p>Key choices:</p>
-<ol>
-<li><strong>One replica per DC per shard.</strong> Each shard's replicas are split
-   across DCs; replication is the cross-DC link.</li>
-<li><strong>ZK / Keeper quorum spans 3 sites.</strong> Two DCs + an observer (or a
-   light-weight third site) so a single-DC outage doesn't kill quorum.</li>
-<li><strong><code>insert_quorum = 2</code></strong> for RPO=0. Cross-DC writes synchronously.
-   Plan for 1–10 ms WAN latency on every INSERT.</li>
-<li><strong>GEO DNS / Global Load Balancer</strong> routes app traffic. Failover is
-   a CNAME flip + connection-drain.</li>
-<li><strong><code>select_sequential_consistency = 1</code></strong> if you also need stale-read
-   protection.</li>
-</ol>
-<p>Cut-over runbook (single DC outage):</p>
-<ol>
-<li><strong>Detect</strong> — alert from health-checking the primary DC LB. Time = 0 s.</li>
-<li><strong>Decide</strong> — operator/automation flips DNS to DC2. Time = 30–120 s
-   (TTL).</li>
-<li><strong>Verify</strong> — DC2 endpoints serving traffic; reads/writes returning.</li>
-<li><strong>Drain</strong> — once DC1 is healthy, app traffic gradually shifted back.</li>
-</ol>
-<hr />
-<h2 id="11-the-hands-on-demo">11. The hands-on demo</h2>
-<h3 id="container-map">Container map</h3>
-<table>
-<thead>
-<tr>
-<th>Role</th>
-<th>Container</th>
-<th>Host HTTP</th>
-<th>Host TCP</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Shard 1 R1</td>
-<td><code>m8-s1r1</code></td>
-<td>8123</td>
-<td>9000</td>
-</tr>
-<tr>
-<td>Shard 1 R2</td>
-<td><code>m8-s1r2</code></td>
-<td>8124</td>
-<td>9001</td>
-</tr>
-<tr>
-<td>Shard 2 R1</td>
-<td><code>m8-s2r1</code></td>
-<td>8125</td>
-<td>9002</td>
-</tr>
-<tr>
-<td>Shard 2 R2</td>
-<td><code>m8-s2r2</code></td>
-<td>8126</td>
-<td>9003</td>
-</tr>
-<tr>
-<td>Shard 3 R1</td>
-<td><code>m8-s3r1</code></td>
-<td>8127</td>
-<td>9004</td>
-</tr>
-<tr>
-<td>Shard 3 R2</td>
-<td><code>m8-s3r2</code></td>
-<td>8128</td>
-<td>9005</td>
-</tr>
-<tr>
-<td>ZK 1/2/3</td>
-<td><code>m8-zk1/2/3</code></td>
-<td>(internal)</td>
-<td></td>
-</tr>
-</tbody>
-</table>
-<h3 id="execution-flow-what-runs-in-order">Execution flow — what runs, in order</h3>
-<p>This module is mostly chaos drills inside <code>run.sh</code> itself. Every drill
-is independent; if one fails, the next still runs.</p>
-<table>
-<thead>
-<tr>
-<th>#</th>
-<th>Step</th>
-<th>What happens</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>0</td>
-<td>self-bootstrap</td>
-<td><code>up.sh</code> brings up the 3-shard × 2-replica cluster with 3-node ZK ensemble (9 containers).</td>
-</tr>
-<tr>
-<td>1</td>
-<td><code>setup.sql</code> (via <code>m8-s1r1</code>)</td>
-<td><code>ON CLUSTER</code> creates <code>dr_local</code> (ReplicatedMergeTree) and <code>dr_distributed</code> on every node.</td>
-</tr>
-<tr>
-<td>2</td>
-<td><code>data.sql</code> (via <code>m8-s1r1</code>)</td>
-<td>Inserts 1M rows via the Distributed table.</td>
-</tr>
-<tr>
-<td>3</td>
-<td><code>SYSTEM FLUSH DISTRIBUTED</code> × 6</td>
-<td>Flush spool on every node. Print <code>baseline rows</code> count.</td>
-</tr>
-<tr>
-<td>4</td>
-<td><strong>Drill 1 — Replica failure</strong></td>
-<td><code>docker stop m8-s1r2</code>. Print <code>system.clusters.errors_count</code>. Read via Distributed (works via <code>m8-s1r1</code>). Insert two rows via <code>m8-s1r1</code> while <code>m8-s1r2</code> is down. <code>docker start m8-s1r2</code>, <code>SYSTEM SYNC REPLICA</code>, verify <code>m8-s1r2</code> has the new rows.</td>
-</tr>
-<tr>
-<td>5</td>
-<td><strong>Drill 2 — Whole shard outage</strong></td>
-<td><code>docker stop m8-s2r1 m8-s2r2</code>. Read with <code>SETTINGS skip_unavailable_shards = 1</code> (returns partial). Read without it (errors). Restart shard 2 nodes, <code>SYSTEM SYNC REPLICA</code>, verify count restored.</td>
-</tr>
-<tr>
-<td>6</td>
-<td><strong>Drill 3 — Lose one ZK node</strong></td>
-<td><code>docker stop m8-zk1</code>. Insert a row (works — ZK quorum 2/3 still holds). Restart ZK 1.</td>
-</tr>
-<tr>
-<td>7</td>
-<td><strong>Drill 4 — Replica disk loss</strong></td>
-<td><code>docker stop m8-s1r2</code>, wipe its data volume using a throwaway alpine container. Restart it. From <code>m8-s1r1</code>: <code>SYSTEM DROP REPLICA 'm8-s1r2' FROM TABLE dr_local</code>. From <code>m8-s1r2</code>: drop the local table, recreate it pointing at the same ZK path, <code>SYSTEM SYNC REPLICA</code> — table rebuilds from peer.</td>
-</tr>
-<tr>
-<td>8</td>
-<td><strong>Drill 5 — <code>insert_quorum</code></strong></td>
-<td><code>docker stop m8-s1r2</code>. Try <code>INSERT … SETTINGS insert_quorum = 2, insert_quorum_timeout_ms = 3000</code> — must time out (1/2 replicas alive). Restart, sync, retry — succeeds.</td>
-</tr>
-<tr>
-<td>9</td>
-<td><strong>Drill 6 — Restore-from-backup</strong></td>
-<td><code>BACKUP TABLE dr_local ON CLUSTER … TO File('/tmp/dr_local_backup_$$')</code>. <code>DROP TABLE … ON CLUSTER</code>. <code>RESTORE TABLE … ON CLUSTER FROM File(…)</code>. Note: cluster nodes don't share <code>/tmp</code> in this compose, so the restore step shows the expected "use S3" pointer.</td>
-</tr>
-</tbody>
-</table>
-<blockquote>
-<p>The script is destructive <strong>only to its own table</strong> (<code>default.dr_local</code>)
-and <code>m8-</code> containers. Nothing else is at risk.</p>
-</blockquote>
-<hr />
-<h2 id="12-operational-sql-cheatsheet">12. Operational SQL cheatsheet</h2>
-<pre><code class="language-sql">-- &quot;Is the cluster healthy?&quot;
-SELECT cluster, shard_num, replica_num, host_name, errors_count, slowdowns_count
-FROM system.clusters WHERE cluster = 'clickhouse_cluster'
-ORDER BY shard_num, replica_num;
-
--- &quot;Replica health&quot;
-SELECT database, table, replica_name, queue_size, absolute_delay,
-       is_readonly, last_queue_update_exception
-FROM system.replicas
-WHERE absolute_delay &gt; 0 OR queue_size &gt; 0 OR is_readonly = 1;
-
--- &quot;Broken parts in detached/&quot;
-SELECT database, table, name, reason
-FROM system.detached_parts;
-
--- &quot;Active backups&quot;
-SELECT id, name, status, formatReadableSize(total_size), num_files
-FROM system.backups
-WHERE status NOT IN ('BACKUP_CREATED', 'RESTORED', 'BACKUP_FAILED', 'RESTORE_FAILED');
-
--- &quot;Force a stuck replica&quot;
-SYSTEM RESTART REPLICA dr_local;
-SYSTEM SYNC REPLICA dr_local;
-</code></pre>
-<hr />
-<h2 id="13-the-dr-runbook-template">13. The DR runbook template</h2>
-<p>Customise per environment. Copy this into your wiki:</p>
-<table>
-<thead>
-<tr>
-<th>Step</th>
-<th>What</th>
-<th>Command / system</th>
-<th>Owner</th>
-<th>Time bound</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>1</td>
-<td>Detect: monitoring fires for replication lag / errors</td>
-<td>Prometheus alert → PagerDuty</td>
-<td>on-call</td>
-<td>&lt; 1 min</td>
-</tr>
-<tr>
-<td>2</td>
-<td>Triage: identify failure class from §1</td>
-<td><code>system.clusters</code> / <code>system.replicas</code></td>
-<td>on-call</td>
-<td>&lt; 5 min</td>
-</tr>
-<tr>
-<td>3</td>
-<td>Decide: in-place recovery vs failover</td>
-<td>runbook table</td>
-<td>on-call lead</td>
-<td>&lt; 10 min</td>
-</tr>
-<tr>
-<td>4</td>
-<td>If in-place: run drill from §3-§7</td>
-<td>this README's drills</td>
-<td>on-call</td>
-<td>&lt; 30 min</td>
-</tr>
-<tr>
-<td>5</td>
-<td>If failover: GEO DNS flip + drain</td>
-<td>DNS console / load balancer</td>
-<td>networking</td>
-<td>&lt; 15 min</td>
-</tr>
-<tr>
-<td>6</td>
-<td>Verify: synthetic write+read at end-to-end check</td>
-<td>smoke test query</td>
-<td>on-call</td>
-<td>&lt; 5 min</td>
-</tr>
-<tr>
-<td>7</td>
-<td>Postmortem: incident timeline + remediations</td>
-<td>doc template</td>
-<td>on-call lead</td>
-<td>&lt; 24 h</td>
-</tr>
-</tbody>
-</table>
-<p>Practise this monthly. The runbook you've never run is fiction.</p>
-<hr />
-<h2 id="14-common-pitfalls">14. Common pitfalls</h2>
-<table>
-<thead>
-<tr>
-<th>Symptom</th>
-<th>Cause</th>
-<th>Fix</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Wiped replica restarts and immediately errors</td>
-<td>ZK still has the old replica record.</td>
-<td><code>SYSTEM DROP REPLICA '&lt;host&gt;' FROM TABLE &lt;t&gt;</code> from a peer first.</td>
-</tr>
-<tr>
-<td><code>insert_quorum = 2</code> rejects writes after one failure</td>
-<td>Only 1 of 2 replicas reachable.</td>
-<td>Set <code>insert_quorum = 1</code> temporarily, OR fix the failed replica before continuing.</td>
-</tr>
-<tr>
-<td><code>skip_unavailable_shards</code> returns empty for one shard</td>
-<td>All replicas of that shard are down.</td>
-<td>Restart the shard's replicas.</td>
-</tr>
-<tr>
-<td>Restore from backup is slow</td>
-<td>Many small parts; or remote storage with high latency.</td>
-<td>Use S3 transfer acceleration; do schema-only restore first, then data per-partition.</td>
-</tr>
-<tr>
-<td>Replicas drift after <code>INSERT INTO local</code> on both</td>
-<td>Inserted to local table on both replicas (bypassing replication).</td>
-<td>Always insert via Distributed (or one replica). <code>OPTIMIZE TABLE … FINAL DEDUPLICATE</code> may help.</td>
-</tr>
-<tr>
-<td>Cross-DC replication adds 10× latency to writes</td>
-<td>WAN RTT. ZK is across DCs.</td>
-<td>Move ZK so its quorum doesn't span the WAN, OR accept the latency for RPO=0.</td>
-</tr>
-<tr>
-<td><code>BACKUP ON CLUSTER</code> to local disk fails on some nodes</td>
-<td>The path doesn't exist on every node, or each node writes to its own disk.</td>
-<td>Use S3 / a shared object store.</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="15-talking-points-for-the-live-session">15. Talking points for the live session</h2>
-<ol>
-<li><strong>You have not tested DR until you've run it.</strong> Run drill 4 live;
-   watch the queue drain.</li>
-<li><strong><code>SYSTEM DROP REPLICA</code> is the magic word.</strong> Most "stuck replica"
-   incidents resolve with this + recreate.</li>
-<li><strong><code>skip_unavailable_shards</code></strong> is a per-query <em>policy</em>. Make the
-   choice deliberately, per dashboard.</li>
-<li><strong><code>insert_quorum</code></strong> is the RPO=0 knob. Demo drill 5 — the INSERT
-   genuinely refuses.</li>
-<li><strong>Backups + replication ≠ same thing.</strong> Replication protects
-   hardware loss; backups protect human + software loss.</li>
-<li><strong>Multi-DC</strong> is a planning project, not a configuration. Show the
-   topology diagram; discuss the GEO DNS / WAN latency tradeoffs.</li>
-<li><strong>Document the runbook.</strong> It's the deliverable, not the technology.</li>
-</ol>
-<hr />
-<h2 id="16-going-deeper">16. Going deeper</h2>
-<ul>
-<li><strong>Module 4</strong> — replication internals; the system tables this module relies on.</li>
-<li><strong>Module 7</strong> — backup mechanics this module restores from.</li>
-<li>ClickHouse docs on operational topics:</li>
-<li><a href="https://clickhouse.com/docs/en/operations/backup">https://clickhouse.com/docs/en/operations/backup</a></li>
-<li><a href="https://clickhouse.com/docs/en/operations/system-tables/replicas">https://clickhouse.com/docs/en/operations/system-tables/replicas</a></li>
-<li>A great read: Anil Tatir's "Disaster Recovery Patterns for ClickHouse"
-  (Altinity blog).</li>
-</ul>
-  </div>
 </div>
+
 
 
 <style>
@@ -1799,9 +1236,7 @@ SYSTEM SYNC REPLICA dr_local;
   background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 28px 32px; margin-bottom: 24px;
 }
-.handsOn-card h2 {
-  margin: 0 0 8px 0; font-size: 1.6em; color: #0f172a;
-}
+.handsOn-card h2 { margin: 0 0 8px 0; font-size: 1.6em; color: #0f172a; }
 .handsOn-card h3 {
   margin: 24px 0 8px 0; font-size: 1.2em; color: #1a4480;
   border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;
@@ -1830,27 +1265,31 @@ SYSTEM SYNC REPLICA dr_local;
   padding: 28px 32px; border-radius: 12px; margin-bottom: 20px;
 }
 .handsOn-banner h2 { color: white; margin: 0 0 8px 0; }
-.handsOn-banner code {
-  background: rgba(0,0,0,0.25); color: #f1f5f9;
-}
-.handsOn-banner pre {
-  background: rgba(0,0,0,0.30); color: #f1f5f9;
-}
+.handsOn-banner code { background: rgba(0,0,0,0.25); color: #f1f5f9; }
+.handsOn-banner pre  { background: rgba(0,0,0,0.30); color: #f1f5f9; }
 .handsOn-figure {
   margin: 16px 0; padding: 12px; background: #f8fafc;
   border: 1px solid #e2e8f0; border-radius: 8px; text-align: center;
 }
-.handsOn-figure img, .handsOn-figure object {
-  max-width: 100%; height: auto; border-radius: 4px;
+.handsOn-figure img {
+  max-width: 100%; height: auto; border-radius: 4px; display: inline-block;
 }
 .handsOn-figure figcaption {
   margin-top: 8px; color: #475569; font-size: 0.9em; font-style: italic;
+}
+.handsOn-figure figcaption a {
+  color: #1a4480; text-decoration: none; border-bottom: 1px dotted #94a3b8;
 }
 .handsOn-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
   gap: 16px; margin: 12px 0;
 }
 .handsOn-card a { color: #1a4480; }
+.handsOn-source-tag {
+  display: inline-block; background: #e0f2fe; color: #075985;
+  padding: 2px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 600;
+  margin-right: 6px;
+}
 </style>
 
 
@@ -1871,8 +1310,8 @@ SYSTEM SYNC REPLICA dr_local;
     <h2>📺 Live demo capture</h2>
     <p>Recorded with <a href="https://github.com/charmbracelet/vhs" target="_blank" rel="noopener">vhs</a>: the actual terminal output from <code>./run.sh</code> running on this very stack.</p>
     <figure class="handsOn-figure">
-      <img src="../code-examples/demos/module-8-dr/diagrams/demo.gif" alt="Module demo GIF" loading="lazy">
-      <figcaption>Click to view full-size. Animated GIF, ~928 KB.</figcaption>
+      <img src="demo-assets/module-8-dr/demo.gif" alt="Module demo GIF" loading="lazy">
+      <figcaption>Animated GIF, ~928 KB. Right-click → open in new tab to view full-size.</figcaption>
     </figure>
   </div>
 </div>
@@ -1881,33 +1320,76 @@ SYSTEM SYNC REPLICA dr_local;
 <div class="handsOn">
   <div class="handsOn-card">
     <h2>🗂️ Architecture diagrams</h2>
-    <p>Rendered from the README's Mermaid sources. Static, but click any to view the source SVG full-size.</p>
+    <p>Rendered from the README's Mermaid sources. Click any to open the source SVG full-size.</p>
     <div class="handsOn-grid">
 
 
       <figure class="handsOn-figure">
-        <a href="../code-examples/demos/module-8-dr/diagrams/01-flowchart-cluster-clickhouse-cluster.svg" target="_blank" rel="noopener">
-          <img src="../code-examples/demos/module-8-dr/diagrams/01-flowchart-cluster-clickhouse-cluster.svg" alt="Cluster clickhouse cluster" loading="lazy">
+        <a href="demo-assets/module-8-dr/01-flowchart-cluster-clickhouse-cluster.svg" target="_blank" rel="noopener">
+          <img src="demo-assets/module-8-dr/01-flowchart-cluster-clickhouse-cluster.svg" alt="Cluster clickhouse cluster" loading="lazy">
         </a>
         <figcaption>Cluster clickhouse cluster</figcaption>
       </figure>
 
 
       <figure class="handsOn-figure">
-        <a href="../code-examples/demos/module-8-dr/diagrams/02-sequencediagram-actor-op-as-operator.svg" target="_blank" rel="noopener">
-          <img src="../code-examples/demos/module-8-dr/diagrams/02-sequencediagram-actor-op-as-operator.svg" alt="Actor op as operator" loading="lazy">
+        <a href="demo-assets/module-8-dr/02-sequencediagram-actor-op-as-operator.svg" target="_blank" rel="noopener">
+          <img src="demo-assets/module-8-dr/02-sequencediagram-actor-op-as-operator.svg" alt="Actor op as operator" loading="lazy">
         </a>
         <figcaption>Actor op as operator</figcaption>
       </figure>
 
 
       <figure class="handsOn-figure">
-        <a href="../code-examples/demos/module-8-dr/diagrams/03-flowchart-subgraph-dc1-dc-1-primary.svg" target="_blank" rel="noopener">
-          <img src="../code-examples/demos/module-8-dr/diagrams/03-flowchart-subgraph-dc1-dc-1-primary.svg" alt="Subgraph dc1 dc 1 primary" loading="lazy">
+        <a href="demo-assets/module-8-dr/03-flowchart-subgraph-dc1-dc-1-primary.svg" target="_blank" rel="noopener">
+          <img src="demo-assets/module-8-dr/03-flowchart-subgraph-dc1-dc-1-primary.svg" alt="Subgraph dc1 dc 1 primary" loading="lazy">
         </a>
         <figcaption>Subgraph dc1 dc 1 primary</figcaption>
       </figure>
 
+    </div>
+  </div>
+</div>
+
+
+<div class="handsOn">
+  <div class="handsOn-card">
+    <h2>📚 ClickHouse reference visuals</h2>
+    <p>Curated from the official ClickHouse documentation and engineering blog (and Altinity's docs/blog) — the same diagrams the broader CH community uses to explain these concepts. Click any image to read the source.</p>
+    <div class="handsOn-grid">
+
+
+      <figure class="handsOn-figure">
+        <a href="https://docs.altinity.com/operationsguide/availability-and-recovery/availability-architecture/" target="_blank" rel="noopener">
+          <img src="demo-assets/module-8-dr/external/01-availabilityarchitecture.png" alt="High-availability architecture: replicas + Keeper quorum" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">Altinity Docs</span>
+          High-availability architecture: replicas + Keeper quorum
+        </figcaption>
+      </figure>
+
+
+      <figure class="handsOn-figure">
+        <a href="https://docs.altinity.com/operationsguide/availability-and-recovery/recovery-architecture/" target="_blank" rel="noopener">
+          <img src="demo-assets/module-8-dr/external/02-disasterrecoveryarchitecture_highres.png" alt="Cross-site DR with warm standby cluster and shared backups" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">Altinity Docs</span>
+          Cross-site DR with warm standby cluster and shared backups
+        </figcaption>
+      </figure>
+
+
+      <figure class="handsOn-figure">
+        <a href="https://clickhouse.com/blog/clickhouse-cloud-boosts-performance-with-sharedmergetree-and-lightweight-updates" target="_blank" rel="noopener">
+          <img src="demo-assets/module-8-dr/external/03-smt_03_21a5b48f65.png" alt="Replication keeps replicas in sync as the failover substrate for DR" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">ClickHouse Blog</span>
+          Replication keeps replicas in sync as the failover substrate for DR
+        </figcaption>
+      </figure>
 
     </div>
   </div>

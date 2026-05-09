@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 320" width="720" height="320" font-family="ui-monospace, Menlo, monospace" font-size="13">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#1a4480"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#22c55e"/>
+      <stop offset="100%" stop-color="#15803d"/>
+    </linearGradient>
+  </defs>
+
+  <text x="360" y="24" text-anchor="middle" font-size="16" font-weight="bold" fill="#0f172a">Parts merge — three INSERTs collapse into one part</text>
+
+  <!-- Three small parts left side -->
+  <g>
+    <rect x="40" y="80" width="140" height="40" rx="6" fill="url(#g1)">
+      <animate attributeName="opacity" values="1;1;0.2;0" dur="6s" begin="2s" repeatCount="indefinite"/>
+    </rect>
+    <text x="110" y="103" text-anchor="middle" fill="white">all_1_1_0  500k rows</text>
+
+    <rect x="40" y="140" width="140" height="40" rx="6" fill="url(#g1)">
+      <animate attributeName="opacity" values="1;1;0.2;0" dur="6s" begin="2s" repeatCount="indefinite"/>
+    </rect>
+    <text x="110" y="163" text-anchor="middle" fill="white">all_2_2_0  500k rows</text>
+
+    <rect x="40" y="200" width="140" height="40" rx="6" fill="url(#g1)">
+      <animate attributeName="opacity" values="1;1;0.2;0" dur="6s" begin="2s" repeatCount="indefinite"/>
+    </rect>
+    <text x="110" y="223" text-anchor="middle" fill="white">all_3_3_0  1M rows</text>
+  </g>
+
+  <!-- Arrow + label -->
+  <g>
+    <path d="M 200 160 L 290 160" stroke="#0f172a" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+    <text x="245" y="148" text-anchor="middle" fill="#0f172a">background</text>
+    <text x="245" y="178" text-anchor="middle" fill="#0f172a">merge</text>
+  </g>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#0f172a"/>
+    </marker>
+  </defs>
+
+  <!-- Big merged part right side -->
+  <g>
+    <rect x="320" y="120" width="280" height="80" rx="8" fill="url(#g2)" opacity="0">
+      <animate attributeName="opacity" values="0;0;0;1;1" dur="6s" begin="2s" repeatCount="indefinite"/>
+    </rect>
+    <text x="460" y="155" text-anchor="middle" fill="white" font-weight="bold" opacity="0">
+      <animate attributeName="opacity" values="0;0;0;1;1" dur="6s" begin="2s" repeatCount="indefinite"/>
+      all_1_3_1
+    </text>
+    <text x="460" y="178" text-anchor="middle" fill="white" opacity="0">
+      <animate attributeName="opacity" values="0;0;0;1;1" dur="6s" begin="2s" repeatCount="indefinite"/>
+      2M rows · sorted by ORDER BY
+    </text>
+  </g>
+
+  <!-- Captions over time -->
+  <g>
+    <text x="360" y="280" text-anchor="middle" fill="#0f172a">
+      <animate attributeName="opacity" values="1;1;0;0;0" dur="6s" begin="0s" repeatCount="indefinite"/>
+      3 active parts after 3 INSERTs
+    </text>
+    <text x="360" y="280" text-anchor="middle" fill="#0f172a" opacity="0">
+      <animate attributeName="opacity" values="0;0;0;1;1" dur="6s" begin="2s" repeatCount="indefinite"/>
+      1 active part after merge — old parts deleted
+    </text>
+  </g>
+
+  <!-- Sparkline bar showing part count over time -->
+  <g transform="translate(640,80)">
+    <rect x="0" y="0" width="40" height="160" fill="#e5e7eb" stroke="#0f172a" stroke-width="1"/>
+    <rect x="2" y="40" width="36" height="120" fill="#3b82f6">
+      <animate attributeName="y" values="40;40;40;130;130" dur="6s" begin="2s" repeatCount="indefinite"/>
+      <animate attributeName="height" values="120;120;120;30;30" dur="6s" begin="2s" repeatCount="indefinite"/>
+    </rect>
+    <text x="20" y="180" text-anchor="middle" fill="#0f172a" font-size="11">parts</text>
+  </g>
+</svg>

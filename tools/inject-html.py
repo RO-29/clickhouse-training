@@ -2,26 +2,31 @@
 """Inject the rich training-grade content into each module's HTML page.
 
 For each content/module-N-*.html:
-  1. Strip the existing minimal demo-callout block.
-  2. Insert a richer "Hands-on Reference" section that contains:
+  1. Stage assets under content/demo-assets/<module>/ (GIFs, anim SVGs,
+     mermaid SVGs from the demo's diagrams/ folder; external/* already
+     populated by tools/fetch-external-images.py).
+  2. Strip any existing demo-callout / handsOn block so re-runs are clean.
+  3. Insert a richer "Hands-on Reference" section that contains:
         - the demo GIF (large)
         - any animated SVGs from the diagrams/ folder
         - all rendered mermaid SVGs from the diagrams/ folder
+        - downloaded CH/Altinity reference images (with source links)
         - the README rendered to HTML
-        - a footer link block to the demo folder + Notion (no GitHub)
+
+All assets are referenced via demo-assets/<module>/<file> — i.e. paths
+relative to the HTML file itself — so they work both via file:// and on
+deployed sites regardless of build config.
 """
 from __future__ import annotations
-import re, shutil
+import re, shutil, json
 from pathlib import Path
 import markdown
 
 ROOT = Path(__file__).resolve().parent.parent
 DEMOS = ROOT / "code-examples" / "demos"
 CONTENT = ROOT / "content"
-# We don't copy assets — both Netlify and Render publish from repo root,
-# so HTML at content/*.html can reference ../code-examples/demos/<m>/diagrams/<f>
-# directly. The path prefix below is what gets baked into the HTML.
-ASSET_PREFIX = "../code-examples/demos"
+ASSETS = CONTENT / "demo-assets"
+EXTERNAL_SPEC = ROOT / "tools" / "external-images.json"
 
 # (html-name, demo-folder)
 MAP = [
@@ -46,9 +51,7 @@ CSS = """
   background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 28px 32px; margin-bottom: 24px;
 }
-.handsOn-card h2 {
-  margin: 0 0 8px 0; font-size: 1.6em; color: #0f172a;
-}
+.handsOn-card h2 { margin: 0 0 8px 0; font-size: 1.6em; color: #0f172a; }
 .handsOn-card h3 {
   margin: 24px 0 8px 0; font-size: 1.2em; color: #1a4480;
   border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;
@@ -77,27 +80,31 @@ CSS = """
   padding: 28px 32px; border-radius: 12px; margin-bottom: 20px;
 }
 .handsOn-banner h2 { color: white; margin: 0 0 8px 0; }
-.handsOn-banner code {
-  background: rgba(0,0,0,0.25); color: #f1f5f9;
-}
-.handsOn-banner pre {
-  background: rgba(0,0,0,0.30); color: #f1f5f9;
-}
+.handsOn-banner code { background: rgba(0,0,0,0.25); color: #f1f5f9; }
+.handsOn-banner pre  { background: rgba(0,0,0,0.30); color: #f1f5f9; }
 .handsOn-figure {
   margin: 16px 0; padding: 12px; background: #f8fafc;
   border: 1px solid #e2e8f0; border-radius: 8px; text-align: center;
 }
-.handsOn-figure img, .handsOn-figure object {
-  max-width: 100%; height: auto; border-radius: 4px;
+.handsOn-figure img {
+  max-width: 100%; height: auto; border-radius: 4px; display: inline-block;
 }
 .handsOn-figure figcaption {
   margin-top: 8px; color: #475569; font-size: 0.9em; font-style: italic;
+}
+.handsOn-figure figcaption a {
+  color: #1a4480; text-decoration: none; border-bottom: 1px dotted #94a3b8;
 }
 .handsOn-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
   gap: 16px; margin: 12px 0;
 }
 .handsOn-card a { color: #1a4480; }
+.handsOn-source-tag {
+  display: inline-block; background: #e0f2fe; color: #075985;
+  padding: 2px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 600;
+  margin-right: 6px;
+}
 </style>
 """
 
@@ -120,8 +127,8 @@ GIF_CARD = """
     <h2>📺 Live demo capture</h2>
     <p>Recorded with <a href="https://github.com/charmbracelet/vhs" target="_blank" rel="noopener">vhs</a>: the actual terminal output from <code>./run.sh</code> running on this very stack.</p>
     <figure class="handsOn-figure">
-      <img src="{prefix}/{folder}/diagrams/demo.gif" alt="Module demo GIF" loading="lazy">
-      <figcaption>Click to view full-size. Animated GIF, ~{size_kb} KB.</figcaption>
+      <img src="demo-assets/{folder}/demo.gif" alt="Module demo GIF" loading="lazy">
+      <figcaption>Animated GIF, ~{size_kb} KB. Right-click → open in new tab to view full-size.</figcaption>
     </figure>
   </div>
 </div>
@@ -134,42 +141,50 @@ ANIM_CARD_HEADER = """
     <p>Inline SVG animations — no plugins, native browser playback. Each visualises a key flow this module covers.</p>
     <div class="handsOn-grid">
 """
-
 ANIM_FIGURE = """
       <figure class="handsOn-figure">
-        <object type="image/svg+xml" data="{prefix}/{folder}/diagrams/{filename}" aria-label="{caption}"></object>
+        <img src="demo-assets/{folder}/{filename}" alt="{caption}" loading="lazy">
         <figcaption>{caption}</figcaption>
       </figure>
 """
-
-ANIM_CARD_FOOTER = """
-    </div>
-  </div>
-</div>
-"""
+ANIM_CARD_FOOTER = "    </div>\n  </div>\n</div>\n"
 
 DIAG_CARD_HEADER = """
 <div class="handsOn">
   <div class="handsOn-card">
     <h2>🗂️ Architecture diagrams</h2>
-    <p>Rendered from the README's Mermaid sources. Static, but click any to view the source SVG full-size.</p>
+    <p>Rendered from the README's Mermaid sources. Click any to open the source SVG full-size.</p>
     <div class="handsOn-grid">
 """
-
 DIAG_FIGURE = """
       <figure class="handsOn-figure">
-        <a href="{prefix}/{folder}/diagrams/{filename}" target="_blank" rel="noopener">
-          <img src="{prefix}/{folder}/diagrams/{filename}" alt="{caption}" loading="lazy">
+        <a href="demo-assets/{folder}/{filename}" target="_blank" rel="noopener">
+          <img src="demo-assets/{folder}/{filename}" alt="{caption}" loading="lazy">
         </a>
         <figcaption>{caption}</figcaption>
       </figure>
 """
+DIAG_CARD_FOOTER = "    </div>\n  </div>\n</div>\n"
 
-DIAG_CARD_FOOTER = """
-    </div>
-  </div>
-</div>
+EXT_CARD_HEADER = """
+<div class="handsOn">
+  <div class="handsOn-card">
+    <h2>📚 ClickHouse reference visuals</h2>
+    <p>Curated from the official ClickHouse documentation and engineering blog (and Altinity's docs/blog) — the same diagrams the broader CH community uses to explain these concepts. Click any image to read the source.</p>
+    <div class="handsOn-grid">
 """
+EXT_FIGURE = """
+      <figure class="handsOn-figure">
+        <a href="{src_page}" target="_blank" rel="noopener">
+          <img src="demo-assets/{folder}/external/{filename}" alt="{caption}" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">{src_name}</span>
+          {caption}
+        </figcaption>
+      </figure>
+"""
+EXT_CARD_FOOTER = "    </div>\n  </div>\n</div>\n"
 
 README_CARD = """
 <div class="handsOn">
@@ -181,106 +196,104 @@ README_CARD = """
 """
 
 def caption_from_filename(stem: str) -> str:
-    """Turn '01-flowchart-source-20m-synthetic-events' into something readable."""
     s = re.sub(r"^\d+-", "", stem)
     s = re.sub(r"^(flowchart|sequencediagram|classdiagram|statediagram|erdiagram)-", "", s)
     s = re.sub(r"^anim-", "", s)
-    s = s.replace("-", " ").strip()
-    return s.capitalize() if s else "Diagram"
+    return (s.replace("-", " ").strip() or "Diagram").capitalize()
+
+def stage_assets(demos_folder: Path, module_name: str) -> None:
+    """Copy GIFs and SVGs from demos/<m>/diagrams/ into content/demo-assets/<m>/ ."""
+    out = ASSETS / module_name
+    out.mkdir(parents=True, exist_ok=True)
+    src = demos_folder / "diagrams"
+    if not src.exists(): return
+    for p in src.iterdir():
+        if p.is_file() and p.suffix in (".gif", ".svg", ".png", ".jpg", ".webp"):
+            dest = out / p.name
+            shutil.copy2(p, dest)
 
 def diagram_files(folder: Path) -> tuple[list, list]:
     diag_dir = folder / "diagrams"
-    if not diag_dir.exists():
-        return [], []
+    if not diag_dir.exists(): return [], []
     anim, mermaid = [], []
     for p in sorted(diag_dir.glob("*.svg")):
-        if p.name.startswith("anim-"):
-            anim.append(p)
-        else:
-            mermaid.append(p)
+        (anim if p.name.startswith("anim-") else mermaid).append(p)
     return anim, mermaid
 
 def load_readme_as_html(folder: Path) -> str:
-    md_path = folder / "README.md"
-    if not md_path.exists():
-        return "<p><em>README missing.</em></p>"
-    text = md_path.read_text()
-    # Strip mermaid blocks — the rendered SVGs are already shown above.
+    md = folder / "README.md"
+    if not md.exists(): return "<p><em>README missing.</em></p>"
+    text = md.read_text()
     text = re.sub(r"```mermaid\n.+?\n```", "<!-- mermaid rendered as SVG above -->", text, flags=re.DOTALL)
     return markdown.markdown(text, extensions=["fenced_code", "tables", "toc", "sane_lists"])
 
-def build_section(folder_name: str, demos_folder: Path) -> str:
-    parts = [CSS]
-    # Banner with run instructions
-    parts.append(BANNER.format(folder=folder_name))
+def slug_for(url: str, idx: int) -> str:
+    """Match the slug rules used by fetch-external-images.py."""
+    name = url.rsplit("/", 1)[-1]
+    if "." not in name: return f"{idx:02d}-img"
+    stem, ext = name.rsplit(".", 1)
+    if "-" in stem and len(stem.split("-")[-1]) == 32:
+        stem = "-".join(stem.split("-")[:-1])
+    return f"{idx:02d}-{stem}.{ext.lower()}"
 
-    # Live GIF
-    gif = demos_folder / "diagrams" / "demo.gif"
+def build_section(folder_name: str, demos_folder: Path, externals: list) -> str:
+    parts = [CSS, BANNER.format(folder=folder_name)]
+
+    gif = ASSETS / folder_name / "demo.gif"
     if gif.exists():
-        parts.append(GIF_CARD.format(prefix=ASSET_PREFIX, folder=folder_name, size_kb=gif.stat().st_size // 1024))
+        parts.append(GIF_CARD.format(folder=folder_name, size_kb=gif.stat().st_size // 1024))
 
-    # Animated SVGs
     anim, mermaid = diagram_files(demos_folder)
     if anim:
         parts.append(ANIM_CARD_HEADER)
         for f in anim:
-            parts.append(ANIM_FIGURE.format(
-                prefix=ASSET_PREFIX, folder=folder_name, filename=f.name,
-                caption=caption_from_filename(f.stem),
-            ))
+            parts.append(ANIM_FIGURE.format(folder=folder_name, filename=f.name,
+                                             caption=caption_from_filename(f.stem)))
         parts.append(ANIM_CARD_FOOTER)
 
     if mermaid:
         parts.append(DIAG_CARD_HEADER)
         for f in mermaid:
-            parts.append(DIAG_FIGURE.format(
-                prefix=ASSET_PREFIX, folder=folder_name, filename=f.name,
-                caption=caption_from_filename(f.stem),
-            ))
+            parts.append(DIAG_FIGURE.format(folder=folder_name, filename=f.name,
+                                             caption=caption_from_filename(f.stem)))
         parts.append(DIAG_CARD_FOOTER)
 
-    # README rendered to HTML
-    parts.append(README_CARD.format(readme_html=load_readme_as_html(demos_folder)))
+    if externals:
+        parts.append(EXT_CARD_HEADER)
+        for i, (url, caption, src_url, src_name) in enumerate(externals, 1):
+            parts.append(EXT_FIGURE.format(
+                folder=folder_name, filename=slug_for(url, i),
+                caption=caption, src_page=src_url, src_name=src_name,
+            ))
+        parts.append(EXT_CARD_FOOTER)
 
+    parts.append(README_CARD.format(readme_html=load_readme_as_html(demos_folder)))
     return "\n".join(parts)
 
-
 def main():
+    ASSETS.mkdir(exist_ok=True)
+    externals = json.loads(EXTERNAL_SPEC.read_text()) if EXTERNAL_SPEC.exists() else {}
+
     for html_name, demo_dir in MAP:
         html_path = CONTENT / html_name
         demos_folder = DEMOS / demo_dir
-        if not html_path.exists():
-            print(f"  ✗ {html_name} (missing)"); continue
-        if not demos_folder.exists():
-            print(f"  ✗ {html_name} (no demo folder)"); continue
+        if not html_path.exists() or not demos_folder.exists():
+            print(f"  ✗ skip {html_name}"); continue
 
-        # Stage assets next to the HTML
-        # Build the new section and inject before </body>
-        section = build_section(demo_dir, demos_folder)
+        stage_assets(demos_folder, demo_dir)
+
+        section = build_section(demo_dir, demos_folder, externals.get(demo_dir, []))
         text = html_path.read_text()
 
-        # Strip prior demo-callout block (the simple one) if present
-        text = re.sub(
-            r'<!-- demo-callout:.*?</div>\n</div>\n</div>\n',
-            "",
-            text,
-            count=1,
-            flags=re.DOTALL,
-        )
-        # Strip prior handsOn block on re-runs
-        text = re.sub(
-            r"<style>\n\.handsOn .+?</style>",
-            "",
-            text,
-            flags=re.DOTALL,
-        )
-        text = re.sub(
-            r'<div class="handsOn".*?</div>\s*</div>\s*</div>\s*',
-            "",
-            text,
-            flags=re.DOTALL,
-        )
-        # Inject at the end, before </body>
+        # Wipe prior demo-callout block (very old format)
+        text = re.sub(r'<!-- demo-callout:.*?</div>\s*</div>\s*</div>\s*', "",
+                       text, count=1, flags=re.DOTALL)
+        # Wipe prior <style>.handsOn ...</style> block(s)
+        text = re.sub(r"<style>\s*\.handsOn .+?</style>", "", text, flags=re.DOTALL)
+        # Wipe prior handsOn cards
+        text = re.sub(r'<div class="handsOn">.*?</div>\s*</div>\s*',
+                      "", text, flags=re.DOTALL)
+
         if "</body>" in text:
             text = text.replace("</body>", section + "\n</body>", 1)
         else:

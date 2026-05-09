@@ -1274,608 +1274,11 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
 
 
 
-<div class="handsOn">
-  <div class="handsOn-card">
-    <h2>📚 Full module reference</h2>
-    <h1 id="module-3-sharding-distributed-tables">Module 3 — Sharding &amp; Distributed Tables</h1>
-<blockquote>
-<p><strong>Audience:</strong> anyone scaling ClickHouse beyond one node. <strong>Prerequisites:</strong>
-Modules 1–2. <strong>Time:</strong> ~75 min reading + 30 min hands-on.</p>
-</blockquote>
-<p>By the end you will be able to:</p>
-<ul>
-<li>Read a <code>&lt;remote_servers&gt;</code> config and translate it into capacity.</li>
-<li>Pick a sharding key that gives even distribution <em>and</em> useful locality.</li>
-<li>Distinguish <code>internal_replication = true</code> vs <code>false</code> and know when to
-  use each.</li>
-<li>Trace an INSERT through the Distributed engine to the right shard.</li>
-<li>Trace a SELECT through scatter→gather over a Distributed table.</li>
-<li>Use weighted shards to handle heterogeneous fleets.</li>
-</ul>
-<hr />
-<h2 id="1-why-shard">1. Why shard?</h2>
-<p>A single ClickHouse node fits a remarkable amount of data — many teams
-run a single-node setup well into the <strong>multi-TB</strong> range. You shard when:</p>
-<table>
-<thead>
-<tr>
-<th>Reason</th>
-<th>Symptom</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Data exceeds disk capacity</td>
-<td><code>du -sh /var/lib/clickhouse</code> approaches the disk limit.</td>
-</tr>
-<tr>
-<td>Query CPU saturated on one box</td>
-<td><code>system.metrics.Query</code> always at the thread limit.</td>
-</tr>
-<tr>
-<td>Background merges can't keep up</td>
-<td><code>Too many parts</code> errors despite batched inserts.</td>
-</tr>
-<tr>
-<td>Network ingress &gt; one NIC</td>
-<td>INSERT throughput pegged at the NIC's line rate.</td>
-</tr>
-</tbody>
-</table>
-<p>If none of these are true: don't shard yet. A shard adds complexity to
-DDL, queries, and operations.</p>
-<hr />
-<h2 id="2-the-cluster-shape-used-by-every-cluster-module-in-this-repo">2. The cluster shape used by every cluster module in this repo</h2>
-<!-- mermaid rendered as SVG above -->
-
-<p><strong>3 shards × 2 replicas = 6 ClickHouse processes + 3 ZooKeeper.</strong> Every
-shard's two replicas hold identical data. Different shards hold <em>different</em>
-data, partitioned by the <strong>sharding key</strong>.</p>
-<hr />
-<h2 id="3-the-two-table-pattern">3. The two-table pattern</h2>
-<p>A sharded table is <strong>two tables</strong>, both created on every node:</p>
-<table>
-<thead>
-<tr>
-<th>Table</th>
-<th>Engine</th>
-<th>Where</th>
-<th>Purpose</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>hits_local</code></td>
-<td><code>ReplicatedMergeTree</code></td>
-<td>physical, on each replica</td>
-<td>Actually stores the rows.</td>
-</tr>
-<tr>
-<td><code>hits_distributed</code></td>
-<td><code>Distributed</code></td>
-<td>logical, on each replica</td>
-<td>Fans inserts/reads across shards.</td>
-</tr>
-</tbody>
-</table>
-<pre><code class="language-sql">-- Created ONCE with ON CLUSTER, materialised on every node.
-CREATE TABLE hits_local ON CLUSTER clickhouse_cluster (
-    event_time DateTime,
-    user_id    UInt64,
-    country    LowCardinality(String),
-    bytes      UInt32
-)
-ENGINE = ReplicatedMergeTree(
-    '/clickhouse/tables/{shard}/hits_local',  -- ZK path: per-shard
-    '{replica}'                                -- replica id within the shard
-)
-PARTITION BY toYYYYMM(event_time)
-ORDER BY (user_id, event_time);
-
-CREATE TABLE hits_distributed ON CLUSTER clickhouse_cluster
-AS hits_local
-ENGINE = Distributed(
-    'clickhouse_cluster',     -- cluster name from &lt;remote_servers&gt;
-    default,                  -- target database
-    hits_local,               -- target table
-    cityHash64(user_id)       -- sharding key
-);
-</code></pre>
-<p><strong><code>{shard}</code> and <code>{replica}</code> are macros</strong>, expanded per-node from
-<code>configs/macros/macros-sNrM.xml</code> (Module 4 dives into this).</p>
-<hr />
-<h2 id="4-the-cluster-config-remote_servers">4. The cluster config — <code>&lt;remote_servers&gt;</code></h2>
-<p>This is the source of truth for "what's a shard, what's a replica":</p>
-<pre><code class="language-xml">&lt;remote_servers&gt;
-    &lt;clickhouse_cluster&gt;
-        &lt;shard&gt;
-            &lt;internal_replication&gt;true&lt;/internal_replication&gt;
-            &lt;replica&gt;&lt;host&gt;m3-s1r1&lt;/host&gt;&lt;port&gt;9000&lt;/port&gt;&lt;/replica&gt;
-            &lt;replica&gt;&lt;host&gt;m3-s1r2&lt;/host&gt;&lt;port&gt;9000&lt;/port&gt;&lt;/replica&gt;
-        &lt;/shard&gt;
-        &lt;shard&gt;
-            &lt;internal_replication&gt;true&lt;/internal_replication&gt;
-            &lt;replica&gt;&lt;host&gt;m3-s2r1&lt;/host&gt;&lt;port&gt;9000&lt;/port&gt;&lt;/replica&gt;
-            &lt;replica&gt;&lt;host&gt;m3-s2r2&lt;/host&gt;&lt;port&gt;9000&lt;/port&gt;&lt;/replica&gt;
-        &lt;/shard&gt;
-        &lt;shard&gt;
-            &lt;internal_replication&gt;true&lt;/internal_replication&gt;
-            &lt;replica&gt;&lt;host&gt;m3-s3r1&lt;/host&gt;&lt;port&gt;9000&lt;/port&gt;&lt;/replica&gt;
-            &lt;replica&gt;&lt;host&gt;m3-s3r2&lt;/host&gt;&lt;port&gt;9000&lt;/port&gt;&lt;/replica&gt;
-        &lt;/shard&gt;
-    &lt;/clickhouse_cluster&gt;
-&lt;/remote_servers&gt;
-</code></pre>
-<table>
-<thead>
-<tr>
-<th>Element</th>
-<th>Effect</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>&lt;shard&gt;</code></td>
-<td>Defines a shard. Order matters — first <code>&lt;shard&gt;</code> is shard 1.</td>
-</tr>
-<tr>
-<td><code>&lt;replica&gt;</code></td>
-<td>One CH process within the shard. All replicas of a shard hold identical data.</td>
-</tr>
-<tr>
-<td><code>&lt;weight&gt;</code> (optional)</td>
-<td>Default 1. Higher weight = bigger share of new inserts. See §8.</td>
-</tr>
-<tr>
-<td><code>&lt;internal_replication&gt;</code></td>
-<td><strong>Critical knob.</strong> See §6.</td>
-</tr>
-<tr>
-<td><code>&lt;user&gt;</code> / <code>&lt;password&gt;</code></td>
-<td>Inter-server auth (if you set CH passwords).</td>
-</tr>
-</tbody>
-</table>
-<p>Read it with SQL:</p>
-<pre><code class="language-sql">SELECT cluster, shard_num, replica_num, host_name, port
-FROM system.clusters WHERE cluster = 'clickhouse_cluster'
-ORDER BY shard_num, replica_num;
-</code></pre>
-<hr />
-<h2 id="5-insert-lifecycle-what-happens-when-you-insert-into-a-distributed-table">5. INSERT lifecycle — what happens when you insert into a Distributed table</h2>
-<!-- mermaid rendered as SVG above -->
-
-<p>Key facts:</p>
-<ul>
-<li><strong>Distributed INSERT is asynchronous by default.</strong> The client gets an
-  ack once the row is on the initiator's local spool, <em>before</em> it's been
-  forwarded to each shard. Use <code>SYSTEM FLUSH DISTRIBUTED</code> to wait for
-  all forwards to land.</li>
-<li><strong>The initiator sends to <em>one</em> replica per shard</strong> when
-  <code>internal_replication = true</code>. That replica then replicates to its peer
-  via ZK + interserver port (Module 4).</li>
-<li><strong>The spool lives on disk</strong> under <code>data/&lt;db&gt;/&lt;distributed_table&gt;/&lt;shard&gt;/</code>.
-  If the initiator crashes, the spool survives.</li>
-</ul>
-<hr />
-<h2 id="6-internal_replication-the-most-confused-knob-in-ch">6. <code>internal_replication</code> — the most-confused knob in CH</h2>
-<p>Two modes, mutually exclusive at the cluster-config level:</p>
-<h3 id="mode-a-internal_replicationtrueinternal_replication-the-right-answer-99-of-the-time">Mode A — <code>&lt;internal_replication&gt;true&lt;/internal_replication&gt;</code> (the right answer 99% of the time)</h3>
-<p>The Distributed engine sends to <strong>one</strong> replica per shard. ReplicatedMergeTree
-takes care of replication via ZK.</p>
-<pre><code>INSERT → Distributed → pick one replica per shard
-                       ↓
-                       write to s1r1
-                       ↓
-                       s1r1 logs part in ZK
-                       ↓
-                       s1r2 fetches part from s1r1 via :9009
-</code></pre>
-<table>
-<thead>
-<tr>
-<th>Pro</th>
-<th>Con</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>One write per shard, not N.</td>
-<td>Requires <code>Replicated*MergeTree</code>.</td>
-</tr>
-<tr>
-<td>Inherits ZK consistency guarantees.</td>
-<td>Requires ZK to be healthy.</td>
-</tr>
-</tbody>
-</table>
-<h3 id="mode-b-internal_replicationfalseinternal_replication-legacy">Mode B — <code>&lt;internal_replication&gt;false&lt;/internal_replication&gt;</code> (legacy)</h3>
-<p>The Distributed engine sends to <strong>every</strong> replica per shard. The local
-table can be plain MergeTree.</p>
-<pre><code>INSERT → Distributed → write to s1r1 AND s1r2 in parallel
-</code></pre>
-<table>
-<thead>
-<tr>
-<th>Pro</th>
-<th>Con</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>No ZK dependency for replication.</td>
-<td>Network bandwidth = N×.</td>
-</tr>
-<tr>
-<td>Simpler local table engine.</td>
-<td>No deduplication; replicas can drift on partial fails.</td>
-</tr>
-</tbody>
-</table>
-<blockquote>
-<p><strong>Use <code>internal_replication=true</code></strong> with <code>ReplicatedMergeTree</code> everywhere.
-The non-replicated path is mostly historical and fragile.</p>
-</blockquote>
-<hr />
-<h2 id="7-select-lifecycle-scatter-gather">7. SELECT lifecycle — scatter / gather</h2>
-<!-- mermaid rendered as SVG above -->
-
-<ul>
-<li>The initiator picks <strong>one replica per shard</strong> for the read (load-balanced
-  via <code>&lt;load_balancing&gt;</code> setting, default <code>random</code>).</li>
-<li>Each shard runs a <strong>partial aggregation</strong> locally and sends the
-  intermediate result up. The initiator merges.</li>
-<li>For pre-filtered queries (<code>WHERE user_id = 42</code> with the demo's sharding
-  key), the planner narrows to <strong>a single shard</strong> — visible in <code>EXPLAIN</code>.</li>
-</ul>
-<hr />
-<h2 id="8-choosing-a-sharding-key">8. Choosing a sharding key</h2>
-<p>The sharding key is an arbitrary expression. The Distributed engine
-computes <code>key % total_weight</code> to pick a shard.</p>
-<table>
-<thead>
-<tr>
-<th>Key</th>
-<th>Distribution</th>
-<th>Locality</th>
-<th>Verdict for typical analytics</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>cityHash64(user_id)</code></td>
-<td>even</td>
-<td>all events for one user → one shard</td>
-<td><strong>Default choice.</strong></td>
-</tr>
-<tr>
-<td><code>xxHash64(user_id)</code></td>
-<td>even</td>
-<td>same as above; lower collision rate</td>
-<td>Fine alternative.</td>
-</tr>
-<tr>
-<td><code>intDiv(user_id, 100000)</code></td>
-<td>even (if user_ids dense)</td>
-<td>range scans on user_id stay shard-local</td>
-<td>Good when you query by user_id range</td>
-</tr>
-<tr>
-<td><code>rand()</code></td>
-<td>even</td>
-<td>none — every query fans to all shards</td>
-<td>Avoid unless you never filter by key</td>
-</tr>
-<tr>
-<td><code>cityHash64(toString(toDate(ts)))</code></td>
-<td>uneven (skews to today)</td>
-<td>recent reads scoped to one shard</td>
-<td>Time-skewed; hot-shard risk</td>
-</tr>
-<tr>
-<td><code>cityHash64(country)</code></td>
-<td>very uneven</td>
-<td>all rows for a country on one shard</td>
-<td>Avoid for high-skew dimensions</td>
-</tr>
-</tbody>
-</table>
-<h3 id="visual-the-same-data-four-sharding-keys">Visual: the same data, four sharding keys</h3>
-<pre><code>1M events with 250k distinct user_ids, 3 shards (weights 1,1,1):
-
-cityHash64(user_id):     shard 1: ████████████████  333k
-                          shard 2: ████████████████  334k
-                          shard 3: ████████████████  333k
-
-intDiv(user_id, 100000): shard 1: ████████████████  333k    (user_ids 0-99999 etc.)
-                          shard 2: ████████████████  333k
-                          shard 3: ████████████████  334k
-
-rand():                  shard 1: ████████████████  333k    (random — no locality)
-                          shard 2: ████████████████  334k
-                          shard 3: ████████████████  333k
-
-cityHash64(country):     shard 1: ██████████████████████████████  580k  (US + IN)
-                          shard 2: ████████  170k
-                          shard 3: ████████████  250k
-                          ▲ HOT SHARD — avoid
-</code></pre>
-<blockquote>
-<p><strong>Rule of thumb:</strong> the sharding key should be a <strong>stable, high-cardinality
-identifier</strong> that your queries already filter on (<code>user_id</code>, <code>account_id</code>,
-<code>device_id</code>). Time alone is a bad sharding key. Country alone is a bad
-sharding key.</p>
-</blockquote>
-<hr />
-<h2 id="9-weighted-shards-heterogeneous-capacity">9. Weighted shards — heterogeneous capacity</h2>
-<p>When one node is bigger than the others, set <code>&lt;weight&gt;</code> proportionally.</p>
-<pre><code class="language-xml">&lt;weighted_cluster&gt;
-    &lt;shard&gt;&lt;weight&gt;1&lt;/weight&gt; ... s1 hosts ... &lt;/shard&gt;
-    &lt;shard&gt;&lt;weight&gt;1&lt;/weight&gt; ... s2 hosts ... &lt;/shard&gt;
-    &lt;shard&gt;&lt;weight&gt;4&lt;/weight&gt; ... s3 hosts ... &lt;/shard&gt;   &lt;!-- beefy node --&gt;
-&lt;/weighted_cluster&gt;
-</code></pre>
-<p>The Distributed engine sums the weights and routes by <code>hash % total</code>.
-Above: <code>4/6 ≈ 67%</code> of inserts go to shard 3.</p>
-<p>The demo's <code>extras.sql</code> defines a <code>weighted_cluster</code> over the same hosts
-and shows the resulting per-shard balance.</p>
-<hr />
-<h2 id="10-other-table-functions-for-ad-hoc-cluster-queries">10. Other table functions for ad-hoc cluster queries</h2>
-<table>
-<thead>
-<tr>
-<th>Function</th>
-<th>Hits</th>
-<th>Use for</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>cluster('cluster_name', db, tbl)</code></td>
-<td>one replica per shard</td>
-<td>one-shot fan-out without a Distributed table</td>
-</tr>
-<tr>
-<td><code>clusterAllReplicas('...', db, tbl)</code></td>
-<td><strong>every replica of every shard</strong></td>
-<td>replica-equivalence checks, <em>never aggregations</em></td>
-</tr>
-<tr>
-<td><code>remote('host:port', db, tbl)</code></td>
-<td>one specific node</td>
-<td>cross-cluster spot queries</td>
-</tr>
-<tr>
-<td><code>remoteSecure(...)</code></td>
-<td>same, over TLS</td>
-<td>as above, in production</td>
-</tr>
-</tbody>
-</table>
-<p>Don't aggregate over <code>clusterAllReplicas</code> — you'll double-count.</p>
-<hr />
-<h2 id="11-the-hands-on-demo">11. The hands-on demo</h2>
-<h3 id="what-you-get">What you get</h3>
-<pre><code>docker-compose.yml          9 containers: 3 ZK + 6 ClickHouse, prefix m3-
-configs/cluster-node.xml    &lt;remote_servers&gt; + ZK + 2 cluster definitions
-configs/macros/macros-s{1-3}r{1-2}.xml   per-node {shard}/{replica}
-setup.sql · data.sql · queries.sql · extras.sql
-up.sh · run.sh · down.sh
-</code></pre>
-<h3 id="container-map">Container map</h3>
-<table>
-<thead>
-<tr>
-<th>Role</th>
-<th>Container</th>
-<th>Host HTTP</th>
-<th>Host TCP</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Shard 1 R1</td>
-<td><code>m3-s1r1</code></td>
-<td>8123</td>
-<td>9000</td>
-</tr>
-<tr>
-<td>Shard 1 R2</td>
-<td><code>m3-s1r2</code></td>
-<td>8124</td>
-<td>9001</td>
-</tr>
-<tr>
-<td>Shard 2 R1</td>
-<td><code>m3-s2r1</code></td>
-<td>8125</td>
-<td>9002</td>
-</tr>
-<tr>
-<td>Shard 2 R2</td>
-<td><code>m3-s2r2</code></td>
-<td>8126</td>
-<td>9003</td>
-</tr>
-<tr>
-<td>Shard 3 R1</td>
-<td><code>m3-s3r1</code></td>
-<td>8127</td>
-<td>9004</td>
-</tr>
-<tr>
-<td>Shard 3 R2</td>
-<td><code>m3-s3r2</code></td>
-<td>8128</td>
-<td>9005</td>
-</tr>
-<tr>
-<td>ZK 1/2/3</td>
-<td><code>m3-zk1/2/3</code></td>
-<td>(internal)</td>
-<td></td>
-</tr>
-</tbody>
-</table>
-<h3 id="execution-flow-what-runs-in-order">Execution flow — what runs, in order</h3>
-<table>
-<thead>
-<tr>
-<th>#</th>
-<th>Step</th>
-<th>What happens</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>0</td>
-<td>self-bootstrap</td>
-<td>If <code>m3-s1r1</code> doesn't respond to <code>/ping</code>, <code>up.sh</code> runs first. Tears down peer demo modules, brings up the cluster, waits for every CH node to answer <code>/ping</code>.</td>
-</tr>
-<tr>
-<td>1</td>
-<td><code>setup.sql</code> (via <code>m3-s1r1</code>)</td>
-<td>Three <code>ON CLUSTER</code> statements: drop any existing tables, then <code>CREATE TABLE hits_local … ReplicatedMergeTree('/clickhouse/tables/{shard}/hits_local', '{replica}')</code> on every node, then a <code>Distributed('clickhouse_cluster', default, hits_local, cityHash64(user_id))</code> wrapper. The <code>{shard}</code> and <code>{replica}</code> macros are expanded per-node.</td>
-</tr>
-<tr>
-<td>2</td>
-<td><code>data.sql</code> (via <code>m3-s1r1</code>)</td>
-<td>One <code>INSERT INTO hits_distributed SELECT FROM numbers(5_000_000)</code>. The Distributed table fans rows to the right <code>hits_local</code> based on <code>cityHash64(user_id) % 3</code>.</td>
-</tr>
-<tr>
-<td>3</td>
-<td><code>SYSTEM FLUSH DISTRIBUTED</code> × 6</td>
-<td>Distributed inserts spool briefly on each node. Flushed on every replica so the next counts are exact.</td>
-</tr>
-<tr>
-<td>4</td>
-<td><code>queries.sql</code></td>
-<td>Six queries: cluster topology, total rows, per-shard breakdown, replica equivalence, country aggregation, EXPLAIN, single-shard point lookup.</td>
-</tr>
-<tr>
-<td>5</td>
-<td><code>extras.sql</code></td>
-<td>Sets up <code>weighted_cluster</code> (weights 1,1,4) → 600k row insert → per-shard balance (~66% on shard 3). Then three more Distributed tables with alternative sharding keys (<code>rand()</code>, <code>intDiv()</code>, <code>xxHash64()</code>) and <code>EXPLAIN</code> for each.</td>
-</tr>
-</tbody>
-</table>
-<h3 id="what-to-look-for">What to look for</h3>
-<table>
-<thead>
-<tr>
-<th>Step</th>
-<th>Outcome</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>system.clusters</code></td>
-<td>3 shards × 2 replicas, all <code>errors_count = 0</code>.</td>
-</tr>
-<tr>
-<td>Per-shard count</td>
-<td>~1.67M rows each (5M / 3 with <code>cityHash64</code>).</td>
-</tr>
-<tr>
-<td>Replica equivalence (s1)</td>
-<td>r1 and r2 have <strong>identical</strong> byte counts.</td>
-</tr>
-<tr>
-<td><code>EXPLAIN … WHERE user_id = 42</code></td>
-<td>Plan shows query goes to <strong>one</strong> shard.</td>
-</tr>
-<tr>
-<td>Weighted cluster balance</td>
-<td>~100k / 100k / 400k (shard 3 has 4× weight).</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="12-operational-sql-cheatsheet">12. Operational SQL cheatsheet</h2>
-<pre><code class="language-sql">-- &quot;Is the cluster healthy?&quot;
-SELECT cluster, shard_num, replica_num, host_name, errors_count, slowdowns_count
-FROM system.clusters WHERE cluster = 'clickhouse_cluster';
-
--- &quot;How many rows on each shard, right now?&quot;
-SELECT shardNum() AS shard, count() AS rows
-FROM clusterAllReplicas('clickhouse_cluster', default, hits_local)
-GROUP BY shard ORDER BY shard;
-
--- &quot;What's pending in the distributed spool?&quot;
-SELECT database, table, is_blocked, error_count, data_files, data_compressed_bytes
-FROM system.distribution_queue;
-
--- &quot;What did this query actually do?&quot;
-EXPLAIN SELECT count() FROM hits_distributed WHERE user_id = 42;
-</code></pre>
-<hr />
-<h2 id="13-common-pitfalls">13. Common pitfalls</h2>
-<table>
-<thead>
-<tr>
-<th>Symptom</th>
-<th>Cause</th>
-<th>Fix</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>One shard has 4× the rows of others</td>
-<td>High-skew sharding key (e.g. <code>country</code>).</td>
-<td>Re-shard with a high-cardinality key or use a composite expression.</td>
-</tr>
-<tr>
-<td><code>INSERT INTO hits_distributed</code> returns immediately, but <code>SELECT count()</code> is short</td>
-<td>Spool not yet flushed.</td>
-<td><code>SYSTEM FLUSH DISTRIBUTED &lt;table&gt;</code> on every node.</td>
-</tr>
-<tr>
-<td>Replicas on the same shard disagree on row count</td>
-<td><code>internal_replication = false</code> + a partial-failure write.</td>
-<td>Switch to <code>internal_replication = true</code> and <code>ReplicatedMergeTree</code>.</td>
-</tr>
-<tr>
-<td><code>EXPLAIN</code> shows scatter even though <code>WHERE</code> filters by sharding key</td>
-<td>The planner couldn't statically prove the filter narrows to one shard.</td>
-<td>Filter must be on the <strong>exact column expression</strong> of the sharding key.</td>
-</tr>
-<tr>
-<td>ON CLUSTER DDL hangs</td>
-<td><code>distributed_ddl_task_timeout</code> exceeded; one node unhealthy.</td>
-<td>Check <code>system.distributed_ddl_queue.exception_text</code>; fix the unhealthy node.</td>
-</tr>
-<tr>
-<td>Changing <code>&lt;remote_servers&gt;</code> doesn't take effect</td>
-<td>XML reloads on file change; if it didn't, you may have a parse error.</td>
-<td><code>SELECT * FROM system.clusters</code> to confirm; check server log for parse errors.</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="14-talking-points-for-the-live-session">14. Talking points for the live session</h2>
-<ol>
-<li><strong>Sharding ≠ partitioning.</strong> Walk through the layered mental model:
-   <em>cluster → shard → replica → partition → part → granule.</em></li>
-<li><strong>Sharding key = locality + uniformity.</strong> Show why <code>country</code> is bad
-   (skew) and <code>cityHash64(user_id)</code> is good (even, but stable).</li>
-<li><strong><code>internal_replication</code> is the knob most teams get wrong.</strong> Show
-   the two flow diagrams and recommend <code>true</code> + Replicated.</li>
-<li><strong><code>SYSTEM FLUSH DISTRIBUTED</code></strong> isn't optional in tests — it's the
-   reason your CI's flaky.</li>
-<li><strong>Weighted shards</strong> for heterogeneous fleets. Demo the 1/1/4 cluster
-   and <code>system.clusters.weight</code>.</li>
-<li><strong>Resharding is a project, not a setting.</strong> Use <code>clickhouse-copier</code>
-   or write to a parallel cluster with the new key, then cut over.</li>
-</ol>
-<hr />
-<h2 id="15-going-deeper">15. Going deeper</h2>
-<ul>
-<li><strong>Module 4</strong> — what ZK actually does for replication, with kill-replica drills.</li>
-<li><strong>Module 5</strong> — <code>ON CLUSTER</code> DDL, distributed query plans, <code>cluster()</code> table function.</li>
-<li><strong>Module 8</strong> — disaster recovery on this same cluster.</li>
-</ul>
-  </div>
 </div>
+
+
+</div>
+
 
 
 <style>
@@ -1887,9 +1290,7 @@ EXPLAIN SELECT count() FROM hits_distributed WHERE user_id = 42;
   background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 28px 32px; margin-bottom: 24px;
 }
-.handsOn-card h2 {
-  margin: 0 0 8px 0; font-size: 1.6em; color: #0f172a;
-}
+.handsOn-card h2 { margin: 0 0 8px 0; font-size: 1.6em; color: #0f172a; }
 .handsOn-card h3 {
   margin: 24px 0 8px 0; font-size: 1.2em; color: #1a4480;
   border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;
@@ -1918,27 +1319,31 @@ EXPLAIN SELECT count() FROM hits_distributed WHERE user_id = 42;
   padding: 28px 32px; border-radius: 12px; margin-bottom: 20px;
 }
 .handsOn-banner h2 { color: white; margin: 0 0 8px 0; }
-.handsOn-banner code {
-  background: rgba(0,0,0,0.25); color: #f1f5f9;
-}
-.handsOn-banner pre {
-  background: rgba(0,0,0,0.30); color: #f1f5f9;
-}
+.handsOn-banner code { background: rgba(0,0,0,0.25); color: #f1f5f9; }
+.handsOn-banner pre  { background: rgba(0,0,0,0.30); color: #f1f5f9; }
 .handsOn-figure {
   margin: 16px 0; padding: 12px; background: #f8fafc;
   border: 1px solid #e2e8f0; border-radius: 8px; text-align: center;
 }
-.handsOn-figure img, .handsOn-figure object {
-  max-width: 100%; height: auto; border-radius: 4px;
+.handsOn-figure img {
+  max-width: 100%; height: auto; border-radius: 4px; display: inline-block;
 }
 .handsOn-figure figcaption {
   margin-top: 8px; color: #475569; font-size: 0.9em; font-style: italic;
+}
+.handsOn-figure figcaption a {
+  color: #1a4480; text-decoration: none; border-bottom: 1px dotted #94a3b8;
 }
 .handsOn-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
   gap: 16px; margin: 12px 0;
 }
 .handsOn-card a { color: #1a4480; }
+.handsOn-source-tag {
+  display: inline-block; background: #e0f2fe; color: #075985;
+  padding: 2px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 600;
+  margin-right: 6px;
+}
 </style>
 
 
@@ -1959,8 +1364,8 @@ EXPLAIN SELECT count() FROM hits_distributed WHERE user_id = 42;
     <h2>📺 Live demo capture</h2>
     <p>Recorded with <a href="https://github.com/charmbracelet/vhs" target="_blank" rel="noopener">vhs</a>: the actual terminal output from <code>./run.sh</code> running on this very stack.</p>
     <figure class="handsOn-figure">
-      <img src="../code-examples/demos/module-3-sharding/diagrams/demo.gif" alt="Module demo GIF" loading="lazy">
-      <figcaption>Click to view full-size. Animated GIF, ~1160 KB.</figcaption>
+      <img src="demo-assets/module-3-sharding/demo.gif" alt="Module demo GIF" loading="lazy">
+      <figcaption>Animated GIF, ~1160 KB. Right-click → open in new tab to view full-size.</figcaption>
     </figure>
   </div>
 </div>
@@ -1974,10 +1379,9 @@ EXPLAIN SELECT count() FROM hits_distributed WHERE user_id = 42;
 
 
       <figure class="handsOn-figure">
-        <object type="image/svg+xml" data="../code-examples/demos/module-3-sharding/diagrams/anim-sharding-fanout.svg" aria-label="Sharding fanout"></object>
+        <img src="demo-assets/module-3-sharding/anim-sharding-fanout.svg" alt="Sharding fanout" loading="lazy">
         <figcaption>Sharding fanout</figcaption>
       </figure>
-
 
     </div>
   </div>
@@ -1987,33 +1391,98 @@ EXPLAIN SELECT count() FROM hits_distributed WHERE user_id = 42;
 <div class="handsOn">
   <div class="handsOn-card">
     <h2>🗂️ Architecture diagrams</h2>
-    <p>Rendered from the README's Mermaid sources. Static, but click any to view the source SVG full-size.</p>
+    <p>Rendered from the README's Mermaid sources. Click any to open the source SVG full-size.</p>
     <div class="handsOn-grid">
 
 
       <figure class="handsOn-figure">
-        <a href="../code-examples/demos/module-3-sharding/diagrams/01-flowchart-subgraph-zk-zookeeper-keeper-ensemble-3-.svg" target="_blank" rel="noopener">
-          <img src="../code-examples/demos/module-3-sharding/diagrams/01-flowchart-subgraph-zk-zookeeper-keeper-ensemble-3-.svg" alt="Subgraph zk zookeeper keeper ensemble 3" loading="lazy">
+        <a href="demo-assets/module-3-sharding/01-flowchart-subgraph-zk-zookeeper-keeper-ensemble-3-.svg" target="_blank" rel="noopener">
+          <img src="demo-assets/module-3-sharding/01-flowchart-subgraph-zk-zookeeper-keeper-ensemble-3-.svg" alt="Subgraph zk zookeeper keeper ensemble 3" loading="lazy">
         </a>
         <figcaption>Subgraph zk zookeeper keeper ensemble 3</figcaption>
       </figure>
 
 
       <figure class="handsOn-figure">
-        <a href="../code-examples/demos/module-3-sharding/diagrams/02-sequencediagram-actor-client.svg" target="_blank" rel="noopener">
-          <img src="../code-examples/demos/module-3-sharding/diagrams/02-sequencediagram-actor-client.svg" alt="Actor client" loading="lazy">
+        <a href="demo-assets/module-3-sharding/02-sequencediagram-actor-client.svg" target="_blank" rel="noopener">
+          <img src="demo-assets/module-3-sharding/02-sequencediagram-actor-client.svg" alt="Actor client" loading="lazy">
         </a>
         <figcaption>Actor client</figcaption>
       </figure>
 
 
       <figure class="handsOn-figure">
-        <a href="../code-examples/demos/module-3-sharding/diagrams/03-sequencediagram-actor-client.svg" target="_blank" rel="noopener">
-          <img src="../code-examples/demos/module-3-sharding/diagrams/03-sequencediagram-actor-client.svg" alt="Actor client" loading="lazy">
+        <a href="demo-assets/module-3-sharding/03-sequencediagram-actor-client.svg" target="_blank" rel="noopener">
+          <img src="demo-assets/module-3-sharding/03-sequencediagram-actor-client.svg" alt="Actor client" loading="lazy">
         </a>
         <figcaption>Actor client</figcaption>
       </figure>
 
+    </div>
+  </div>
+</div>
+
+
+<div class="handsOn">
+  <div class="handsOn-card">
+    <h2>📚 ClickHouse reference visuals</h2>
+    <p>Curated from the official ClickHouse documentation and engineering blog (and Altinity's docs/blog) — the same diagrams the broader CH community uses to explain these concepts. Click any image to read the source.</p>
+    <div class="handsOn-grid">
+
+
+      <figure class="handsOn-figure">
+        <a href="https://clickhouse.com/docs/shards" target="_blank" rel="noopener">
+          <img src="demo-assets/module-3-sharding/external/01-shards_01.d4e7304.2048.png" alt="A single MergeTree table that has outgrown one server" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">ClickHouse Docs</span>
+          A single MergeTree table that has outgrown one server
+        </figcaption>
+      </figure>
+
+
+      <figure class="handsOn-figure">
+        <a href="https://clickhouse.com/docs/shards" target="_blank" rel="noopener">
+          <img src="demo-assets/module-3-sharding/external/02-shards_02.3545790.2048.png" alt="Table data split into shards across multiple servers" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">ClickHouse Docs</span>
+          Table data split into shards across multiple servers
+        </figcaption>
+      </figure>
+
+
+      <figure class="handsOn-figure">
+        <a href="https://clickhouse.com/docs/shards" target="_blank" rel="noopener">
+          <img src="demo-assets/module-3-sharding/external/03-shards_03.5e1b1d8.2048.png" alt="INSERT into a Distributed table: rows routed to target shards" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">ClickHouse Docs</span>
+          INSERT into a Distributed table: rows routed to target shards
+        </figcaption>
+      </figure>
+
+
+      <figure class="handsOn-figure">
+        <a href="https://clickhouse.com/docs/shards" target="_blank" rel="noopener">
+          <img src="demo-assets/module-3-sharding/external/04-shards_04.8cfec0a.2048.png" alt="SELECT fan-out: query forwarded to all shards, results merged" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">ClickHouse Docs</span>
+          SELECT fan-out: query forwarded to all shards, results merged
+        </figcaption>
+      </figure>
+
+
+      <figure class="handsOn-figure">
+        <a href="https://clickhouse.com/docs/architecture/horizontal-scaling" target="_blank" rel="noopener">
+          <img src="demo-assets/module-3-sharding/external/05-sharding.76114bc.1024.png" alt="Horizontal scaling via sharding (architecture overview)" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">ClickHouse Docs</span>
+          Horizontal scaling via sharding (architecture overview)
+        </figcaption>
+      </figure>
 
     </div>
   </div>

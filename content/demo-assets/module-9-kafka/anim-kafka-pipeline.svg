@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 360" width="800" height="360" font-family="ui-monospace, Menlo, monospace" font-size="13">
+  <defs>
+    <linearGradient id="ch" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#1a4480"/>
+    </linearGradient>
+  </defs>
+
+  <text x="400" y="24" text-anchor="middle" font-size="16" font-weight="bold" fill="#0f172a">
+    Kafka → ClickHouse pipeline with DLQ
+  </text>
+  <text x="400" y="46" text-anchor="middle" fill="#475569">
+    one read of the topic, three durable destinations
+  </text>
+
+  <!-- Producer -->
+  <g>
+    <rect x="20" y="100" width="120" height="60" rx="8" fill="#0f766e"/>
+    <text x="80" y="125" text-anchor="middle" fill="white">Producer</text>
+    <text x="80" y="145" text-anchor="middle" fill="white" font-size="11">JSON events</text>
+  </g>
+
+  <!-- Kafka topic -->
+  <g>
+    <rect x="200" y="100" width="120" height="60" rx="8" fill="#dc2626"/>
+    <text x="260" y="125" text-anchor="middle" fill="white">Kafka topic</text>
+    <text x="260" y="145" text-anchor="middle" fill="white" font-size="11">events / 3 partitions</text>
+  </g>
+
+  <!-- Kafka engine table -->
+  <g>
+    <rect x="380" y="80" width="160" height="100" rx="8" fill="url(#ch)"/>
+    <text x="460" y="105" text-anchor="middle" fill="white" font-weight="bold">events_kafka_safe</text>
+    <text x="460" y="125" text-anchor="middle" fill="white" font-size="11">Kafka engine</text>
+    <text x="460" y="142" text-anchor="middle" fill="white" font-size="11">handle_error_mode</text>
+    <text x="460" y="159" text-anchor="middle" fill="white" font-size="11">= 'stream'</text>
+  </g>
+
+  <!-- Three destinations -->
+  <g>
+    <rect x="600" y="40" width="180" height="50" rx="6" fill="url(#ch)"/>
+    <text x="690" y="60" text-anchor="middle" fill="white">events_safe</text>
+    <text x="690" y="76" text-anchor="middle" fill="white" font-size="11">MergeTree (good rows)</text>
+
+    <rect x="600" y="105" width="180" height="50" rx="6" fill="url(#ch)"/>
+    <text x="690" y="125" text-anchor="middle" fill="white">events_unique</text>
+    <text x="690" y="141" text-anchor="middle" fill="white" font-size="11">Replacing (dedup)</text>
+
+    <rect x="600" y="170" width="180" height="50" rx="6" fill="#7f1d1d"/>
+    <text x="690" y="190" text-anchor="middle" fill="white">events_dlq</text>
+    <text x="690" y="206" text-anchor="middle" fill="white" font-size="11">bad rows + offset</text>
+  </g>
+
+  <!-- Lines -->
+  <line x1="140" y1="130" x2="200" y2="130" stroke="#0f172a" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="320" y1="130" x2="380" y2="130" stroke="#0f172a" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="540" y1="100" x2="600" y2="60"  stroke="#94a3b8" stroke-width="1" stroke-dasharray="4 3"/>
+  <line x1="540" y1="130" x2="600" y2="130" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4 3"/>
+  <line x1="540" y1="160" x2="600" y2="195" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4 3"/>
+
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#0f172a"/>
+    </marker>
+  </defs>
+
+  <!-- Animated message flow -->
+  <g>
+    <!-- Good messages (green) reaching events_safe and events_unique -->
+    <circle r="5" fill="#22c55e">
+      <animateMotion dur="3s" repeatCount="indefinite" path="M 80 130 L 260 130 L 460 130 L 690 60"/>
+    </circle>
+    <circle r="5" fill="#22c55e">
+      <animateMotion dur="3s" begin="0.6s" repeatCount="indefinite" path="M 80 130 L 260 130 L 460 130 L 690 130"/>
+    </circle>
+    <circle r="5" fill="#22c55e">
+      <animateMotion dur="3s" begin="1.2s" repeatCount="indefinite" path="M 80 130 L 260 130 L 460 130 L 690 60"/>
+    </circle>
+    <!-- Bad message (red) going to DLQ -->
+    <circle r="5" fill="#dc2626">
+      <animateMotion dur="3s" begin="1.8s" repeatCount="indefinite" path="M 80 130 L 260 130 L 460 130 L 690 195"/>
+    </circle>
+  </g>
+
+  <!-- Legend -->
+  <g transform="translate(60,260)">
+    <circle cx="6" cy="6" r="6" fill="#22c55e"/>
+    <text x="20" y="10" fill="#0f172a">good message → events_safe / events_unique</text>
+    <circle cx="6" cy="30" r="6" fill="#dc2626"/>
+    <text x="20" y="34" fill="#0f172a">bad JSON → events_dlq (with topic / partition / offset)</text>
+  </g>
+
+  <text x="400" y="335" text-anchor="middle" fill="#475569" font-size="11">
+    The MV layer is the durability boundary. Drop the MV → consumed messages are discarded.
+  </text>
+</svg>

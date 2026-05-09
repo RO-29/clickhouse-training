@@ -1,0 +1,62 @@
+{
+  "module-1-fundamentals": [
+    ["https://clickhouse.com/docs/assets/images/row-oriented-3e6fd5aa48e3075202d242b4799da8fa.gif", "Animated row-oriented storage layout (data laid out per-row)", "https://clickhouse.com/docs/faq/general/columnar-database", "ClickHouse Docs"],
+    ["https://clickhouse.com/docs/assets/images/column-oriented-d082e49b7743d4ded32c7952bfdb028f.gif", "Animated columnar storage layout (data laid out per-column)", "https://clickhouse.com/docs/faq/general/columnar-database", "ClickHouse Docs"],
+    ["https://clickhouse.com/uploads/eng_resource_0_columnstore_1c09a6321a.png", "Row store vs column store: how the same table is physically laid out", "https://clickhouse.com/resources/engineering/what-is-columnar-database", "ClickHouse Engineering"],
+    ["https://clickhouse.com/uploads/eng_resource_1_columnstore_d112ba4cd7.png", "Why columns compress better than rows", "https://clickhouse.com/resources/engineering/what-is-columnar-database", "ClickHouse Engineering"],
+    ["https://clickhouse.com/uploads/eng_resource_2_columnstore_b1ea68941f.png", "Columnar layout enables vectorised execution over batches", "https://clickhouse.com/resources/engineering/what-is-columnar-database", "ClickHouse Engineering"]
+  ],
+  "module-2-table-engines": [
+    ["https://clickhouse.com/docs/assets/ideal-img/part.323bb36.2048.png", "Anatomy of a MergeTree data part on disk (granules, marks, columns)", "https://clickhouse.com/docs/parts", "ClickHouse Docs"],
+    ["https://clickhouse.com/docs/assets/ideal-img/merges.97e3801.2048.png", "Background merges combine smaller parts into larger sorted parts", "https://clickhouse.com/docs/parts", "ClickHouse Docs"],
+    ["https://clickhouse.com/docs/assets/ideal-img/merges_01.b8362a5.2048.png", "Inserts produce immutable parts that get merged in the background", "https://clickhouse.com/docs/merges", "ClickHouse Docs"],
+    ["https://clickhouse.com/docs/assets/ideal-img/merges_03.41fedb7.2048.png", "Merge process: decompress, k-way merge, re-index, recompress", "https://clickhouse.com/docs/merges", "ClickHouse Docs"],
+    ["https://clickhouse.com/docs/assets/images/primary-index-light_01-5a18496d90cc75c60217aeb16d24b3ba.gif", "Sparse primary index: one mark per granule pointing into column files", "https://clickhouse.com/docs/primary-indexes", "ClickHouse Docs"],
+    ["https://clickhouse.com/docs/assets/images/primary-index-light_02-f88242b8a3446e5ad795f75f2cdaaff0.gif", "Granule pruning via the sparse primary index during query execution", "https://clickhouse.com/docs/primary-indexes", "ClickHouse Docs"]
+  ],
+  "module-3-sharding": [
+    ["https://clickhouse.com/docs/assets/ideal-img/shards_01.d4e7304.2048.png", "A single MergeTree table that has outgrown one server", "https://clickhouse.com/docs/shards", "ClickHouse Docs"],
+    ["https://clickhouse.com/docs/assets/ideal-img/shards_02.3545790.2048.png", "Table data split into shards across multiple servers", "https://clickhouse.com/docs/shards", "ClickHouse Docs"],
+    ["https://clickhouse.com/docs/assets/ideal-img/shards_03.5e1b1d8.2048.png", "INSERT into a Distributed table: rows routed to target shards", "https://clickhouse.com/docs/shards", "ClickHouse Docs"],
+    ["https://clickhouse.com/docs/assets/ideal-img/shards_04.8cfec0a.2048.png", "SELECT fan-out: query forwarded to all shards, results merged", "https://clickhouse.com/docs/shards", "ClickHouse Docs"],
+    ["https://clickhouse.com/docs/assets/ideal-img/sharding.76114bc.1024.png", "Horizontal scaling via sharding (architecture overview)", "https://clickhouse.com/docs/architecture/horizontal-scaling", "ClickHouse Docs"]
+  ],
+  "module-4-replication": [
+    ["https://clickhouse.com/docs/assets/ideal-img/replication.404e938.1024.png", "ReplicatedMergeTree replication coordinated through Keeper", "https://clickhouse.com/docs/architecture/replication", "ClickHouse Docs"],
+    ["https://clickhouse.com/uploads/smt_03_21a5b48f65.png", "ReplicatedMergeTree: each replica fetches new parts via Keeper log", "https://clickhouse.com/blog/clickhouse-cloud-boosts-performance-with-sharedmergetree-and-lightweight-updates", "ClickHouse Blog"],
+    ["https://clickhouse.com/uploads/smt_04_712af233a0.png", "Zero-copy replication: replicas share the same object-storage parts", "https://clickhouse.com/blog/clickhouse-cloud-boosts-performance-with-sharedmergetree-and-lightweight-updates", "ClickHouse Blog"],
+    ["https://systeminternals.dev/og/clickhouse-replicated-mergetree.png", "ZooKeeper coordination, deduplication and quorum writes (overview)", "https://systeminternals.dev/clickhouse/replicated-mergetree/", "Systems Explained"]
+  ],
+  "module-5-cluster-deploy": [
+    ["https://clickhouse.com/docs/assets/ideal-img/shards_replicas_01.f8da341.2048.png", "Sharded + replicated cluster (3 shards x 2 replicas) with Keeper", "https://clickhouse.com/docs/shards", "ClickHouse Docs"],
+    ["https://clickhouse.com/docs/assets/ideal-img/both.ab6f28d.1024.png", "Combined sharding and replication architecture", "https://clickhouse.com/docs/architecture/cluster-deployment", "ClickHouse Docs"],
+    ["https://clickhouse.com/uploads/smt_09_52c758d36c.png", "Shared-nothing cluster: 3 shards x 2 replicas (typical layout)", "https://clickhouse.com/blog/clickhouse-cloud-boosts-performance-with-sharedmergetree-and-lightweight-updates", "ClickHouse Blog"],
+    ["https://docs.altinity.com/images/operations/disasterrecovery/availabilityarchitecture.png", "Production HA architecture with replicas and Keeper ensemble", "https://docs.altinity.com/operationsguide/availability-and-recovery/availability-architecture/", "Altinity Docs"]
+  ],
+  "module-6-query-opt": [
+    ["https://clickhouse.com/docs/assets/images/query-parallelism_01-04167e71e6fb8ce3a9b12a2c11256d4a.gif", "Animated: query splits into parallel processing lanes per CPU core", "https://clickhouse.com/docs/optimize/query-parallelism", "ClickHouse Docs"],
+    ["https://clickhouse.com/docs/assets/images/query-parallelism_02-82fba4a0fd87b980b12a61b59f4533f4.gif", "Animated: vectorised pipeline pushing chunks through transforms", "https://clickhouse.com/docs/optimize/query-parallelism", "ClickHouse Docs"],
+    ["https://clickhouse.com/docs/assets/images/query-parallelism_04-fdd68c179689c7410287062a72440de8.gif", "Parallel replicas: query fans out across replicas of a shard", "https://clickhouse.com/docs/optimize/query-parallelism", "ClickHouse Docs"],
+    ["https://clickhouse.com/uploads/query_pipeline_5b4d07c2f6.png", "Processors-and-ports query pipeline (sources, transforms, sinks)", "https://clickhouse.com/blog/clickhouse-fully-supports-joins-hash-joins-part2", "ClickHouse Blog"],
+    ["https://clickhouse.com/uploads/pruning_001_767cab4175.png", "Index-based pruning: skip granules that cannot match the predicate", "https://clickhouse.com/blog/index-based-pruning", "ClickHouse Blog"],
+    ["https://clickhouse.com/uploads/Parallel_Replicas_001_99219ab333.png", "Parallel replicas coordinator distributing work across nodes", "https://clickhouse.com/blog/clickhouse-parallel-replicas", "ClickHouse Blog"],
+    ["https://clickhouse.com/uploads/M30_33ms_cd62cb2804.gif", "Animated GIF: parallel-replicas GROUP BY finishing in 33 ms", "https://clickhouse.com/blog/clickhouse-parallel-replicas", "ClickHouse Blog"]
+  ],
+  "module-7-backup": [
+    ["https://docs.altinity.com/images/operations/disasterrecovery/disasterrecoveryarchitecture_highres.png", "ClickHouse disaster-recovery architecture (primary + warm standby + backups)", "https://docs.altinity.com/operationsguide/availability-and-recovery/recovery-architecture/", "Altinity Docs"],
+    ["https://clickhouse.com/uploads/smt_04_712af233a0.png", "Object-storage-backed parts: backup is essentially a metadata snapshot", "https://clickhouse.com/blog/clickhouse-cloud-boosts-performance-with-sharedmergetree-and-lightweight-updates", "ClickHouse Blog"]
+  ],
+  "module-8-dr": [
+    ["https://docs.altinity.com/images/operations/disasterrecovery/availabilityarchitecture.png", "High-availability architecture: replicas + Keeper quorum", "https://docs.altinity.com/operationsguide/availability-and-recovery/availability-architecture/", "Altinity Docs"],
+    ["https://docs.altinity.com/images/operations/disasterrecovery/disasterrecoveryarchitecture_highres.png", "Cross-site DR with warm standby cluster and shared backups", "https://docs.altinity.com/operationsguide/availability-and-recovery/recovery-architecture/", "Altinity Docs"],
+    ["https://clickhouse.com/uploads/smt_03_21a5b48f65.png", "Replication keeps replicas in sync as the failover substrate for DR", "https://clickhouse.com/blog/clickhouse-cloud-boosts-performance-with-sharedmergetree-and-lightweight-updates", "ClickHouse Blog"]
+  ],
+  "module-9-kafka": [
+    ["https://clickhouse.com/uploads/mv_flow_044b62d925.png", "Kafka engine table -> materialized view -> MergeTree storage flow", "https://clickhouse.com/blog/real-time-event-streaming-with-confluent-cloud-clickhouse-and-clickpipes", "ClickHouse Blog"],
+    ["https://clickhouse.com/uploads/confluent_cloud_clickhouse_ea771e50bb.png", "Confluent Cloud + Kafka Connect sink into ClickHouse architecture", "https://clickhouse.com/blog/real-time-event-streaming-with-kafka-connect-confluent-cloud-clickhouse", "ClickHouse Blog"],
+    ["https://clickhouse.com/uploads/clickpipes_bbe49ddbb3.png", "ClickPipes managed Kafka ingestion architecture", "https://clickhouse.com/blog/clickhouse-cloud-clickpipes-for-kafka-managed-ingestion-service", "ClickHouse Blog"],
+    ["https://clickhouse.com/uploads/0_clickpipes_8ccd16e87f.png", "ClickPipes overall ingestion architecture (Kafka, Kinesis, object stores)", "https://clickhouse.com/blog/evolution-of-clickpipes", "ClickHouse Blog"],
+    ["https://clickhouse.com/uploads/clickpipes_kinesis_arch_d9a3dd424e.png", "Streaming ingestion architecture (same shape as Kafka pipeline)", "https://clickhouse.com/blog/clickpipes-amazon-kinesis", "ClickHouse Blog"],
+    ["https://clickhouse.com/uploads/clickpipes_ethereum_a4a4c9a962.gif", "Animated: end-to-end Kafka -> ClickPipes -> ClickHouse demo", "https://clickhouse.com/blog/real-time-event-streaming-with-confluent-cloud-clickhouse-and-clickpipes", "ClickHouse Blog"]
+  ]
+}

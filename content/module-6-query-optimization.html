@@ -1201,691 +1201,11 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
 
 
 
-<div class="handsOn">
-  <div class="handsOn-card">
-    <h2>📚 Full module reference</h2>
-    <h1 id="module-6-query-optimisation-performance">Module 6 — Query Optimisation &amp; Performance</h1>
-<blockquote>
-<p><strong>Audience:</strong> anyone making CH queries fast — or wondering why theirs
-aren't. <strong>Prerequisites:</strong> Modules 1–2. <strong>Time:</strong> ~75 min reading + 30
-min hands-on with measurable timings on 60M rows.</p>
-</blockquote>
-<p>By the end you will be able to:</p>
-<ul>
-<li>Read a CH query plan (<code>EXPLAIN</code>, <code>EXPLAIN SYNTAX</code>, <code>EXPLAIN PIPELINE</code>,
-  <code>EXPLAIN PROJECTION</code>, <code>EXPLAIN indexes = 1</code>).</li>
-<li>Diagnose performance from <code>system.query_log</code> and <code>system.parts</code>.</li>
-<li>Choose <code>ORDER BY</code>, <code>PRIMARY KEY</code>, projections, and skip-indexes for the
-  workload.</li>
-<li>Use <code>PREWHERE</code> and <code>SAMPLE</code> correctly.</li>
-<li>Pick between <code>ANY</code>, <code>ALL</code>, <code>ASOF</code>, and dictionary JOINs.</li>
-<li>Build a Materialized View that pre-aggregates at write time.</li>
-</ul>
-<hr />
-<h2 id="1-the-query-lifecycle">1. The query lifecycle</h2>
-<!-- mermaid rendered as SVG above -->
-
-<p>What you actually tune at each step:</p>
-<table>
-<thead>
-<tr>
-<th>Stage</th>
-<th>Knobs you control</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Reader</td>
-<td><code>ORDER BY</code>, <code>PARTITION BY</code>, projections, skip-indexes, <code>PREWHERE</code>, <code>SAMPLE</code></td>
-</tr>
-<tr>
-<td>Optimizer</td>
-<td>settings (<code>optimize_read_in_order</code>, <code>optimize_use_projections</code>, JIT, <code>compile_aggregate_expressions</code>)</td>
-</tr>
-<tr>
-<td>Pipeline</td>
-<td><code>max_threads</code>, <code>max_memory_usage</code>, parallel replicas</td>
-</tr>
-<tr>
-<td>Result</td>
-<td><code>max_block_size</code>, format choice</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="2-the-first-thing-to-check-did-the-engine-read-what-you-think-it-did">2. The first thing to check: did the engine read what you think it did?</h2>
-<pre><code class="language-sql">SELECT
-    query_duration_ms,
-    read_rows,
-    formatReadableSize(read_bytes) AS read_bytes,
-    formatReadableSize(memory_usage) AS mem,
-    result_rows
-FROM system.query_log
-WHERE event_time &gt; now() - INTERVAL 5 MINUTE
-  AND type = 'QueryFinish'
-ORDER BY event_time DESC LIMIT 10;
-</code></pre>
-<p><strong><code>read_rows</code> is the truth.</strong> If your <code>WHERE</code> filter looks selective but
-<code>read_rows ≈ total table size</code>, the index didn't help.</p>
-<p><code>SYSTEM FLUSH LOGS;</code> first if the table is empty — <code>query_log</code> is
-flushed periodically (~7.5 s default), not synchronously.</p>
-<hr />
-<h2 id="3-order-by-shape-where-almost-every-win-comes-from">3. ORDER BY shape — where almost every win comes from</h2>
-<p>The same 20M rows, three table layouts (this is what the demo tests):</p>
-<table>
-<thead>
-<tr>
-<th>Layout</th>
-<th>Filter <code>WHERE event_time BETWEEN 'a' AND 'b'</code></th>
-<th>Filter <code>WHERE country = 'US'</code></th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>ORDER BY (event_type, country)</code></td>
-<td>full scan (no time prefix in PK)</td>
-<td>partial via secondary scan</td>
-</tr>
-<tr>
-<td><code>ORDER BY (event_time, user_id)</code></td>
-<td>granule pruning → reads ~1/30th</td>
-<td>full scan, scans by date</td>
-</tr>
-<tr>
-<td><code>ORDER BY (event_time, user_id)</code> + projection on <code>(country, day)</code></td>
-<td>granule pruning</td>
-<td>reads from projection (tiny)</td>
-</tr>
-</tbody>
-</table>
-<h3 id="how-to-choose">How to choose</h3>
-<ol>
-<li><strong>What's the most common WHERE filter?</strong> That column should be the
-   <em>first</em> in <code>ORDER BY</code>. Time-series workloads almost always lead with
-   <code>event_time</code> or its truncation (<code>toStartOfHour(event_time)</code>).</li>
-<li><strong>What's the most common GROUP BY?</strong> Putting that column second
-   enables <code>optimize_aggregation_in_order</code>.</li>
-<li><strong>High-cardinality columns later in the key.</strong> <code>user_id</code> after
-   <code>event_time</code> is fine; <code>event_time</code> after <code>user_id</code> would scatter
-   adjacent rows in time across the file.</li>
-</ol>
-<hr />
-<h2 id="4-projections-second-copies-optimised-for-a-different-shape">4. Projections — second copies optimised for a different shape</h2>
-<p>Projections are <em>managed-by-the-engine</em> materialised aggregations / sort
-orders that live alongside the main part.</p>
-<pre><code class="language-sql">CREATE TABLE events_proj (
-    event_time DateTime,
-    user_id    UInt64,
-    country    LowCardinality(String),
-    amount     Float64,
-
-    PROJECTION pv_country_day (
-        SELECT country, toDate(event_time) AS day,
-               count(), sum(amount), avg(amount)
-        GROUP BY country, day
-    )
-)
-ENGINE = MergeTree
-ORDER BY (event_time, user_id);
-</code></pre>
-<p>What happens:
-- Every part now also stores a projection part (a tiny aggregated
-  sub-table).
-- A query of the right shape reads from the projection, not the base
-  table.
-- Triggered automatically when <code>optimize_use_projections = 1</code> (default)
-  <em>and</em> the query matches.</p>
-<pre><code class="language-sql">EXPLAIN PROJECTION = 1
-SELECT country, toDate(event_time) AS day, count()
-FROM events_proj
-WHERE event_time BETWEEN '2026-02-01' AND '2026-02-28'
-GROUP BY country, day;
--- Plan should mention &quot;Projection: pv_country_day&quot;
-</code></pre>
-<table>
-<thead>
-<tr>
-<th>Win</th>
-<th>Cost</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Aggregation queries 10–100× faster</td>
-<td>Projection storage ≈ size of the aggregate result × number of parts</td>
-</tr>
-<tr>
-<td>No application changes</td>
-<td>Mutations rewrite the projection too</td>
-</tr>
-<tr>
-<td>Multiple projections per table</td>
-<td>Slower writes (each projection is computed)</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="5-skip-indexes-granule-pruning-for-the-second-column">5. Skip indexes — granule pruning for the second column</h2>
-<p>Skip indexes prune <strong>granules</strong>, not rows. A skip index on column X is
-useful when X <em>isn't</em> in the PK prefix but you filter on it.</p>
-<table>
-<thead>
-<tr>
-<th>Type</th>
-<th>Stores</th>
-<th>Best for</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>minmax</code></td>
-<td>min, max per N granules</td>
-<td>Range filters on numeric/date columns</td>
-</tr>
-<tr>
-<td><code>set(K)</code></td>
-<td>up to K distinct values per N granules</td>
-<td><code>IN</code> / <code>=</code> on low-cardinality columns</td>
-</tr>
-<tr>
-<td><code>bloom_filter</code></td>
-<td>bloom filter per N granules</td>
-<td>High-cardinality <code>=</code> filters (like <code>user_id</code>)</td>
-</tr>
-<tr>
-<td><code>tokenbf_v1(L, K, S)</code></td>
-<td>per-token bloom filter</td>
-<td>Substring search via <code>hasToken()</code></td>
-</tr>
-<tr>
-<td><code>ngrambf_v1(N, L, K, S)</code></td>
-<td>per-ngram bloom filter</td>
-<td>LIKE searches with <code>%abc%</code></td>
-</tr>
-</tbody>
-</table>
-<pre><code class="language-sql">CREATE TABLE events_idx (
-    event_time DateTime,
-    user_id    UInt64,
-    country    LowCardinality(String),
-    amount     Float64,
-    url        String,
-
-    INDEX idx_amount  amount  TYPE minmax        GRANULARITY 4,
-    INDEX idx_country country TYPE set(100)      GRANULARITY 4,
-    INDEX idx_user    user_id TYPE bloom_filter() GRANULARITY 4,
-    INDEX idx_url_tok url     TYPE tokenbf_v1(8192, 3, 0) GRANULARITY 4
-)
-ENGINE = MergeTree ORDER BY (event_time, user_id);
-</code></pre>
-<p><code>GRANULARITY = 4</code> means "one index entry per 4 marks" — i.e. one entry per
-~32k rows. Higher granularity = smaller index, less precise; lower = larger.</p>
-<p><strong>A skip index never produces wrong results.</strong> It just <em>might</em> fail to
-prune (false positives in bloom filters → still read the granule). If
-your queries don't filter on the indexed column, the index is dead weight
-on writes — drop it.</p>
-<hr />
-<h2 id="6-prewhere-read-less">6. PREWHERE — read less</h2>
-<p>CH automatically rewrites cheap predicates into <code>PREWHERE</code>, which reads
-the predicate columns first, prunes granules, and only then reads the
-remaining columns.</p>
-<pre><code class="language-sql">-- These are equivalent on CH 21+:
-SELECT count() FROM events WHERE country = 'US' AND amount &gt; 100;
-SELECT count() FROM events PREWHERE country = 'US' WHERE amount &gt; 100;
-</code></pre>
-<p>You'd write <code>PREWHERE</code> explicitly when:</p>
-<ul>
-<li>The optimiser picks the wrong predicate to push down (rare on modern CH).</li>
-<li>You want to <em>guarantee</em> the order: cheap filter first, expensive later.</li>
-</ul>
-<p><code>EXPLAIN SYNTAX</code> shows what the optimiser actually did:</p>
-<pre><code class="language-sql">EXPLAIN SYNTAX
-SELECT count() FROM events WHERE country = 'US' AND amount &gt; 100;
-</code></pre>
-<hr />
-<h2 id="7-sample-orders-of-magnitude-faster-with-caveats">7. SAMPLE — orders-of-magnitude faster, with caveats</h2>
-<p><code>SAMPLE</code> reads a <em>consistent fraction</em> of rows. Requires <code>SAMPLE BY</code> in
-the table definition.</p>
-<pre><code class="language-sql">CREATE TABLE events_sampled (
-    ...
-)
-ENGINE = MergeTree
-ORDER BY (event_time, intHash32(user_id), user_id)
-SAMPLE BY intHash32(user_id);
-
-SELECT count() * 10, avg(amount) FROM events_sampled SAMPLE 0.1;
--- ≈ 10× faster, ~10× variance
-</code></pre>
-<table>
-<thead>
-<tr>
-<th>Use SAMPLE for</th>
-<th>Don't use SAMPLE for</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Real-time dashboards over fresh data</td>
-<td>Exact-count metrics</td>
-</tr>
-<tr>
-<td><code>quantile</code>, <code>avg</code>, <code>count</code> approximations</td>
-<td>Reports auditors will scrutinise</td>
-</tr>
-<tr>
-<td>Iterative exploration</td>
-<td>Joins (sampling on both sides is hard to reason about)</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="8-join-strategies">8. JOIN strategies</h2>
-<p>CH joins are <em>generally</em> slower than its scans. Pick wisely.</p>
-<table>
-<thead>
-<tr>
-<th>Join type</th>
-<th>Right-side cardinality</th>
-<th>Left-side cardinality</th>
-<th>Behaviour</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>INNER JOIN</code></td>
-<td>small</td>
-<td>any</td>
-<td>Hash-build right, stream left.</td>
-</tr>
-<tr>
-<td><code>LEFT/RIGHT JOIN</code></td>
-<td>small</td>
-<td>any</td>
-<td>Same; null-fill non-matches.</td>
-</tr>
-<tr>
-<td><code>ANY LEFT JOIN</code></td>
-<td>any</td>
-<td>any</td>
-<td>First match per left row. Faster than ALL.</td>
-</tr>
-<tr>
-<td><code>ALL LEFT JOIN</code></td>
-<td>any</td>
-<td>any</td>
-<td>Cartesian on duplicates (default behaviour).</td>
-</tr>
-<tr>
-<td><code>ASOF LEFT JOIN</code></td>
-<td>any</td>
-<td>any</td>
-<td>Match nearest-but-not-after on a continuous column.</td>
-</tr>
-<tr>
-<td>Dictionary lookup</td>
-<td>tiny (&lt; 100M rows)</td>
-<td>huge</td>
-<td>Best-of-class for small dim tables.</td>
-</tr>
-</tbody>
-</table>
-<h3 id="dictionary-as-a-join-replacement">Dictionary as a JOIN replacement</h3>
-<pre><code class="language-sql">CREATE DICTIONARY users_dict (
-    user_id UInt64,
-    cohort  String,
-    signup_date Date
-)
-PRIMARY KEY user_id
-SOURCE(CLICKHOUSE(host 'localhost' port 9000 db 'm6' table 'users_dim'))
-LIFETIME(MIN 60 MAX 300)
-LAYOUT(HASHED());
-
-SYSTEM RELOAD DICTIONARY m6.users_dict;
-
--- Now lookups are RAM-resident hashmap reads:
-SELECT count(),
-       avgIf(amount, dictGetString('m6.users_dict', 'cohort', user_id) = 'alpha')
-FROM events_good;
-</code></pre>
-<table>
-<thead>
-<tr>
-<th>Layout</th>
-<th>RAM</th>
-<th>Lookup speed</th>
-<th>Use for</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>HASHED</code></td>
-<td>high</td>
-<td>fastest</td>
-<td>&lt; 50M small rows</td>
-</tr>
-<tr>
-<td><code>SPARSE_HASHED</code></td>
-<td>medium</td>
-<td>fast</td>
-<td>&lt; 200M rows</td>
-</tr>
-<tr>
-<td><code>RANGE_HASHED</code></td>
-<td>medium</td>
-<td>fast</td>
-<td>versioned dim with date ranges</td>
-</tr>
-<tr>
-<td><code>IP_TRIE</code></td>
-<td>low</td>
-<td>fast</td>
-<td>IPv4/IPv6 ranges</td>
-</tr>
-<tr>
-<td><code>CACHE</code></td>
-<td>configurable</td>
-<td>medium</td>
-<td>huge dims, slower miss path</td>
-</tr>
-<tr>
-<td><code>DIRECT</code></td>
-<td>none</td>
-<td>slow</td>
-<td>always queries the source</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="9-materialized-views-for-query-optimisation">9. Materialized Views for query optimisation</h2>
-<p>A MV pre-computes aggregates <strong>at INSERT time</strong>. Read latency is then a
-function of the MV's row count, not the source's.</p>
-<pre><code class="language-sql">CREATE TABLE country_daily (
-    day Date, country LowCardinality(String),
-    events UInt64, revenue Float64
-) ENGINE = SummingMergeTree ORDER BY (day, country);
-
-CREATE MATERIALIZED VIEW country_daily_mv TO country_daily AS
-SELECT toDate(event_time) AS day, country,
-       count() AS events, sum(amount) AS revenue
-FROM events_good
-GROUP BY day, country;
-
--- Backfill once
-INSERT INTO country_daily
-SELECT toDate(event_time), country, count(), sum(amount)
-FROM events_good GROUP BY toDate(event_time), country;
-</code></pre>
-<p>Reads from <code>country_daily</code> are millions of times smaller than from
-<code>events_good</code>. Module 2 covers MV semantics in depth.</p>
-<hr />
-<h2 id="10-the-explain-family">10. The <code>EXPLAIN</code> family</h2>
-<table>
-<thead>
-<tr>
-<th>Form</th>
-<th>Shows</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>EXPLAIN</code></td>
-<td>Plan tree (the default).</td>
-</tr>
-<tr>
-<td><code>EXPLAIN AST</code></td>
-<td>Raw parser AST.</td>
-</tr>
-<tr>
-<td><code>EXPLAIN SYNTAX</code></td>
-<td>Query <em>as the optimiser rewrote it</em> (PREWHERE pushdown, alias inlining).</td>
-</tr>
-<tr>
-<td><code>EXPLAIN PIPELINE</code></td>
-<td>The actual pipeline (operators, threads, branches).</td>
-</tr>
-<tr>
-<td><code>EXPLAIN PIPELINE graph = 1</code></td>
-<td>DOT format; pipe to graphviz for a picture.</td>
-</tr>
-<tr>
-<td><code>EXPLAIN PLAN actions = 1</code></td>
-<td>Per-operator action list — every projection/filter/aggregate.</td>
-</tr>
-<tr>
-<td><code>EXPLAIN indexes = 1</code></td>
-<td>Which indexes (PK, partition, skip) the planner used.</td>
-</tr>
-<tr>
-<td><code>EXPLAIN PROJECTION = 1</code></td>
-<td>Whether a projection got picked.</td>
-</tr>
-<tr>
-<td><code>EXPLAIN ESTIMATE</code></td>
-<td>Estimated rows/parts/granules to read.</td>
-</tr>
-</tbody>
-</table>
-<pre><code class="language-sql">EXPLAIN indexes = 1
-SELECT count() FROM events_proj WHERE user_id = 12345;
--- Looks for: &quot;Skip index: idx_user (bloom_filter)&quot;
-</code></pre>
-<hr />
-<h2 id="11-the-hands-on-demo">11. The hands-on demo</h2>
-<h3 id="what-you-get">What you get</h3>
-<pre><code>docker-compose.yml          m6-clickhouse · 6 GB memory
-configs/clickhouse-config.xml
-setup.sql · data.sql · queries.sql · extras.sql
-up.sh · run.sh · down.sh
-</code></pre>
-<h3 id="three-layouts-of-the-same-20m-rows">Three layouts of the same 20M rows</h3>
-<!-- mermaid rendered as SVG above -->
-
-<h3 id="execution-flow-what-runs-in-order">Execution flow — what runs, in order</h3>
-<table>
-<thead>
-<tr>
-<th>#</th>
-<th>Step</th>
-<th>What happens</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>0</td>
-<td>self-bootstrap</td>
-<td>If <code>m6-clickhouse</code> isn't healthy, <code>up.sh</code> brings it up. The container is given a 6 GB memory limit because the dataset is large.</td>
-</tr>
-<tr>
-<td>1</td>
-<td><code>setup.sql</code></td>
-<td>Creates database <code>m6</code> and three identically-shaped tables: <code>events_bad</code> (wrong PK), <code>events_good</code> (right PK), <code>events_proj</code> (right PK + bloom-filter on user_id + projection on (country, day)).</td>
-</tr>
-<tr>
-<td>2</td>
-<td><code>data.sql</code></td>
-<td>Inserts 20M rows into <code>events_good</code>, then <code>INSERT INTO bad/proj SELECT * FROM events_good</code> so all three tables hold identical data. <code>OPTIMIZE FINAL</code> on each so timings aren't muddied by background merges. ~30–60s.</td>
-</tr>
-<tr>
-<td>3</td>
-<td><code>queries.sql</code></td>
-<td>Five comparisons: time-range count on each layout (Q1), country aggregation on each (Q2 — projection should crush), point lookup by user_id (Q3 — skip index helps), <code>EXPLAIN indexes=1</code> and <code>EXPLAIN PROJECTION=1</code> (Q4), then <code>SYSTEM FLUSH LOGS</code> + <code>system.query_log</code> summary (Q5).</td>
-</tr>
-<tr>
-<td>4</td>
-<td><code>extras.sql</code></td>
-<td>More tools: PREWHERE (auto + explicit, with <code>EXPLAIN SYNTAX</code>), <code>SAMPLE BY intHash32(user_id)</code> table copy and <code>SAMPLE 0.1</code> query, three more skip-index types (<code>minmax</code>, <code>set</code>, <code>tokenbf_v1</code>), JOIN strategies (<code>ANY</code> vs <code>ALL</code> vs Dictionary lookup) against a 500k-row <code>users_dim</code>, and a Materialized View (<code>country_daily_mv</code> → <code>country_daily</code> SummingMergeTree) with a backfill.</td>
-</tr>
-</tbody>
-</table>
-<h3 id="what-you-should-observe">What you should observe</h3>
-<p>The exact numbers depend on hardware; the <em>ratios</em> are stable. On an
-M-series MacBook the demo typically prints:</p>
-<table>
-<thead>
-<tr>
-<th>Query</th>
-<th>BAD ordering</th>
-<th>GOOD ordering</th>
-<th>PROJ + skip idx</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Q1 — time range</td>
-<td>scans most parts</td>
-<td>reads few granules</td>
-<td>reads few granules</td>
-</tr>
-<tr>
-<td>Q2 — country aggregation per month</td>
-<td>~1.8 s, ~20M read</td>
-<td>~0.25 s, ~5M read</td>
-<td>~0.02 s, ~3k read</td>
-</tr>
-<tr>
-<td>Q3 — point lookup by user_id</td>
-<td>scans all rows</td>
-<td>scans all rows</td>
-<td>bloom filter prunes most marks</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="12-settings-worth-knowing-for-query-work">12. Settings worth knowing for query work</h2>
-<table>
-<thead>
-<tr>
-<th>Setting</th>
-<th>Default</th>
-<th>Effect</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>max_threads</code></td>
-<td>cores</td>
-<td>Per-query parallelism.</td>
-</tr>
-<tr>
-<td><code>max_memory_usage</code></td>
-<td>10 GB</td>
-<td>Per-query memory cap. Aggregations OOM here.</td>
-</tr>
-<tr>
-<td><code>max_bytes_before_external_group_by</code></td>
-<td>0</td>
-<td>If &gt; 0, spill GROUP BY to disk above this size.</td>
-</tr>
-<tr>
-<td><code>optimize_read_in_order</code></td>
-<td>1</td>
-<td>Skip sort if PK already orders the data.</td>
-</tr>
-<tr>
-<td><code>optimize_aggregation_in_order</code></td>
-<td>0</td>
-<td>Stream aggregation when PK matches GROUP BY prefix.</td>
-</tr>
-<tr>
-<td><code>optimize_use_projections</code></td>
-<td>1</td>
-<td>Try to match a projection.</td>
-</tr>
-<tr>
-<td><code>compile_aggregate_expressions</code></td>
-<td>1</td>
-<td>JIT-compile aggregate functions.</td>
-</tr>
-<tr>
-<td><code>parallel_replicas_for_non_replicated_merge_tree</code></td>
-<td>0</td>
-<td>Allow parallel replicas mode even on non-replicated tables.</td>
-</tr>
-<tr>
-<td><code>max_block_size</code></td>
-<td>65536</td>
-<td>Rows per pipeline block. Bigger = more memory, fewer overhead bumps.</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="13-common-pitfalls">13. Common pitfalls</h2>
-<table>
-<thead>
-<tr>
-<th>Symptom</th>
-<th>Cause</th>
-<th>Fix</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>WHERE date_col = '2026-05-01'</code> reads everything</td>
-<td><code>date_col</code> not in PK prefix; or filter on <code>toDate(date_col)</code> while PK is <code>DateTime</code>.</td>
-<td>Match the type/expression exactly. Use a function-index or partition key.</td>
-</tr>
-<tr>
-<td>Projection isn't picked</td>
-<td>Query shape doesn't match projection.</td>
-<td><code>EXPLAIN PROJECTION = 1</code> to see <em>why</em>. Reshape the query or add another projection.</td>
-</tr>
-<tr>
-<td>Bloom-filter index doesn't help</td>
-<td>Granularity too coarse; or column has high collision rate.</td>
-<td>Lower <code>GRANULARITY</code>; verify with <code>EXPLAIN indexes = 1</code>.</td>
-</tr>
-<tr>
-<td><code>Memory limit (for query) exceeded</code></td>
-<td>Aggregation cardinality &gt; <code>max_memory_usage</code>.</td>
-<td>Set <code>max_bytes_before_external_group_by</code> to spill to disk.</td>
-</tr>
-<tr>
-<td>Same query is fast once, slow on second run</td>
-<td>Filesystem page cache cold the first time, hot the second.</td>
-<td>Benchmark with <code>SYSTEM DROP MARK CACHE</code> and <code>SYSTEM DROP UNCOMPRESSED CACHE</code> between runs.</td>
-</tr>
-<tr>
-<td><code>JOIN</code> is slow</td>
-<td>Right-hand side too big.</td>
-<td>Use a Dictionary; pre-aggregate; or use <code>IN (SELECT ...)</code> with <code>SETTINGS distributed_product_mode='global'</code>.</td>
-</tr>
-<tr>
-<td><code>SAMPLE</code> returns wildly different counts on re-runs</td>
-<td>Forgot <code>SAMPLE BY</code> in the table definition; SAMPLE became a no-op or random.</td>
-<td><code>SHOW CREATE TABLE</code> and add <code>SAMPLE BY ...</code>.</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="14-talking-points-for-the-live-session">14. Talking points for the live session</h2>
-<ol>
-<li><strong><code>read_rows</code> is your X-ray machine.</strong> Show before/after on the same
-   query.</li>
-<li><strong><code>ORDER BY</code> is the highest-leverage knob.</strong> Run Q1 on the <code>BAD</code> and
-   <code>GOOD</code> tables side-by-side and watch the ratio.</li>
-<li><strong>Projections are not free.</strong> They add write-time cost but query-time
-   wins are 10–100×.</li>
-<li><strong>Skip indexes prune granules, not rows.</strong> Show <code>idx_user</code> on a point
-   lookup; <code>EXPLAIN indexes = 1</code> shows the prune.</li>
-<li><strong>PREWHERE is auto.</strong> <code>EXPLAIN SYNTAX</code> reveals it. Don't write it
-   unless the optimiser picks wrong.</li>
-<li><strong>Dictionary &gt; JOIN</strong> for small dim tables. Demo with the 500k-row
-   <code>users_dim</code>.</li>
-<li><strong>Materialized Views finish the job.</strong> Once a query is materialised,
-   it's microseconds regardless of source size.</li>
-</ol>
-<hr />
-<h2 id="15-going-deeper">15. Going deeper</h2>
-<ul>
-<li><strong>Module 2</strong> — Materialized Views in detail.</li>
-<li><strong>Module 3</strong> — distributed query plans.</li>
-<li><strong>CH docs</strong>: <a href="https://clickhouse.com/docs/en/optimize/query-optimization">https://clickhouse.com/docs/en/optimize/query-optimization</a></li>
-<li><strong>Profile-guided optimisation:</strong> load <code>system.query_log</code> into a
-  separate table, then aggregate by query pattern to find your top
-  offenders.</li>
-</ul>
-  </div>
 </div>
+
+
+</div>
+
 
 
 <style>
@@ -1897,9 +1217,7 @@ M-series MacBook the demo typically prints:</p>
   background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 28px 32px; margin-bottom: 24px;
 }
-.handsOn-card h2 {
-  margin: 0 0 8px 0; font-size: 1.6em; color: #0f172a;
-}
+.handsOn-card h2 { margin: 0 0 8px 0; font-size: 1.6em; color: #0f172a; }
 .handsOn-card h3 {
   margin: 24px 0 8px 0; font-size: 1.2em; color: #1a4480;
   border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;
@@ -1928,27 +1246,31 @@ M-series MacBook the demo typically prints:</p>
   padding: 28px 32px; border-radius: 12px; margin-bottom: 20px;
 }
 .handsOn-banner h2 { color: white; margin: 0 0 8px 0; }
-.handsOn-banner code {
-  background: rgba(0,0,0,0.25); color: #f1f5f9;
-}
-.handsOn-banner pre {
-  background: rgba(0,0,0,0.30); color: #f1f5f9;
-}
+.handsOn-banner code { background: rgba(0,0,0,0.25); color: #f1f5f9; }
+.handsOn-banner pre  { background: rgba(0,0,0,0.30); color: #f1f5f9; }
 .handsOn-figure {
   margin: 16px 0; padding: 12px; background: #f8fafc;
   border: 1px solid #e2e8f0; border-radius: 8px; text-align: center;
 }
-.handsOn-figure img, .handsOn-figure object {
-  max-width: 100%; height: auto; border-radius: 4px;
+.handsOn-figure img {
+  max-width: 100%; height: auto; border-radius: 4px; display: inline-block;
 }
 .handsOn-figure figcaption {
   margin-top: 8px; color: #475569; font-size: 0.9em; font-style: italic;
+}
+.handsOn-figure figcaption a {
+  color: #1a4480; text-decoration: none; border-bottom: 1px dotted #94a3b8;
 }
 .handsOn-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
   gap: 16px; margin: 12px 0;
 }
 .handsOn-card a { color: #1a4480; }
+.handsOn-source-tag {
+  display: inline-block; background: #e0f2fe; color: #075985;
+  padding: 2px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 600;
+  margin-right: 6px;
+}
 </style>
 
 
@@ -1969,8 +1291,8 @@ M-series MacBook the demo typically prints:</p>
     <h2>📺 Live demo capture</h2>
     <p>Recorded with <a href="https://github.com/charmbracelet/vhs" target="_blank" rel="noopener">vhs</a>: the actual terminal output from <code>./run.sh</code> running on this very stack.</p>
     <figure class="handsOn-figure">
-      <img src="../code-examples/demos/module-6-query-opt/diagrams/demo.gif" alt="Module demo GIF" loading="lazy">
-      <figcaption>Click to view full-size. Animated GIF, ~477 KB.</figcaption>
+      <img src="demo-assets/module-6-query-opt/demo.gif" alt="Module demo GIF" loading="lazy">
+      <figcaption>Animated GIF, ~477 KB. Right-click → open in new tab to view full-size.</figcaption>
     </figure>
   </div>
 </div>
@@ -1984,10 +1306,9 @@ M-series MacBook the demo typically prints:</p>
 
 
       <figure class="handsOn-figure">
-        <object type="image/svg+xml" data="../code-examples/demos/module-6-query-opt/diagrams/anim-read-rows.svg" aria-label="Read rows"></object>
+        <img src="demo-assets/module-6-query-opt/anim-read-rows.svg" alt="Read rows" loading="lazy">
         <figcaption>Read rows</figcaption>
       </figure>
-
 
     </div>
   </div>
@@ -1997,25 +1318,112 @@ M-series MacBook the demo typically prints:</p>
 <div class="handsOn">
   <div class="handsOn-card">
     <h2>🗂️ Architecture diagrams</h2>
-    <p>Rendered from the README's Mermaid sources. Static, but click any to view the source SVG full-size.</p>
+    <p>Rendered from the README's Mermaid sources. Click any to open the source SVG full-size.</p>
     <div class="handsOn-grid">
 
 
       <figure class="handsOn-figure">
-        <a href="../code-examples/demos/module-6-query-opt/diagrams/01-flowchart-q-query-text-p-parser.svg" target="_blank" rel="noopener">
-          <img src="../code-examples/demos/module-6-query-opt/diagrams/01-flowchart-q-query-text-p-parser.svg" alt="Q query text p parser" loading="lazy">
+        <a href="demo-assets/module-6-query-opt/01-flowchart-q-query-text-p-parser.svg" target="_blank" rel="noopener">
+          <img src="demo-assets/module-6-query-opt/01-flowchart-q-query-text-p-parser.svg" alt="Q query text p parser" loading="lazy">
         </a>
         <figcaption>Q query text p parser</figcaption>
       </figure>
 
 
       <figure class="handsOn-figure">
-        <a href="../code-examples/demos/module-6-query-opt/diagrams/02-flowchart-source-20m-synthetic-events.svg" target="_blank" rel="noopener">
-          <img src="../code-examples/demos/module-6-query-opt/diagrams/02-flowchart-source-20m-synthetic-events.svg" alt="Source 20m synthetic events" loading="lazy">
+        <a href="demo-assets/module-6-query-opt/02-flowchart-source-20m-synthetic-events.svg" target="_blank" rel="noopener">
+          <img src="demo-assets/module-6-query-opt/02-flowchart-source-20m-synthetic-events.svg" alt="Source 20m synthetic events" loading="lazy">
         </a>
         <figcaption>Source 20m synthetic events</figcaption>
       </figure>
 
+    </div>
+  </div>
+</div>
+
+
+<div class="handsOn">
+  <div class="handsOn-card">
+    <h2>📚 ClickHouse reference visuals</h2>
+    <p>Curated from the official ClickHouse documentation and engineering blog (and Altinity's docs/blog) — the same diagrams the broader CH community uses to explain these concepts. Click any image to read the source.</p>
+    <div class="handsOn-grid">
+
+
+      <figure class="handsOn-figure">
+        <a href="https://clickhouse.com/docs/optimize/query-parallelism" target="_blank" rel="noopener">
+          <img src="demo-assets/module-6-query-opt/external/01-query-parallelism_01.gif" alt="Animated: query splits into parallel processing lanes per CPU core" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">ClickHouse Docs</span>
+          Animated: query splits into parallel processing lanes per CPU core
+        </figcaption>
+      </figure>
+
+
+      <figure class="handsOn-figure">
+        <a href="https://clickhouse.com/docs/optimize/query-parallelism" target="_blank" rel="noopener">
+          <img src="demo-assets/module-6-query-opt/external/02-query-parallelism_02.gif" alt="Animated: vectorised pipeline pushing chunks through transforms" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">ClickHouse Docs</span>
+          Animated: vectorised pipeline pushing chunks through transforms
+        </figcaption>
+      </figure>
+
+
+      <figure class="handsOn-figure">
+        <a href="https://clickhouse.com/docs/optimize/query-parallelism" target="_blank" rel="noopener">
+          <img src="demo-assets/module-6-query-opt/external/03-query-parallelism_04.gif" alt="Parallel replicas: query fans out across replicas of a shard" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">ClickHouse Docs</span>
+          Parallel replicas: query fans out across replicas of a shard
+        </figcaption>
+      </figure>
+
+
+      <figure class="handsOn-figure">
+        <a href="https://clickhouse.com/blog/clickhouse-fully-supports-joins-hash-joins-part2" target="_blank" rel="noopener">
+          <img src="demo-assets/module-6-query-opt/external/04-query_pipeline_5b4d07c2f6.png" alt="Processors-and-ports query pipeline (sources, transforms, sinks)" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">ClickHouse Blog</span>
+          Processors-and-ports query pipeline (sources, transforms, sinks)
+        </figcaption>
+      </figure>
+
+
+      <figure class="handsOn-figure">
+        <a href="https://clickhouse.com/blog/index-based-pruning" target="_blank" rel="noopener">
+          <img src="demo-assets/module-6-query-opt/external/05-pruning_001_767cab4175.png" alt="Index-based pruning: skip granules that cannot match the predicate" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">ClickHouse Blog</span>
+          Index-based pruning: skip granules that cannot match the predicate
+        </figcaption>
+      </figure>
+
+
+      <figure class="handsOn-figure">
+        <a href="https://clickhouse.com/blog/clickhouse-parallel-replicas" target="_blank" rel="noopener">
+          <img src="demo-assets/module-6-query-opt/external/06-Parallel_Replicas_001_99219ab333.png" alt="Parallel replicas coordinator distributing work across nodes" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">ClickHouse Blog</span>
+          Parallel replicas coordinator distributing work across nodes
+        </figcaption>
+      </figure>
+
+
+      <figure class="handsOn-figure">
+        <a href="https://clickhouse.com/blog/clickhouse-parallel-replicas" target="_blank" rel="noopener">
+          <img src="demo-assets/module-6-query-opt/external/07-M30_33ms_cd62cb2804.gif" alt="Animated GIF: parallel-replicas GROUP BY finishing in 33 ms" loading="lazy">
+        </a>
+        <figcaption>
+          <span class="handsOn-source-tag">ClickHouse Blog</span>
+          Animated GIF: parallel-replicas GROUP BY finishing in 33 ms
+        </figcaption>
+      </figure>
 
     </div>
   </div>
