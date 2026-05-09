@@ -1,0 +1,12 @@
+{
+  "_comment": "Copy to notion-page-ids.json and replace each value with the Notion page ID for that module's existing page. Get the ID by opening the page in Notion: the 32-char hex at the end of the URL is the page ID (the script auto-formats it as UUID for the API).",
+  "1": "REPLACE_WITH_MODULE_1_PAGE_ID",
+  "2": "REPLACE_WITH_MODULE_2_PAGE_ID",
+  "3": "REPLACE_WITH_MODULE_3_PAGE_ID",
+  "4": "REPLACE_WITH_MODULE_4_PAGE_ID",
+  "5": "REPLACE_WITH_MODULE_5_PAGE_ID",
+  "6": "REPLACE_WITH_MODULE_6_PAGE_ID",
+  "7": "REPLACE_WITH_MODULE_7_PAGE_ID",
+  "8": "REPLACE_WITH_MODULE_8_PAGE_ID",
+  "9": "REPLACE_WITH_MODULE_9_PAGE_ID"
+}
