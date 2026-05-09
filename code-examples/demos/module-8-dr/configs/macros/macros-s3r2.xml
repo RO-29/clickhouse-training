@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
-<config>
+<clickhouse>
     <macros>
         <cluster>clickhouse_cluster</cluster>
         <shard>03</shard>
         <replica>m8-s3r2</replica>
     </macros>
-</config>
+</clickhouse>

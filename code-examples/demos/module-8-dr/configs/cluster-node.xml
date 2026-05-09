@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!-- Module 8: cluster node config. ZK hosts are m8-zk1/2/3.
      Cluster name: clickhouse_cluster (3 shards × 2 replicas). -->
-<config>
+<clickhouse>
     <logger>
         <level>notice</level>
         <log>/var/log/clickhouse-server/clickhouse-server.log</log>
@@ -12,7 +12,6 @@
     <query_log><database>system</database><table>query_log</table></query_log>
     <part_log><database>system</database><table>part_log</table></part_log>
 
-    <max_memory_usage>3221225472</max_memory_usage>
 
     <listen_host>0.0.0.0</listen_host>
     <http_port>8123</http_port>
@@ -59,4 +58,4 @@
     <path>/var/lib/clickhouse/</path>
     <tmp_path>/var/lib/clickhouse/tmp/</tmp_path>
     <user_files_path>/var/lib/clickhouse/user_files/</user_files_path>
-</config>
+</clickhouse>

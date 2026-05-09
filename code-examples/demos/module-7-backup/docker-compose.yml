@@ -1,6 +1,5 @@
 # Module 7: Backup & Recovery — single ClickHouse + MinIO sidecar.
 # Both share m7-net so ClickHouse can BACKUP TO S3('http://m7-minio:9000/...').
-version: '3.8'
 
 services:
   clickhouse:

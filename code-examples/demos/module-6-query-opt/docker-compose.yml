@@ -1,5 +1,4 @@
 # Module 6: Query optimization — standalone single-node, generously resourced.
-version: '3.8'
 
 services:
   clickhouse:

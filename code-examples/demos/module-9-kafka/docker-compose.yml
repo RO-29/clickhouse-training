@@ -1,7 +1,6 @@
 # Module 9: Kafka ingestion — standalone stack (CH + Kafka + ZK + UI).
 # Internal hosts: m9-kafka:29092, m9-zk:2181.
 # From the host you can hit Kafka at localhost:9092 too (see KAFKA_ADVERTISED_LISTENERS).
-version: '3.8'
 
 services:
   m9-zk:

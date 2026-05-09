@@ -2,7 +2,6 @@
 # Up:    ./up.sh
 # Run:   ./run.sh
 # Down:  ./down.sh
-version: '3.8'
 
 services:
   clickhouse:

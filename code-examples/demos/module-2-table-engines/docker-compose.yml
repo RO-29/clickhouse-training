@@ -1,5 +1,4 @@
 # Module 2: Table engines — standalone single-node stack.
-version: '3.8'
 
 services:
   clickhouse:

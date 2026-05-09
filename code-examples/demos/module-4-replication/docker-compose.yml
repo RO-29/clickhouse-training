@@ -1,6 +1,5 @@
 # Module 4: Sharding — standalone 3×2 cluster + 3-node ZooKeeper.
 # Container names prefixed m4- so this stack doesn't collide with other modules.
-version: '3.8'
 
 x-zk-base: &zk-base
   image: zookeeper:3.8
