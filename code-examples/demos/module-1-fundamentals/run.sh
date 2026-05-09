@@ -3,7 +3,7 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-ch() { docker exec -i m1-clickhouse clickhouse-client --multiquery --query "$1"; }
+ch() { printf %s "$1" | docker exec -i m1-clickhouse clickhouse-client; }
 
 # Self-bootstrap: bring stack up if it's not already.
 if ! docker exec m1-clickhouse wget --spider -q http://localhost:8123/ping 2>/dev/null; then

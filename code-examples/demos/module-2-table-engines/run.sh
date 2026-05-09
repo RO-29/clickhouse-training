@@ -2,7 +2,7 @@
 # Module 2 — Table engines tour.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ch() { docker exec -i m2-clickhouse clickhouse-client --multiquery --query "$1"; }
+ch() { printf %s "$1" | docker exec -i m2-clickhouse clickhouse-client; }
 
 if ! docker exec m2-clickhouse wget --spider -q http://localhost:8123/ping 2>/dev/null; then
     "$HERE/up.sh"

@@ -3,7 +3,7 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-ch_node() { local n="$1"; shift; docker exec -i "$n" clickhouse-client --multiquery --query "$1"; }
+ch_node() { local n="$1"; shift; printf %s "$1" | docker exec -i "$n" clickhouse-client; }
 
 if ! docker exec m3-s1r1 wget --spider -q http://localhost:8123/ping 2>/dev/null; then
     "$HERE/up.sh"

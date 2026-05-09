@@ -10,7 +10,7 @@ if ! docker exec m9-clickhouse wget --spider -q http://localhost:8123/ping 2>/de
     "$HERE/up.sh"
 fi
 
-ch() { docker exec -i m9-clickhouse clickhouse-client --multiquery --query "$1"; }
+ch() { printf %s "$1" | docker exec -i m9-clickhouse clickhouse-client; }
 
 echo "==> create topic 'events' (idempotent)"
 docker exec m9-kafka \

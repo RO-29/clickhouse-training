@@ -2,7 +2,7 @@
 # Module 4 — Replication. Standalone cluster (m4-).
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ch_node() { local n="$1"; docker exec -i "$n" clickhouse-client --multiquery --query "$2"; }
+ch_node() { local n="$1"; printf %s "$2" | docker exec -i "$n" clickhouse-client; }
 
 if ! docker exec m4-s1r1 wget --spider -q http://localhost:8123/ping 2>/dev/null; then
     "$HERE/up.sh"
