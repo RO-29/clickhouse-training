@@ -17,6 +17,18 @@ concrete: Replacing, Summing, Aggregating, Collapsing, plus Log, Memory, Buffer.
 
 `m2-clickhouse` on host ports 8123 (HTTP) and 9000 (Native).
 
+## Execution flow — what `./run.sh` actually does, in order
+
+| #  | Step          | What happens                                                                                                                                                                                           |
+|----|---------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 0  | self-bootstrap | If `m2-clickhouse` isn't responding to `/ping`, run `up.sh` (which tears down any other demo module first to avoid port conflicts).                                                                  |
+| 1  | `setup.sql`   | Creates database `m2` and seven tables, one per engine: `users_replacing` (Replacing), `metrics_summing` (Summing), `events_agg` (Aggregating with `uniq`/`sum`/`quantileTDigest` states), `orders_collapsing` (Collapsing), `audit_log` (Log), `tmp_uploads` (Memory), `facts_dest` + `facts_buffer` (MergeTree + Buffer in front). |
+| 2  | `data.sql`    | Loads each engine with shape-appropriate data: dupes for Replacing, partial counters for Summing, 200k aggregate STATES for Aggregating, +1/-1 sign rows for Collapsing, a few rows for Log/Memory/Buffer. |
+| 3  | `queries.sql` | Walks through each engine's reading pattern: dedup via `argMax`, `OPTIMIZE FINAL` reductions, `*Merge` finalizers for Aggregating, the +1/-1 collapse for Collapsing, and a Buffer flush via `OPTIMIZE TABLE m2.facts_buffer` to push rows down to `facts_dest`. |
+| 4  | `extras.sql`  | Three more engines/patterns: **VersionedCollapsingMergeTree** (out-of-order +/-1 resolved by version), a complete **Materialized View pipeline** (`events_src` → `events_per_minute_mv` → `events_per_minute` SummingMergeTree, with 200k synthetic events), and the **Nested type** (`invoices.line_items.{sku, qty, price}`) queried both with dot-notation and `ARRAY JOIN`. |
+
+Container stays up after `./run.sh`. Tear down with `./down.sh`.
+
 ## What each section shows
 
 | Engine                      | What you should observe                                                                  |

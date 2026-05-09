@@ -34,6 +34,22 @@ ROWS=500000 ./run.sh         # produce more
 ./down.sh
 ```
 
+## Execution flow — what `./run.sh` actually does, in order
+
+| #  | Step                                   | What happens                                                                                                                                                                                                                                                                                                                |
+|----|----------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 0  | self-bootstrap                         | `up.sh` brings up the 4-container stack (`m9-clickhouse`, `m9-kafka`, `m9-zk`, `m9-kafka-ui`) and waits until `m9-clickhouse:/ping` and `m9-kafka:9092` both answer.                                                                                                                                                       |
+| 1  | Create `events` topic                  | `kafka-topics --create --if-not-exists --topic events --partitions 3 --replication-factor 1`.                                                                                                                                                                                                                              |
+| 2  | `setup.sql`                            | Creates database `m9` and the canonical pipeline: `events_kafka` (Kafka engine, `JSONEachRow`, group `ch_consumer`), `events` (durable MergeTree), `events_mv` (MV moves rows from Kafka → events), `events_per_minute` (SummingMergeTree), `events_per_minute_mv` (MV doing minute-bucket aggregation). One Kafka read serves both MVs. |
+| 3  | `extras.sql`                           | Adds the **DLQ pipeline**: a second Kafka source `events_kafka_safe` with `kafka_handle_error_mode = 'stream'` (group `ch_consumer_safe`); two MVs split it on `_error == ''` → `events_safe`, `_error != ''` → `events_dlq` (with topic/partition/offset preserved). Also creates `events_unique` (ReplacingMergeTree on `(user_id, event_time)` for **exactly-once** semantics) and `events_unique_mv`. |
+| 4  | Produce **valid** messages             | `python3 produce.py --rows $ROWS` (default 100k) → piped into `kafka-console-producer --topic events`. JSON shape matches the source table.                                                                                                                                                                                |
+| 5  | Produce **broken** messages            | 50 deliberately malformed JSON lines → `kafka-console-producer --topic events`. These get rejected by the strict consumer (`events_kafka`) but flow through the safe consumer (`events_kafka_safe`) into `events_dlq`.                                                                                                  |
+| 6  | Sleep 8 s                              | Lets the Kafka MVs catch up (default `flush_interval_ms = 7500`).                                                                                                                                                                                                                                                          |
+| 7  | `queries.sql`                          | Inspects: total rows in `events`, per-event-type breakdown, the SummingMergeTree minute buckets, `system.kafka_consumers` (assignments, offsets), `system.events` Kafka counters.                                                                                                                                          |
+| 8  | DLQ + exactly-once verification        | Prints `events_dlq` count (~50, the bad messages), `events_safe` count (~`$ROWS`), `events_unique FINAL` count, and a top-3 of `_error` strings.                                                                                                                                                                          |
+
+Container stack stays up after `./run.sh`. Tear down with `./down.sh`.
+
 ## Pipeline shape
 
 ```

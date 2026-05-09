@@ -30,6 +30,18 @@ MinIO console: http://localhost:9101 — `minioadmin / minioadmin`.
 ./down.sh
 ```
 
+## Execution flow — what `./run.sh` actually does, in order
+
+| #  | Step                                            | What happens                                                                                                                                                                              |
+|----|-------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 0  | self-bootstrap                                  | `up.sh` brings up `m7-clickhouse`, `m7-minio`, and `m7-minio-init` (which creates the `clickhouse-backups` bucket once MinIO is healthy). Both share `m7-net`, so CH can reach `http://m7-minio:9000`. |
+| 1  | `setup.sql`                                     | Creates database `m7`, table `m7.transactions` (MergeTree partitioned by month, ordered by `(account_id, txn_time, txn_id)`), inserts 2M synthetic rows.                                  |
+| 2  | `queries.sql` — local-disk backup path          | `ALTER TABLE … FREEZE WITH NAME 'demo_snap'` (instant hardlink snapshot under `/var/lib/clickhouse/shadow/`), `BACKUP TABLE … TO Disk('backups', 'transactions_disk_v1.zip')`, `DROP TABLE`, `RESTORE TABLE … FROM Disk(…)`, then per-partition `DETACH PARTITION '202601'` + `ATTACH PARTITION '202601'`. |
+| 3  | `queries-s3.sql` — S3 backup path               | `BACKUP TABLE … TO S3('http://m7-minio:9000/clickhouse-backups/transactions_s3_v1', 'minioadmin', 'minioadmin')`, look up the backup row in `system.backups`, `DROP TABLE`, `RESTORE … FROM S3(…)`. Verify row count returns to 2M. |
+| 4  | `extras.sql` — async + incremental              | `BACKUP TABLE … SETTINGS async = 1` (returns immediately), poll loop on `system.backups.status` until `BACKUP_CREATED`. Insert 50k more rows, then `BACKUP … SETTINGS base_backup = Disk('backups', 'transactions_disk_v1.zip')` — the resulting incremental zip is much smaller. `DROP TABLE`, `RESTORE FROM Disk('backups', 'transactions_inc_v2.zip')` — CH walks the chain to the base. Prints notes on `clickhouse-backup` CLI and `BACKUP ON CLUSTER`. |
+
+Container stack stays up after `./run.sh`. Tear down with `./down.sh`.
+
 ## What this proves
 
 | Step                                      | Outcome                                                                       |

@@ -15,6 +15,18 @@ matter. Same 20M rows in three layouts.
 
 `m6-clickhouse` on host ports 8123 (HTTP) and 9000 (Native).
 
+## Execution flow — what `./run.sh` actually does, in order
+
+| #  | Step          | What happens                                                                                                                                                                                                              |
+|----|---------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 0  | self-bootstrap | If `m6-clickhouse` isn't healthy, `up.sh` brings it up. The container is given a 6 GB memory limit because the dataset is large.                                                                                       |
+| 1  | `setup.sql`   | Creates database `m6` and three identically-shaped tables with different layouts: `events_bad` (ORDER BY `(event_type, country)` — wrong for time-series), `events_good` (ORDER BY `(event_time, user_id)` — right shape), `events_proj` (same as good plus a bloom-filter skip index on `user_id` and a `PROJECTION pv_country_day`). |
+| 2  | `data.sql`    | Inserts 20M rows into `events_good`, then `INSERT INTO bad/proj SELECT * FROM events_good` so all three tables hold identical data. Then `OPTIMIZE FINAL` on each so timings aren't muddied by background merges. ~30–60s on a laptop. |
+| 3  | `queries.sql` | Five comparisons: time-range count on each layout (Q1), country aggregation on each (Q2 — projection should crush), point lookup by user_id (Q3 — skip index helps), `EXPLAIN indexes=1` and `EXPLAIN PROJECTION=1` (Q4), then a `SYSTEM FLUSH LOGS` + `system.query_log` summary so you can see read_rows / query_duration_ms side by side (Q5). |
+| 4  | `extras.sql`  | More tools: PREWHERE (auto + explicit, with `EXPLAIN SYNTAX`), a `SAMPLE BY intHash32(user_id)` table copy and a `SAMPLE 0.1` query, three more skip-index types on a third copy (`minmax`, `set`, `tokenbf_v1`), JOIN strategies (`ANY` vs `ALL` vs Dictionary lookup) against a 500k-row `users_dim`, and a Materialized View (`country_daily_mv` → `country_daily` SummingMergeTree) with a backfill. |
+
+Container stays up after `./run.sh`. Tear down with `./down.sh`.
+
 ## What you should observe
 
 | Query                               | BAD ordering              | GOOD ordering             | PROJ + skip idx                    |

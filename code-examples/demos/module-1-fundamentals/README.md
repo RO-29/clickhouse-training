@@ -22,6 +22,22 @@ up.sh · run.sh · down.sh
 
 `./run.sh` self-bootstraps — if the container isn't up, it calls `up.sh`.
 
+## Execution flow — what `./run.sh` actually does, in order
+
+When you call `./run.sh`, the script walks through these steps. Each one
+prints a `==>` banner so you can follow along on the terminal.
+
+| #  | Step                                | What happens                                                                                                                                                  |
+|----|-------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 0  | **self-bootstrap**                  | If `m1-clickhouse` isn't already responding to `/ping`, the script calls `up.sh` first. `up.sh` tears down any other demo module that's holding port 8123, then `docker compose up -d` brings the CH container up. |
+| 1  | `setup.sql`                         | Creates database `m1` and one MergeTree table `m1.events` with `PARTITION BY toYYYYMM(event_time)`, `ORDER BY (event_time, user_id)`, default `index_granularity = 8192`. |
+| 2  | `data.sql` (~2M rows in 3 inserts)  | Three `INSERT … SELECT FROM numbers(...)` statements (500k + 500k + 1M rows). Three inserts on purpose: leaves three active parts so the next step has something to merge. |
+| 3  | `queries.sql`                       | Eight observation queries: row count, `system.parts`, partitions/sizes, primary key vs sorting key from `system.tables`, `OPTIMIZE … FINAL`, post-merge part count, a date-range aggregation, and a `SYSTEM FLUSH LOGS` + `system.query_log` lookup to see how many rows the previous SELECT actually read. |
+| 4  | `extras.sql`                        | Curriculum extras: a TTL-bearing table (`events_ttl`), a codec-comparison table (`codecs_demo` with `Delta`, `T64`, `ZSTD(3)` columns), a complex-types table with `Enum`, `Nullable`, `Array`, `Tuple`, `Map`, `Nested`, plus `DESCRIBE TABLE` / `SHOW CREATE TABLE`. |
+| 5  | HTTP API smoke test                 | Inside the container, `wget -qO- 'http://localhost:8123/?query=SELECT count() FROM m1.events'` should return `2000000` — proves the HTTP interface works. |
+
+The container stays up after `run.sh` exits. Tear down with `./down.sh`.
+
 ## What this proves
 
 | Step                         | What you should see                                                                |

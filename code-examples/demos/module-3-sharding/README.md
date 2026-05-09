@@ -34,6 +34,23 @@ Cluster name: `clickhouse_cluster`.
 ./down.sh      # docker compose down -v
 ```
 
+## Execution flow — what `./run.sh` actually does, in order
+
+This module's stack has **9 containers** (3 ZooKeeper + 6 ClickHouse).
+ZK has to form quorum and CH has to register every replica before
+work can start.
+
+| #  | Step                                | What happens                                                                                                                                                          |
+|----|-------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 0  | self-bootstrap                      | If `m3-s1r1` doesn't respond to `/ping`, `up.sh` runs first. It tears down peer demo modules, brings up the cluster, and waits for every CH node to answer `/ping`. ZK quorum is checked via the `service_healthy` dependency on each CH node. |
+| 1  | `setup.sql` (via `m3-s1r1`)         | Three `ON CLUSTER` statements: drop any existing `hits_local` / `hits_distributed`, then `CREATE TABLE hits_local … ReplicatedMergeTree('/clickhouse/tables/{shard}/hits_local', '{replica}')` on every node, then a `Distributed('clickhouse_cluster', default, hits_local, cityHash64(user_id))` wrapper. The `{shard}` and `{replica}` macros are expanded per-node from `configs/macros/macros-sNrM.xml`. |
+| 2  | `data.sql` (via `m3-s1r1`)          | One `INSERT INTO hits_distributed SELECT FROM numbers(5_000_000)`. The Distributed table fans rows to the right `hits_local` based on `cityHash64(user_id) % 3`. |
+| 3  | `SYSTEM FLUSH DISTRIBUTED` × 6      | Distributed inserts spool briefly on each node before forwarding. The script flushes the spool on every replica so the next counts are exact. |
+| 4  | `queries.sql` (via `m3-s1r1`)       | Six queries: cluster topology (`system.clusters`), total rows via Distributed, per-shard breakdown via `clusterAllReplicas`, replica equivalence on shard 1 (same byte count on r1 and r2), per-country aggregation pushed down to shards, an `EXPLAIN`, and a single-shard point lookup (`WHERE user_id = 42`). |
+| 5  | `extras.sql` (via `m3-s1r1`)        | Sets up a second cluster definition (`weighted_cluster`, weights 1/1/4) — creates `hits_weighted_distributed`, inserts 600k rows, flushes, prints per-shard balance (shard 3 gets ~66%). Then creates three more Distributed tables on top of the same `hits_local` data with alternative sharding keys: `rand()`, `intDiv(user_id, 100000)`, `xxHash64(user_id)`. EXPLAINs each so you can see how the planner narrows the shard set. |
+
+Container stays up after `./run.sh`. Tear down with `./down.sh`.
+
 ## What this proves
 
 1. **Topology**: `system.clusters` returns 3 shards × 2 replicas.

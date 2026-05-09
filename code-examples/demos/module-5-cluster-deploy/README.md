@@ -24,6 +24,20 @@ Self-contained 3×2 cluster (prefix `m5-`) for `ON CLUSTER` DDL,
 ./down.sh
 ```
 
+## Execution flow — what `./run.sh` actually does, in order
+
+| #  | Step                                       | What happens                                                                                                                                                                                                           |
+|----|--------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 0  | self-bootstrap                             | `up.sh` brings up the cluster (9 containers) and tears down peer demo modules. `users.xml`, `prometheus.xml`, and the cluster + macros XMLs are all bind-mounted into each CH node at startup.                        |
+| 1  | `setup.sql` (via `m5-s1r1`)                | `ON CLUSTER` creates database `analytics`, table `analytics.page_views_local` (ReplicatedMergeTree), and a Distributed wrapper `analytics.page_views_distributed`. Every replica gets all three.                       |
+| 2  | `data.sql` (via `m5-s1r1`)                 | Inserts 3M rows via the Distributed table.                                                                                                                                                                            |
+| 3  | `SYSTEM FLUSH DISTRIBUTED` × 6             | Drains the Distributed spool on every node so the next reads are exact.                                                                                                                                                |
+| 4  | `queries.sql` (via `m5-s1r1`)              | Six queries: `system.distributed_ddl_queue` (audit trail of every ON CLUSTER op), `cluster()` table function (one read fan-outs over every shard), `clusterAllReplicas()` per-replica row count, `remote('m5-s2r1:9000', …)` direct-to-host query, distributed `EXPLAIN`, and `system.clusters`. |
+| 5  | `extras.sql` (via `m5-s1r1`)               | Layers SQL-managed access on top of `users.xml`: creates roles `reader` (`SELECT` on `analytics.*`) and `writer` (`INSERT` on the page_views tables) `ON CLUSTER`, grants `reader` to `analyst` and `writer` to `app`. Inspects `system.users`, `system.roles`, `system.role_grants`, `system.grants`, `system.quotas_usage`. Prints Prometheus + TLS notes. |
+| 6  | Prometheus endpoint smoke test (in run.sh) | `docker exec m5-s1r1 wget -qO- http://localhost:9363/metrics` — first 5 lines should be Prometheus-formatted metrics. Confirms the `<prometheus>` block from `02-prometheus.xml` is active.                            |
+
+Container stack stays up after `./run.sh`. Tear down with `./down.sh`.
+
 ## What this proves
 
 - One `CREATE TABLE … ON CLUSTER` materialises on every replica (visible in
