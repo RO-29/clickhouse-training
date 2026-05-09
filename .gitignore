@@ -38,3 +38,4 @@ __pycache__/
 # Notion API credentials
 .env
 notion-page-urls.json
+tools/notion-page-ids.json
