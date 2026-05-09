@@ -294,7 +294,13 @@ def main():
         text = re.sub(r'<div class="handsOn">.*?</div>\s*</div>\s*',
                       "", text, flags=re.DOTALL)
 
-        if "</body>" in text:
+        # Inject BEFORE the dark module-footer block so the new content
+        # sits at the end of the curriculum body, not after the footer.
+        # Anchor present on every module page:
+        FOOTER = '<div style="background: #333; color: white; padding: 40px 20px; text-align: center; margin-top: 40px;">'
+        if FOOTER in text:
+            text = text.replace(FOOTER, section + "\n" + FOOTER, 1)
+        elif "</body>" in text:
             text = text.replace("</body>", section + "\n</body>", 1)
         else:
             text += "\n" + section

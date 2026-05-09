@@ -1450,65 +1450,6 @@ clickhouse-backup list</code></pre><div class="fade-overlay"></div></div><button
 </div>
 </div>
 </div>
-<div style="background: #333; color: white; padding: 40px 20px; text-align: center; margin-top: 40px;">
-<h3>💾 ClickHouse Knowledge Transfer</h3>
-<p>Module 7 of 10 | Duration: 6-8 weeks total</p>
-<p style="margin-top: 20px; opacity: 0.8;">Backup, Recovery &amp; PITR - Protecting Your Data | 2026</p>
-</div>
-<div class="module-nav" style="border-bottom: none; border-top: 2px solid #ff6b35;">
-<a class="nav-btn-module" href="module-6-query-optimization.html">← Previous: Module 6 - Query Optimization</a>
-<a class="nav-btn-module nav-home" href="../index.html">🏠 Home</a>
-<a class="nav-btn-module" href="module-8-disaster-recovery.html">Next: Module 8 - Disaster Recovery →</a>
-</div>
-<script>hljs.highlightAll();</script><script>
-// Copy code functionality
-document.querySelectorAll('.copy-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-        const code = this.parentElement.querySelector('code').textContent;
-        navigator.clipboard.writeText(code).then(() => {
-            const originalText = this.textContent;
-            this.textContent = '✓ Copied!';
-            this.classList.add('copied');
-            setTimeout(() => {
-                this.textContent = originalText;
-                this.classList.remove('copied');
-            },2000);
-        }).catch(err => {
-            console.error('Failed to copy:', err);
-            this.textContent = '✗ Failed';
-            setTimeout(() => {
-                this.textContent = 'Copy';
-            },2000);
-        });
-    });
-});
-
-// Show more/less functionality
-document.querySelectorAll('.toggle-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-        const content = this.parentElement.querySelector('.code-content');
-        const overlay = content.querySelector('.fade-overlay');
-        
-        if (content.classList.contains('collapsed')) {
-            content.classList.remove('collapsed');
-            content.classList.add('expanded');
-            this.textContent = 'Show Less';
-            if (overlay) overlay.style.display = 'none';
-        } else {
-            content.classList.add('collapsed');
-            content.classList.remove('expanded');
-            this.textContent = 'Show More';
-            if (overlay) overlay.style.display = 'block';
-        }
-    });
-});
-</script>
-
-
-
-</div>
-
-
 
 <style>
 .handsOn {
@@ -2170,6 +2111,75 @@ SYSTEM SHUTDOWN BACKUP &lt;backup_id&gt;;       -- newer CH; varies by version
 </ul>
   </div>
 </div>
+
+<div style="background: #333; color: white; padding: 40px 20px; text-align: center; margin-top: 40px;">
+<h3>💾 ClickHouse Knowledge Transfer</h3>
+<p>Module 7 of 10 | Duration: 6-8 weeks total</p>
+<p style="margin-top: 20px; opacity: 0.8;">Backup, Recovery &amp; PITR - Protecting Your Data | 2026</p>
+</div>
+<div class="module-nav" style="border-bottom: none; border-top: 2px solid #ff6b35;">
+<a class="nav-btn-module" href="module-6-query-optimization.html">← Previous: Module 6 - Query Optimization</a>
+<a class="nav-btn-module nav-home" href="../index.html">🏠 Home</a>
+<a class="nav-btn-module" href="module-8-disaster-recovery.html">Next: Module 8 - Disaster Recovery →</a>
+</div>
+<script>hljs.highlightAll();</script><script>
+// Copy code functionality
+document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const code = this.parentElement.querySelector('code').textContent;
+        navigator.clipboard.writeText(code).then(() => {
+            const originalText = this.textContent;
+            this.textContent = '✓ Copied!';
+            this.classList.add('copied');
+            setTimeout(() => {
+                this.textContent = originalText;
+                this.classList.remove('copied');
+            },2000);
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+            this.textContent = '✗ Failed';
+            setTimeout(() => {
+                this.textContent = 'Copy';
+            },2000);
+        });
+    });
+});
+
+// Show more/less functionality
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const content = this.parentElement.querySelector('.code-content');
+        const overlay = content.querySelector('.fade-overlay');
+        
+        if (content.classList.contains('collapsed')) {
+            content.classList.remove('collapsed');
+            content.classList.add('expanded');
+            this.textContent = 'Show Less';
+            if (overlay) overlay.style.display = 'none';
+        } else {
+            content.classList.add('collapsed');
+            content.classList.remove('expanded');
+            this.textContent = 'Show More';
+            if (overlay) overlay.style.display = 'block';
+        }
+    });
+});
+</script>
+
+
+
+</div>
+
+
+
+
+
+
+</div>
+
+
+</div>
+
 
 </body>
 </html>

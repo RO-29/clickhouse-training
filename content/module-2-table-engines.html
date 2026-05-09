@@ -1209,68 +1209,6 @@ WHERE user_id = 12345;
 </div>
 </div>
 </div>
-<div style="background: #333; color: white; padding: 40px 20px; text-align: center; margin-top: 40px;">
-<h3>📊 ClickHouse Knowledge Transfer</h3>
-<p>Module 2 of 10 | Duration: 6-8 weeks total</p>
-<p style="margin-top: 20px; opacity: 0.8;">Created for comprehensive ClickHouse training | 2026</p>
-</div>
-<div class="module-nav" style="border-bottom: none; border-top: 2px solid #ff6b35;">
-<a class="nav-btn-module" href="module-1-fundamentals.html">← Previous: Module 1 - Fundamentals</a>
-<a class="nav-btn-module nav-home" href="../index.html">🏠 Home</a>
-<a class="nav-btn-module" href="module-3-sharding.html">Next: Module 3 - Sharding →</a>
-</div>
-<script>
-hljs.highlightAll();
-</script>
-<script>
-// Copy code functionality
-document.querySelectorAll('.copy-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-        const code = this.parentElement.querySelector('code').textContent;
-        navigator.clipboard.writeText(code).then(() => {
-            const originalText = this.textContent;
-            this.textContent = '✓ Copied!';
-            this.classList.add('copied');
-            setTimeout(() => {
-                this.textContent = originalText;
-                this.classList.remove('copied');
-            },2000);
-        }).catch(err => {
-            console.error('Failed to copy:', err);
-            this.textContent = '✗ Failed';
-            setTimeout(() => {
-                this.textContent = 'Copy';
-            },2000);
-        });
-    });
-});
-
-// Show more/less functionality
-document.querySelectorAll('.toggle-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-        const content = this.parentElement.querySelector('.code-content');
-        const overlay = content.querySelector('.fade-overlay');
-        
-        if (content.classList.contains('collapsed')) {
-            content.classList.remove('collapsed');
-            content.classList.add('expanded');
-            this.textContent = 'Show Less';
-            if (overlay) overlay.style.display = 'none';
-        } else {
-            content.classList.add('collapsed');
-            content.classList.remove('expanded');
-            this.textContent = 'Show More';
-            if (overlay) overlay.style.display = 'block';
-        }
-    });
-});
-</script>
-
-
-
-</div>
-
-
 
 <style>
 .handsOn {
@@ -2044,6 +1982,78 @@ up.sh · run.sh · down.sh
 </table>
   </div>
 </div>
+
+<div style="background: #333; color: white; padding: 40px 20px; text-align: center; margin-top: 40px;">
+<h3>📊 ClickHouse Knowledge Transfer</h3>
+<p>Module 2 of 10 | Duration: 6-8 weeks total</p>
+<p style="margin-top: 20px; opacity: 0.8;">Created for comprehensive ClickHouse training | 2026</p>
+</div>
+<div class="module-nav" style="border-bottom: none; border-top: 2px solid #ff6b35;">
+<a class="nav-btn-module" href="module-1-fundamentals.html">← Previous: Module 1 - Fundamentals</a>
+<a class="nav-btn-module nav-home" href="../index.html">🏠 Home</a>
+<a class="nav-btn-module" href="module-3-sharding.html">Next: Module 3 - Sharding →</a>
+</div>
+<script>
+hljs.highlightAll();
+</script>
+<script>
+// Copy code functionality
+document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const code = this.parentElement.querySelector('code').textContent;
+        navigator.clipboard.writeText(code).then(() => {
+            const originalText = this.textContent;
+            this.textContent = '✓ Copied!';
+            this.classList.add('copied');
+            setTimeout(() => {
+                this.textContent = originalText;
+                this.classList.remove('copied');
+            },2000);
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+            this.textContent = '✗ Failed';
+            setTimeout(() => {
+                this.textContent = 'Copy';
+            },2000);
+        });
+    });
+});
+
+// Show more/less functionality
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const content = this.parentElement.querySelector('.code-content');
+        const overlay = content.querySelector('.fade-overlay');
+        
+        if (content.classList.contains('collapsed')) {
+            content.classList.remove('collapsed');
+            content.classList.add('expanded');
+            this.textContent = 'Show Less';
+            if (overlay) overlay.style.display = 'none';
+        } else {
+            content.classList.add('collapsed');
+            content.classList.remove('expanded');
+            this.textContent = 'Show More';
+            if (overlay) overlay.style.display = 'block';
+        }
+    });
+});
+</script>
+
+
+
+</div>
+
+
+
+
+
+
+</div>
+
+
+</div>
+
 
 </body>
 </html>
