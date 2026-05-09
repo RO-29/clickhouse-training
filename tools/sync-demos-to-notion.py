@@ -47,8 +47,6 @@ NOTION_API_KEY = os.environ.get("NOTION_API_KEY", "")
 NOTION_VERSION = "2022-06-28"
 BASE = "https://api.notion.com/v1"
 
-REPO_URL = "https://github.com/RO-29/clickhouse-training/blob/main/code-examples/demos"
-
 ROOT = Path(__file__).resolve().parent.parent
 DEMOS = ROOT / "code-examples" / "demos"
 PAGE_IDS_FILE = ROOT / "tools" / "notion-page-ids.json"
@@ -146,19 +144,6 @@ def paragraph(text: str) -> dict:
     }
 
 
-def bullet_link(text: str, url: str) -> dict:
-    return {
-        "object": "block",
-        "type": "bulleted_list_item",
-        "bulleted_list_item": {
-            "rich_text": [{
-                "type": "text",
-                "text": {"content": text, "link": {"url": url}},
-            }]
-        },
-    }
-
-
 def divider() -> dict:
     return {"object": "block", "type": "divider", "divider": {}}
 
@@ -197,13 +182,23 @@ def archive_existing_demo_child(parent_id: str) -> int:
     return archived
 
 
-def build_demo_blocks(folder: Path, github_folder_url: str) -> list[dict]:
+def bullet(text: str) -> dict:
+    return {
+        "object": "block",
+        "type": "bulleted_list_item",
+        "bulleted_list_item": {
+            "rich_text": [{"type": "text", "text": {"content": text}}]
+        },
+    }
+
+
+def build_demo_blocks(folder: Path) -> list[dict]:
     blocks: list[dict] = []
 
     blocks.append(paragraph(
         "Self-contained ClickHouse stack you can run locally with Docker. "
-        "The README on GitHub has the full step-by-step execution flow; "
-        "the SQL/Python files below are reproduced here for easy copy-paste."
+        "Files are reproduced below as code blocks for easy copy-paste; the "
+        "live source lives in the repo at the path shown under 'Run locally'."
     ))
 
     blocks.append(heading(2, "🚀 Run locally"))
@@ -215,13 +210,14 @@ def build_demo_blocks(folder: Path, github_folder_url: str) -> list[dict]:
         "bash",
     ))
 
-    blocks.append(heading(2, "🔗 Links"))
-    blocks.append(bullet_link("Demo README on GitHub", f"{github_folder_url}/README.md"))
-    blocks.append(bullet_link("Demo folder on GitHub", github_folder_url))
+    blocks.append(heading(2, "📁 Files in this demo"))
     for child in sorted(folder.iterdir()):
-        if child.is_file() and child.suffix in (".sql", ".py", ".sh", ".yml", ".xml") \
-                and child.name not in {"down.sh"}:  # skip trivial files
-            blocks.append(bullet_link(child.name, f"{github_folder_url}/{child.name}"))
+        if child.is_file() and child.suffix in (".sql", ".py", ".sh", ".yml", ".xml", ".md"):
+            blocks.append(bullet(child.name))
+    # Surface configs/* if present
+    for sub in sorted(folder.rglob("configs/*")):
+        if sub.is_file():
+            blocks.append(bullet(str(sub.relative_to(folder))))
 
     blocks.append(divider())
     blocks.append(heading(2, "📋 Source files"))
@@ -254,9 +250,9 @@ def build_demo_blocks(folder: Path, github_folder_url: str) -> list[dict]:
     return blocks
 
 
-def create_demo_child(parent_id: str, folder: Path, github_url: str) -> str:
+def create_demo_child(parent_id: str, folder: Path) -> str:
     """Create a child page titled CHILD_TITLE under parent_id. Returns the new page URL."""
-    blocks = build_demo_blocks(folder, github_url)
+    blocks = build_demo_blocks(folder)
 
     # Notion limits a single create-page call to 100 children. We create the
     # page with the first 100 blocks, then append the rest.
@@ -294,12 +290,11 @@ def sync_module(num: int, parent_page_id: str) -> None:
         print(f"  module {num}: folder missing ({folder}) (skipping)")
         return
 
-    github_url = f"{REPO_URL}/{folder_name}"
     print(f"  module {num} ({folder_name}):")
     archived = archive_existing_demo_child(parent_page_id)
     if archived:
         print(f"    archived {archived} prior demo child page(s)")
-    new_url = create_demo_child(parent_page_id, folder, github_url)
+    new_url = create_demo_child(parent_page_id, folder)
     print(f"    ✓ {new_url}")
 
 

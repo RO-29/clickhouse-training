@@ -313,15 +313,14 @@
 <div class="nav-btn">📚 Resources</div>
 </div>
 </div>
-<!-- demo-callout: links to the runnable Docker demo for this module -->
+<!-- demo-callout: points at the runnable Docker demo for this module (private repo: no external link) -->
 <div class="demo-callout" style="margin: 0 auto; max-width: 1200px; padding: 0 20px;">
 <div style="background: linear-gradient(135deg, #2b6cb0 0%, #1a4480 100%); color: white; padding: 25px 30px; margin: 24px 0; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
-<div style="flex: 1; min-width: 280px;">
-<div style="font-size: 1.4em; font-weight: bold; margin-bottom: 8px;">🐳 Hands-on Docker Demo for this Module</div>
-<div style="opacity: 0.92; font-size: 0.97em; line-height: 1.5;">Self-contained ClickHouse stack you can run locally: <code style="background: rgba(0,0,0,0.25); padding: 2px 8px; border-radius: 4px;">./up.sh &amp;&amp; ./run.sh</code>. The README has a step-by-step execution flow showing exactly what runs, in order.</div>
-</div>
-<a href="https://github.com/RO-29/clickhouse-training/blob/main/code-examples/demos/module-2-table-engines/README.md" target="_blank" rel="noopener" style="background: white; color: #1a4480; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; white-space: nowrap;">View Demo README &rarr;</a>
+<div style="display: flex; flex-direction: column; gap: 12px;">
+<div style="font-size: 1.4em; font-weight: bold;">🐳 Hands-on Docker Demo for this Module</div>
+<div style="opacity: 0.92; font-size: 0.97em; line-height: 1.55;">Self-contained ClickHouse stack: <strong>Single node</strong>. The demo lives in the repo at <code style="background: rgba(0,0,0,0.25); padding: 2px 8px; border-radius: 4px;">code-examples/demos/module-2-table-engines/</code> with its own README, configs, and lifecycle scripts.</div>
+<div style="font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.92em; background: rgba(0,0,0,0.25); padding: 12px 14px; border-radius: 6px; line-height: 1.6;">cd code-examples/demos/module-2-table-engines<br>./up.sh        <span style="opacity: 0.7;"># bring stack up</span><br>./run.sh       <span style="opacity: 0.7;"># run the demo</span><br>./down.sh      <span style="opacity: 0.7;"># tear down</span></div>
+<div style="opacity: 0.85; font-size: 0.9em;">See <code style="background: rgba(0,0,0,0.25); padding: 2px 6px; border-radius: 4px;">README.md</code> in that folder for the full execution flow, talking points, and curriculum-aligned extras.</div>
 </div>
 </div>
 </div>
