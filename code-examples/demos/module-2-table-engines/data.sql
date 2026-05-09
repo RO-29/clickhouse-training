@@ -1,3 +1,5 @@
+SET async_insert = 0;  -- VALUES + --multiquery clashes with async_insert defaults on CH 26.x
+
 -- ReplacingMergeTree: insert duplicates, then v2 of the same user.
 INSERT INTO m2.users_replacing (user_id, name, email, version) VALUES
     (1, 'alice',  'alice@old.com',  1),

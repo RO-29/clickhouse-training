@@ -1,3 +1,5 @@
+SET async_insert = 0;  -- VALUES + --multiquery clashes with async_insert defaults on CH 26.x
+
 -- Module 1 extras: topics from the curriculum that the main demo skipped.
 -- TTL, codecs, complex types (Array/Tuple/Map/Nested/Enum), DESCRIBE.
 

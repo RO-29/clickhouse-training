@@ -1,3 +1,5 @@
+SET async_insert = 0;  -- VALUES + --multiquery clashes with async_insert defaults on CH 26.x
+
 -- Module 2 extras: engines + patterns the core demo glossed over.
 -- VersionedCollapsing, Materialized Views, Nested type.
 

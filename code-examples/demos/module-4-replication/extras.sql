@@ -1,3 +1,5 @@
+SET async_insert = 0;  -- VALUES + --multiquery clashes with async_insert defaults on CH 26.x
+
 -- Module 4 extras: replication consistency settings and DROP REPLICA.
 
 -- ============================================================
