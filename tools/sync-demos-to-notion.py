@@ -43,6 +43,13 @@ from pathlib import Path
 
 import requests
 
+# Local helper: convert markdown → Notion blocks
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from md_to_notion import (  # noqa: E402
+    md_to_blocks, heading, paragraph, bullet, divider,
+    code_block, image_external,
+)
+
 NOTION_API_KEY = os.environ.get("NOTION_API_KEY", "")
 NOTION_VERSION = "2022-06-28"
 BASE = "https://api.notion.com/v1"
@@ -92,62 +99,6 @@ def load_page_ids() -> dict:
     return json.loads(PAGE_IDS_FILE.read_text())
 
 
-def chunk(text: str, n: int = RICH_TEXT_MAX) -> list[str]:
-    """Split text into <=n-char pieces, breaking on newlines when possible."""
-    if len(text) <= n:
-        return [text]
-    out, buf = [], ""
-    for line in text.splitlines(keepends=True):
-        if len(buf) + len(line) > n:
-            if buf:
-                out.append(buf)
-                buf = ""
-            # Single very long line — hard split
-            while len(line) > n:
-                out.append(line[:n])
-                line = line[n:]
-        buf += line
-    if buf:
-        out.append(buf)
-    return out
-
-
-def code_block(content: str, language: str) -> list[dict]:
-    """Return one or more Notion code blocks for the given content."""
-    blocks = []
-    for piece in chunk(content):
-        blocks.append({
-            "object": "block",
-            "type": "code",
-            "code": {
-                "language": language,
-                "rich_text": [{"type": "text", "text": {"content": piece}}],
-            },
-        })
-    return blocks
-
-
-def heading(level: int, text: str) -> dict:
-    key = {1: "heading_1", 2: "heading_2", 3: "heading_3"}[level]
-    return {
-        "object": "block",
-        "type": key,
-        key: {"rich_text": [{"type": "text", "text": {"content": text}}]},
-    }
-
-
-def paragraph(text: str) -> dict:
-    return {
-        "object": "block",
-        "type": "paragraph",
-        "paragraph": {"rich_text": [{"type": "text", "text": {"content": text}}]},
-    }
-
-
-def divider() -> dict:
-    return {"object": "block", "type": "divider", "divider": {}}
-
-
 def list_existing_children(parent_id: str) -> list[dict]:
     """Return all blocks under parent_id (flat — one page deep)."""
     results, cursor = [], None
@@ -182,44 +133,18 @@ def archive_existing_demo_child(parent_id: str) -> int:
     return archived
 
 
-def bullet(text: str) -> dict:
-    return {
-        "object": "block",
-        "type": "bulleted_list_item",
-        "bulleted_list_item": {
-            "rich_text": [{"type": "text", "text": {"content": text}}]
-        },
-    }
+_EXTERNAL_IMAGES_FILE = ROOT / "tools" / "external-images.json"
+
+
+def load_external_images() -> dict:
+    if not _EXTERNAL_IMAGES_FILE.exists(): return {}
+    return json.loads(_EXTERNAL_IMAGES_FILE.read_text())
 
 
 def build_demo_blocks(folder: Path) -> list[dict]:
     blocks: list[dict] = []
 
-    blocks.append(paragraph(
-        "Self-contained ClickHouse stack you can run locally with Docker. "
-        "Files are reproduced below as code blocks for easy copy-paste; the "
-        "live source lives in the repo at the path shown under 'Run locally'."
-    ))
-
-    diag_dir = folder / "diagrams"
-    if diag_dir.exists():
-        anim_count = sum(1 for f in diag_dir.glob("anim-*.svg"))
-        diag_count = sum(1 for f in diag_dir.glob("[0-9]*.svg"))
-        gif = diag_dir / "demo.gif"
-        bits = []
-        if gif.exists():
-            bits.append("a GIF capture of `./run.sh`")
-        if anim_count:
-            bits.append(f"{anim_count} animated SVG concept diagram(s)")
-        if diag_count:
-            bits.append(f"{diag_count} architecture diagram(s) rendered from the README's Mermaid sources")
-        if bits:
-            blocks.append(paragraph(
-                "Visuals (in the repo at code-examples/demos/" + folder.name +
-                "/diagrams/, also embedded into the corresponding HTML page on the training site): "
-                + "; ".join(bits) + "."
-            ))
-
+    # ---------- 1. Run locally ----------
     blocks.append(heading(2, "🚀 Run locally"))
     blocks.extend(code_block(
         f"cd code-examples/demos/{folder.name}\n"
@@ -229,19 +154,47 @@ def build_demo_blocks(folder: Path) -> list[dict]:
         "bash",
     ))
 
-    blocks.append(heading(2, "📁 Files in this demo"))
-    for child in sorted(folder.iterdir()):
-        if child.is_file() and child.suffix in (".sql", ".py", ".sh", ".yml", ".xml", ".md"):
-            blocks.append(bullet(child.name))
-    # Surface configs/* if present
-    for sub in sorted(folder.rglob("configs/*")):
-        if sub.is_file():
-            blocks.append(bullet(str(sub.relative_to(folder))))
+    # ---------- 2. ClickHouse reference visuals (public URLs) ----------
+    externals = load_external_images().get(folder.name, [])
+    if externals:
+        blocks.append(divider())
+        blocks.append(heading(2, "📚 ClickHouse reference visuals"))
+        blocks.append(paragraph(
+            "Curated from the official ClickHouse docs and engineering blog, "
+            "and Altinity's docs/blog. Click any image's caption to open the "
+            "source page."
+        ))
+        for url, caption, src_url, src_name in externals:
+            blocks.append(image_external(url, caption=f"{src_name} — {caption}"))
 
+    # ---------- 3. Hint about repo-only visuals ----------
+    diag_dir = folder / "diagrams"
+    if diag_dir.exists():
+        anim = sum(1 for f in diag_dir.glob("anim-*.svg"))
+        mer = sum(1 for f in diag_dir.glob("[0-9]*.svg"))
+        gif = (diag_dir / "demo.gif").exists()
+        bits = []
+        if gif: bits.append("a GIF capture of `./run.sh`")
+        if anim: bits.append(f"{anim} animated SVG concept diagram(s)")
+        if mer: bits.append(f"{mer} architecture diagram(s) rendered from Mermaid")
+        if bits:
+            blocks.append(paragraph(
+                "**Repo-only visuals** (embedded into the training site's "
+                f"HTML page for this module): {'; '.join(bits)}. They live at "
+                f"`code-examples/demos/{folder.name}/diagrams/`."
+            ))
+
+    # ---------- 4. Full module reference (README converted to native blocks) ----------
+    readme = folder / "README.md"
+    if readme.exists():
+        blocks.append(divider())
+        blocks.append(heading(2, "📚 Full module reference"))
+        blocks.extend(md_to_blocks(readme.read_text()))
+
+    # ---------- 5. Source files reproduced as syntax-highlighted code blocks ----------
     blocks.append(divider())
     blocks.append(heading(2, "📋 Source files"))
 
-    # Order matters — readers want setup → data → queries → extras.
     file_order = ["setup.sql", "data.sql", "data.py", "produce.py",
                   "queries.sql", "queries-s3.sql", "extras.sql"]
     seen = set()
@@ -253,11 +206,11 @@ def build_demo_blocks(folder: Path) -> list[dict]:
             lang = CODE_LANG.get(path.suffix, "plain text")
             blocks.extend(code_block(path.read_text(), lang))
 
-    # Anything else worth including (run.sh shows what executes; configs/*.xml).
+    # configs/*.xml + any extra .sh / .xml not already covered
     for path in sorted(folder.rglob("*")):
         if not path.is_file() or path.name in seen:
             continue
-        if path.suffix not in (".sh", ".xml"):
+        if path.suffix not in (".sh", ".xml", ".yml"):
             continue
         if path.name in {"up.sh", "down.sh"}:
             continue
