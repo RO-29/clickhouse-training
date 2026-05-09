@@ -313,16 +313,6 @@
 <div class="nav-btn">📚 Resources</div>
 </div>
 </div>
-<!-- demo-callout: points at the runnable Docker demo for this module (private repo: no external link) -->
-<div class="demo-callout" style="margin: 0 auto; max-width: 1200px; padding: 0 20px;">
-<div style="background: linear-gradient(135deg, #2b6cb0 0%, #1a4480 100%); color: white; padding: 25px 30px; margin: 24px 0; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-<div style="display: flex; flex-direction: column; gap: 12px;">
-<div style="font-size: 1.4em; font-weight: bold;">🐳 Hands-on Docker Demo for this Module</div>
-<div style="opacity: 0.92; font-size: 0.97em; line-height: 1.55;">Self-contained ClickHouse stack: <strong>Single node</strong>. The demo lives in the repo at <code style="background: rgba(0,0,0,0.25); padding: 2px 8px; border-radius: 4px;">code-examples/demos/module-2-table-engines/</code> with its own README, configs, and lifecycle scripts.</div>
-<div style="font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.92em; background: rgba(0,0,0,0.25); padding: 12px 14px; border-radius: 6px; line-height: 1.6;">cd code-examples/demos/module-2-table-engines<br>./up.sh        <span style="opacity: 0.7;"># bring stack up</span><br>./run.sh       <span style="opacity: 0.7;"># run the demo</span><br>./down.sh      <span style="opacity: 0.7;"># tear down</span></div>
-<div style="opacity: 0.85; font-size: 0.9em;">See <code style="background: rgba(0,0,0,0.25); padding: 2px 6px; border-radius: 4px;">README.md</code> in that folder for the full execution flow, talking points, and curriculum-aligned extras.</div>
-</div>
-</div>
 </div>
 <div class="container">
 <!-- What is It Section -->
@@ -1274,5 +1264,1284 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
         }
     });
 });
-</script></body>
+</script>
+
+
+
+<div class="handsOn">
+  <div class="handsOn-card">
+    <h2>📚 Full module reference</h2>
+    <h1 id="module-2-table-engines-data-modelling">Module 2 — Table Engines &amp; Data Modelling</h1>
+<blockquote>
+<p><strong>Audience:</strong> anyone designing a ClickHouse schema. <strong>Prerequisites:</strong>
+Module 1 (parts, merges, MergeTree). <strong>Time:</strong> ~60 min reading + 30 min hands-on.</p>
+</blockquote>
+<p>By the end you will be able to:</p>
+<ul>
+<li>Pick the right <code>*MergeTree</code> variant for any append/SCD/aggregation pattern.</li>
+<li>Read sign-collapse and version-collapse semantics.</li>
+<li>Design Materialized View pipelines that pre-aggregate at insert time.</li>
+<li>Use <code>Nested</code>, <code>Array</code>, <code>Map</code> to model 1-to-many without joins.</li>
+<li>Recognise when <strong>not</strong> to use a fancy engine.</li>
+</ul>
+<hr />
+<h2 id="1-the-engine-landscape-at-a-glance">1. The engine landscape at a glance</h2>
+<pre><code>                      ┌───────────────────────────────────────┐
+                      │             Storage engines            │
+                      └──────────────┬────────────────────────┘
+                                     │
+       ┌─────────────────────────────┼──────────────────────────────────┐
+       │                             │                                   │
+       ▼                             ▼                                   ▼
+  ┌─────────┐               ┌──────────────┐                     ┌───────────┐
+  │ Log     │               │  MergeTree   │                     │ Special   │
+  │ family  │               │  family      │                     │ engines   │
+  └─────────┘               └──────┬───────┘                     └───────────┘
+       │                            │                                   │
+   ┌───┴────┐    ┌──────────────────┼────────────────────────┐    ┌────┴─────┐
+   │        │    │                  │                        │    │          │
+  Log    StripeLog              MergeTree              Replicated*    Memory   Buffer
+       TinyLog                Replacing                                Dictionary  Distributed
+                              Summing                                              Kafka / S3 / URL
+                              Aggregating                                          Merge / View / MV
+                              Collapsing
+                              VersionedCollapsing
+                              GraphiteMergeTree
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Family</th>
+<th>Use when</th>
+<th>Don't use when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Log</strong></td>
+<td>Tiny ad-hoc tables. No indexes, no parts. Atomic blocks but no resumable reads.</td>
+<td>Anything you care about losing.</td>
+</tr>
+<tr>
+<td><strong>MergeTree</strong></td>
+<td>99% of analytical tables. Default choice.</td>
+<td>High-write, mutable, single-row workloads.</td>
+</tr>
+<tr>
+<td><strong>Replicated*</strong></td>
+<td>MergeTree variants on a cluster. Module 4 deep-dives.</td>
+<td>Single-node demos.</td>
+</tr>
+<tr>
+<td><strong>Memory</strong></td>
+<td>Caches, ephemeral state, tests. Lost on restart.</td>
+<td>Anything that must survive a crash.</td>
+</tr>
+<tr>
+<td><strong>Buffer</strong></td>
+<td>Last-resort smoothing layer in front of MergeTree if you cannot batch upstream.</td>
+<td>If you can batch upstream — just batch.</td>
+</tr>
+<tr>
+<td><strong>Distributed</strong> / <strong>Kafka</strong> / <strong>MySQL</strong> / <strong>S3</strong></td>
+<td>Federation engines. They don't store data — they read or fan-out.</td>
+<td>When you actually want a local table.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2-plain-mergetree-the-baseline">2. Plain <code>MergeTree</code> — the baseline</h2>
+<p>You already know it from Module 1. Recap:</p>
+<ul>
+<li>Append-only at the part level.</li>
+<li>Parts merge in the background; rows within a part are sorted by <code>ORDER BY</code>.</li>
+<li>No deduplication, no aggregation, no rollup. Just sort+compress+merge.</li>
+</ul>
+<p>Use this until you have a <em>specific reason</em> to pick something else.</p>
+<hr />
+<h2 id="3-replacingmergetree-slowly-changing-dimensions">3. ReplacingMergeTree — slowly-changing dimensions</h2>
+<p>Same as MergeTree, but during merges, <strong>rows with the same sort key are
+collapsed into one</strong>, keeping the row with the highest <em>version</em>.</p>
+<pre><code class="language-sql">CREATE TABLE users_replacing (
+    user_id UInt64,
+    name    String,
+    email   String,
+    version UInt64
+)
+ENGINE = ReplacingMergeTree(version)
+ORDER BY user_id;
+</code></pre>
+<h3 id="mental-model">Mental model</h3>
+<pre><code>INSERT batch 1:                  INSERT batch 2:
+┌──────┬───────┬──────────┬───┐  ┌──────┬───────┬──────────┬───┐
+│ id=1 │ alice │ a@old    │ v1│  │ id=1 │ alice │ a@new    │ v2│
+│ id=2 │ bob   │ b@old    │ v1│  │ id=3 │ carol │ c@new    │ v3│
+└──────┴───────┴──────────┴───┘  └──────┴───────┴──────────┴───┘
+
+After merge (same id collapses, highest version wins):
+
+  ┌──────┬───────┬──────────┬───┐
+  │ id=1 │ alice │ a@new    │ v2│
+  │ id=2 │ bob   │ b@old    │ v1│
+  │ id=3 │ carol │ c@new    │ v3│
+  └──────┴───────┴──────────┴───┘
+</code></pre>
+<h3 id="three-ways-to-read">Three ways to read</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Latency</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SELECT * FROM t</code></td>
+<td>Fast (no merge)</td>
+<td><strong>Returns dupes</strong> until merge runs. Almost never what you want.</td>
+</tr>
+<tr>
+<td><code>SELECT * FROM t FINAL</code></td>
+<td>Slow (merges at read time)</td>
+<td>Correct, but reads the whole partition. Avoid in hot paths.</td>
+</tr>
+<tr>
+<td><code>SELECT user_id, argMax(name, version), argMax(email, version), max(version) AS v FROM t GROUP BY user_id</code></td>
+<td>Fast</td>
+<td>The production pattern. Works regardless of merge state.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Key takeaway:</strong> ReplacingMergeTree gives <em>eventual</em> dedup. If your
+query absolutely must see at most one row per key, do the dedup in the
+query (<code>argMax</code>), not via <code>FINAL</code>.</p>
+</blockquote>
+<hr />
+<h2 id="4-summingmergetree-pre-aggregated-counters">4. SummingMergeTree — pre-aggregated counters</h2>
+<p>Like MergeTree, but during merges, <strong>rows with the same sort key get their
+numeric columns summed</strong>. Non-numeric columns from the row with the
+<em>lowest</em> part get kept (treat them as the dimensions).</p>
+<pre><code class="language-sql">CREATE TABLE metrics_summing (
+    metric_date Date,
+    metric      LowCardinality(String),
+    region      LowCardinality(String),
+    value       UInt64,           -- summed
+    count       UInt64 DEFAULT 1  -- summed
+)
+ENGINE = SummingMergeTree((value, count))
+ORDER BY (metric_date, metric, region);
+</code></pre>
+<h3 id="mental-model_1">Mental model</h3>
+<pre><code>INSERT 1:                              INSERT 2:
+(date, m, region, value, count)        (date, m, region, value, count)
+('2026-05-01', 'cpu', 'us', 50, 1)    ('2026-05-01', 'cpu', 'us', 30, 1)
+('2026-05-01', 'cpu', 'us', 20, 1)    ('2026-05-01', 'cpu', 'eu', 80, 1)
+
+  After merge (sort-key duplicates summed):
+
+  ('2026-05-01', 'cpu', 'us', 100, 3)
+  ('2026-05-01', 'cpu', 'eu',  80, 1)
+</code></pre>
+<blockquote>
+<p><strong>Read pattern:</strong> still wrap in <code>sum(value)</code> / <code>sum(count)</code> even after
+SummingMergeTree, because the merge is incomplete until the next merge
+pass. The engine guarantees correct results <em>if you sum at read time</em>.</p>
+</blockquote>
+<hr />
+<h2 id="5-aggregatingmergetree-non-additive-aggregations">5. AggregatingMergeTree — non-additive aggregations</h2>
+<p>For aggregations that aren't simple sums (<code>uniq</code>, <code>quantile</code>, <code>avg</code>,
+<code>max</code>), <code>Sum</code> won't work. Aggregating stores <strong>partial aggregation states</strong>
+(<code>AggregateFunction(...)</code>) and finalises them at read time with <code>*Merge</code>.</p>
+<pre><code class="language-sql">CREATE TABLE events_agg (
+    bucket_date       Date,
+    country           LowCardinality(String),
+    uniq_users_state  AggregateFunction(uniq, UInt32),
+    revenue_state     AggregateFunction(sum, Float64),
+    p99_state         AggregateFunction(quantileTDigest(0.99), Float64)
+)
+ENGINE = AggregatingMergeTree
+ORDER BY (bucket_date, country);
+
+-- Insert STATES (not raw values) — usually fed by a Materialized View:
+INSERT INTO events_agg
+SELECT
+    bucket_date, country,
+    uniqState(user_id),
+    sumState(revenue),
+    quantileTDigestState(0.99)(latency)
+FROM raw_events
+GROUP BY bucket_date, country;
+
+-- Read: finalize with *Merge.
+SELECT bucket_date, country,
+       uniqMerge(uniq_users_state) AS uniq_users,
+       sumMerge(revenue_state)     AS revenue,
+       quantileTDigestMerge(0.99)(p99_state) AS p99
+FROM events_agg
+GROUP BY bucket_date, country;
+</code></pre>
+<blockquote>
+<p><strong>Why not just store final values?</strong> Because then you can't roll
+<em>across</em> buckets. <code>uniq</code> over (Mon ∪ Tue) ≠ <code>uniq(Mon) + uniq(Tue)</code>.
+Storing the state lets the engine merge correctly.</p>
+</blockquote>
+<hr />
+<h2 id="6-collapsingmergetree-current-state-mutations">6. CollapsingMergeTree — current-state mutations</h2>
+<p>Designed for "delete or update by writing two rows": one with <code>sign = +1</code>
+inserts, one with <code>sign = -1</code> cancels.</p>
+<pre><code class="language-sql">CREATE TABLE orders_collapsing (
+    order_id UInt64,
+    status   LowCardinality(String),
+    total    Float64,
+    sign     Int8
+)
+ENGINE = CollapsingMergeTree(sign)
+ORDER BY order_id;
+
+INSERT INTO orders_collapsing VALUES (101, 'pending', 10.0, +1);
+-- Order 101 paid: cancel old row, write new row in one INSERT
+INSERT INTO orders_collapsing VALUES
+    (101, 'pending', 10.0, -1),
+    (101, 'paid',    10.0, +1);
+</code></pre>
+<h3 id="how-collapse-works">How collapse works</h3>
+<pre><code>Before merge:                     After merge:
+┌────┬────────┬─────┬───┐         ┌────┬───────┬──────┬───┐
+│101 │pending │10.0 │+1 │  ──►    │101 │paid   │10.0  │+1 │
+│101 │pending │10.0 │-1 │         └────┴───────┴──────┴───┘
+│101 │paid    │10.0 │+1 │
+└────┴────────┴─────┴───┘
+</code></pre>
+<h3 id="two-reading-patterns">Two reading patterns</h3>
+<pre><code class="language-sql">-- Pattern A: trust the merge (eventual consistency)
+SELECT * FROM orders_collapsing FINAL;
+
+-- Pattern B: do it in the query (works pre-merge too)
+SELECT order_id,
+       argMax(status, sign) AS status,
+       sum(total * sign)    AS total
+FROM orders_collapsing
+GROUP BY order_id;
+</code></pre>
+<blockquote>
+<p><strong>Gotcha:</strong> if <code>sign = -1</code> arrives without the matching <code>sign = +1</code>
+earlier, you get a <em>negative</em> row. The +1/-1 pair must be ordered with
+-1 <em>after</em> the +1 it cancels.</p>
+</blockquote>
+<hr />
+<h2 id="7-versionedcollapsingmergetree-out-of-order-tolerant">7. VersionedCollapsingMergeTree — out-of-order tolerant</h2>
+<p>CollapsingMergeTree breaks if events arrive out of order. <strong>VersionedCollapsing</strong>
+adds a <code>version</code> column; the engine resolves on <code>(sort_key, version)</code>.</p>
+<pre><code class="language-sql">CREATE TABLE orders_versioned (
+    order_id UInt64,
+    status   LowCardinality(String),
+    total    Float64,
+    version  UInt64,    -- monotonic per order_id
+    sign     Int8
+)
+ENGINE = VersionedCollapsingMergeTree(sign, version)
+ORDER BY order_id;
+</code></pre>
+<p>The cancel rows can arrive <em>before</em> the inserts they cancel; the engine
+sorts them out at merge time using <code>version</code>.</p>
+<blockquote>
+<p><strong>Use this</strong> in any pipeline where event ordering isn't guaranteed
+(Kafka, multi-region producers, retry queues).</p>
+</blockquote>
+<hr />
+<h2 id="8-log-family-engines-when-minimalism-wins">8. Log-family engines — when minimalism wins</h2>
+<table>
+<thead>
+<tr>
+<th>Engine</th>
+<th>Atomic INSERT</th>
+<th>Indexes</th>
+<th>Compressed</th>
+<th>Concurrent reads</th>
+<th>Use it for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Log</code></td>
+<td>yes (block)</td>
+<td>no</td>
+<td>yes</td>
+<td>yes</td>
+<td>small append-only logs (audit)</td>
+</tr>
+<tr>
+<td><code>TinyLog</code></td>
+<td>no</td>
+<td>no</td>
+<td>yes</td>
+<td>one at a time</td>
+<td>scratch tables (≤ 1M rows)</td>
+</tr>
+<tr>
+<td><code>StripeLog</code></td>
+<td>no</td>
+<td>no</td>
+<td>yes</td>
+<td>yes</td>
+<td>medium tables; deprecated path</td>
+</tr>
+</tbody>
+</table>
+<p>There's no <code>OPTIMIZE</code>, no merges, no skip-indexes. The engine is just
+"appendable file". <strong>Don't use Log-family for anything important.</strong></p>
+<hr />
+<h2 id="9-memory-engine-ram-only">9. Memory engine — RAM-only</h2>
+<pre><code class="language-sql">CREATE TABLE tmp_uploads (id UUID, payload String) ENGINE = Memory;
+</code></pre>
+<ul>
+<li>Stored in process memory only. <strong>Lost on restart.</strong></li>
+<li>Reads are fast; useful for caches, joins' right-hand side, or staging.</li>
+<li>No size cap by default — easy to OOM the server.</li>
+</ul>
+<hr />
+<h2 id="10-buffer-engine-last-resort-write-smoothing">10. Buffer engine — last-resort write smoothing</h2>
+<p>A <code>Buffer</code> table sits in front of a real MergeTree and accumulates rows in
+RAM until thresholds trigger a flush.</p>
+<pre><code class="language-sql">CREATE TABLE facts_dest (...) ENGINE = MergeTree ORDER BY (...);
+
+CREATE TABLE facts_buffer AS facts_dest
+ENGINE = Buffer(default, facts_dest,
+    16,            -- num_layers
+    10, 60,        -- min/max time (seconds)
+    10000, 1_000_000,    -- min/max rows
+    10_000_000, 100_000_000); -- min/max bytes
+</code></pre>
+<blockquote>
+<p><strong>Strong recommendation:</strong> prefer batching upstream. A Buffer table is
+a band-aid that <em>loses data on crash</em> — its rows haven't been written
+to MergeTree yet. Use it only when the producer literally cannot batch.</p>
+</blockquote>
+<p><code>OPTIMIZE TABLE facts_buffer;</code> flushes manually. Reading from the Buffer
+table reads its in-memory layers + the destination table.</p>
+<hr />
+<h2 id="11-materialized-views-the-computed-table-pattern">11. Materialized Views — the "computed table" pattern</h2>
+<p>In ClickHouse a Materialized View is <strong>not a virtual view</strong>. It's a real
+table fed by a trigger that runs at INSERT time on a <em>source table</em>.</p>
+<!-- mermaid rendered as SVG above -->
+
+<pre><code class="language-sql">CREATE TABLE events_src (
+    ts DateTime, user_id UInt64,
+    event_type LowCardinality(String), revenue Float64
+) ENGINE = MergeTree ORDER BY (event_type, ts);
+
+CREATE TABLE events_per_minute (
+    bucket DateTime, event_type LowCardinality(String),
+    events UInt64, revenue Float64
+) ENGINE = SummingMergeTree ORDER BY (bucket, event_type);
+
+CREATE MATERIALIZED VIEW events_per_minute_mv TO events_per_minute AS
+SELECT
+    toStartOfMinute(ts) AS bucket, event_type,
+    count() AS events, sum(revenue) AS revenue
+FROM events_src
+GROUP BY bucket, event_type;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Implication</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Triggers on <strong>INSERT</strong>, not UPDATE</td>
+<td>Mutations don't propagate. Drop+recreate the MV to re-aggregate.</td>
+</tr>
+<tr>
+<td>One MV reads, multiple MVs allowed</td>
+<td>A single source row can feed N MVs simultaneously.</td>
+</tr>
+<tr>
+<td><code>TO &lt;table&gt;</code> is the modern form</td>
+<td>Decouples MV definition from the storage engine. Always prefer it.</td>
+</tr>
+<tr>
+<td>MV must <code>GROUP BY</code> for *MergeTree variants</td>
+<td>Otherwise the engine can't collapse correctly.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Backfill pattern:</strong> <code>INSERT INTO events_per_minute SELECT … FROM events_src GROUP BY …</code>
+after creating the MV — the MV won't see old rows on its own.</p>
+</blockquote>
+<hr />
+<h2 id="12-nested-type-1-to-many-without-joins">12. Nested type — 1-to-many without joins</h2>
+<p><code>Nested</code> stores a "table inside a row" as parallel arrays.</p>
+<pre><code class="language-sql">CREATE TABLE invoices (
+    invoice_id UInt64,
+    customer   String,
+    total      Decimal(12, 2),
+    line_items Nested(
+        sku   String,
+        qty   UInt32,
+        price Decimal(10, 2)
+    )
+) ENGINE = MergeTree ORDER BY invoice_id;
+
+INSERT INTO invoices VALUES
+    (1001, 'Alice', 49.97,
+     ['SKU-A','SKU-B','SKU-C'], [1, 2, 1], [9.99, 14.99, 10.00]);
+</code></pre>
+<p>Two equivalent reading styles:</p>
+<pre><code class="language-sql">-- Dot-notation: get parallel arrays
+SELECT invoice_id,
+       line_items.sku, line_items.qty, line_items.price,
+       arraySum(arrayMap((q, p) -&gt; q * p, line_items.qty, line_items.price)) AS computed
+FROM invoices;
+
+-- ARRAY JOIN: explode to one row per item
+SELECT invoice_id, sku, qty, price
+FROM invoices
+ARRAY JOIN line_items.sku AS sku, line_items.qty AS qty, line_items.price AS price;
+</code></pre>
+<blockquote>
+<p><strong>Prefer Nested over JOINs</strong> for tightly-bound 1-to-many like
+order-lines, page-impressions-per-session, or telemetry dimensions.
+JOINs in CH cost more than in OLTP databases.</p>
+</blockquote>
+<hr />
+<h2 id="13-the-hands-on-demo">13. The hands-on demo</h2>
+<h3 id="what-you-get">What you get</h3>
+<pre><code>docker-compose.yml          m2-clickhouse · ports 8123/9000
+configs/clickhouse-config.xml
+setup.sql · data.sql · queries.sql · extras.sql
+up.sh · run.sh · down.sh
+</code></pre>
+<h3 id="execution-flow-what-runs-in-order">Execution flow — what runs, in order</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Step</th>
+<th>What happens</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>self-bootstrap</td>
+<td>If <code>m2-clickhouse</code> isn't healthy, run <code>up.sh</code> (which evicts other demo modules first to avoid port conflicts).</td>
+</tr>
+<tr>
+<td>1</td>
+<td><code>setup.sql</code></td>
+<td>Creates database <code>m2</code> and seven tables, one per engine: <code>users_replacing</code> (Replacing), <code>metrics_summing</code> (Summing), <code>events_agg</code> (Aggregating with <code>uniq</code>/<code>sum</code>/<code>quantileTDigest</code> states), <code>orders_collapsing</code> (Collapsing), <code>audit_log</code> (Log), <code>tmp_uploads</code> (Memory), <code>facts_dest</code> + <code>facts_buffer</code> (MergeTree + Buffer in front).</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>data.sql</code></td>
+<td>Loads each engine with shape-appropriate data: dupes for Replacing, partial counters for Summing, 200k aggregate STATES for Aggregating, +1/-1 sign rows for Collapsing, a few rows for Log/Memory/Buffer.</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>queries.sql</code></td>
+<td>Walks each engine's reading pattern: dedup via <code>argMax</code>, <code>OPTIMIZE FINAL</code> reductions, <code>*Merge</code> finalizers for Aggregating, the +1/-1 collapse, and a Buffer flush via <code>OPTIMIZE TABLE m2.facts_buffer</code> to push rows down to <code>facts_dest</code>.</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>extras.sql</code></td>
+<td>Three more engines/patterns: <strong>VersionedCollapsingMergeTree</strong> (out-of-order +/-1 resolved by version), a complete <strong>Materialized View pipeline</strong> (<code>events_src</code> → <code>events_per_minute_mv</code> → <code>events_per_minute</code> SummingMergeTree, with 200k synthetic events), and the <strong>Nested type</strong> (<code>invoices.line_items.{sku, qty, price}</code>) queried with both dot-notation and <code>ARRAY JOIN</code>.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="14-decision-tree">14. Decision tree</h2>
+<!-- mermaid rendered as SVG above -->
+
+<hr />
+<h2 id="15-common-pitfalls">15. Common pitfalls</h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SELECT * FROM users_replacing</code> returns duplicates</td>
+<td>Merge hasn't run yet.</td>
+<td>Use <code>argMax</code> query pattern; never rely on background merge for correctness.</td>
+</tr>
+<tr>
+<td><code>SELECT *</code> from SummingMergeTree returns multiple rows per key</td>
+<td>Same — pre-merge state.</td>
+<td>Always wrap with <code>sum(...)</code> at read time.</td>
+</tr>
+<tr>
+<td><code>Negative</code> rows in CollapsingMergeTree</td>
+<td><code>sign=-1</code> arrived without matching <code>sign=+1</code>; or wrong sort key.</td>
+<td>Verify your producer always emits <code>+1</code> then <code>-1</code>; or switch to VersionedCollapsing.</td>
+</tr>
+<tr>
+<td>AggregatingMergeTree rows look like garbage</td>
+<td>Forgot to <code>*Merge</code> at read time, or stored values instead of <code>*State</code>.</td>
+<td>Insert <code>xxxState(...)</code>, read <code>xxxMerge(...)</code>.</td>
+</tr>
+<tr>
+<td>Buffer table silently drops rows on container restart</td>
+<td>Buffer is in RAM. Crash = data loss.</td>
+<td>Don't use Buffer; batch upstream.</td>
+</tr>
+<tr>
+<td>Materialized View misses historical data</td>
+<td>MV only triggers on INSERTs after creation.</td>
+<td>Backfill: <code>INSERT INTO target SELECT … FROM source GROUP BY …</code>.</td>
+</tr>
+<tr>
+<td>MV creates tons of tiny parts</td>
+<td>Source has small frequent inserts.</td>
+<td>Add a buffer or batch the source.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="16-talking-points-for-the-live-session">16. Talking points for the live session</h2>
+<ol>
+<li><strong>MergeTree is the answer 80% of the time.</strong> Show the decision tree
+   and walk people through it.</li>
+<li><strong><code>FINAL</code> is a debugging convenience, not a production pattern.</strong>
+   Demonstrate by running <code>argMax</code> vs <code>FINAL</code> on the demo's
+   <code>users_replacing</code> and showing query duration.</li>
+<li><strong>Storing aggregation <em>state</em> unlocks rollups.</strong> Show
+   <code>uniqState</code> → <code>uniqMerge</code> over a week's data; <code>sum</code>-of-<code>uniq</code> would be wrong.</li>
+<li><strong>Materialized Views are write-time triggers, not query-time views.</strong>
+   This is the single biggest ClickHouse misconception.</li>
+<li><strong>Nested vs JOIN:</strong> show the same query both ways, time them.
+   Nested usually wins by 5–20×.</li>
+</ol>
+<hr />
+<h2 id="17-container-ports">17. Container ports</h2>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Container port</th>
+<th>Host port</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HTTP</td>
+<td>8123</td>
+<td>8123</td>
+</tr>
+<tr>
+<td>Native (TCP)</td>
+<td>9000</td>
+<td>9000</td>
+</tr>
+</tbody>
+</table>
+  </div>
+</div>
+
+
+<style>
+.handsOn {
+  margin: 24px auto; max-width: 1200px; padding: 0 20px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+}
+.handsOn-card {
+  background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 28px 32px; margin-bottom: 24px;
+}
+.handsOn-card h2 {
+  margin: 0 0 8px 0; font-size: 1.6em; color: #0f172a;
+}
+.handsOn-card h3 {
+  margin: 24px 0 8px 0; font-size: 1.2em; color: #1a4480;
+  border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;
+}
+.handsOn-card h4 { margin: 16px 0 6px 0; color: #0f172a; }
+.handsOn-card p, .handsOn-card li { color: #1e293b; line-height: 1.6; }
+.handsOn-card code {
+  background: #f1f5f9; padding: 2px 6px; border-radius: 4px;
+  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.92em;
+}
+.handsOn-card pre {
+  background: #0f172a; color: #f1f5f9; padding: 16px 18px; border-radius: 8px;
+  overflow-x: auto; font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.9em; line-height: 1.5;
+}
+.handsOn-card pre code { background: transparent; padding: 0; color: inherit; }
+.handsOn-card table {
+  border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 0.93em;
+}
+.handsOn-card th, .handsOn-card td {
+  border: 1px solid #e2e8f0; padding: 8px 12px; text-align: left;
+}
+.handsOn-card th { background: #f8fafc; color: #0f172a; }
+.handsOn-banner {
+  background: linear-gradient(135deg, #2b6cb0 0%, #1a4480 100%); color: white;
+  padding: 28px 32px; border-radius: 12px; margin-bottom: 20px;
+}
+.handsOn-banner h2 { color: white; margin: 0 0 8px 0; }
+.handsOn-banner code {
+  background: rgba(0,0,0,0.25); color: #f1f5f9;
+}
+.handsOn-banner pre {
+  background: rgba(0,0,0,0.30); color: #f1f5f9;
+}
+.handsOn-figure {
+  margin: 16px 0; padding: 12px; background: #f8fafc;
+  border: 1px solid #e2e8f0; border-radius: 8px; text-align: center;
+}
+.handsOn-figure img, .handsOn-figure object {
+  max-width: 100%; height: auto; border-radius: 4px;
+}
+.handsOn-figure figcaption {
+  margin-top: 8px; color: #475569; font-size: 0.9em; font-style: italic;
+}
+.handsOn-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 16px; margin: 12px 0;
+}
+.handsOn-card a { color: #1a4480; }
+</style>
+
+
+<div class="handsOn">
+  <div class="handsOn-banner">
+    <h2>🐳 Hands-on Docker Demo for this Module</h2>
+    <p style="opacity:0.92; line-height:1.55;">A self-contained ClickHouse stack you can run locally. Every step is reproducible; the README below walks through each concept with diagrams and measured outcomes.</p>
+    <pre><code>cd code-examples/demos/module-2-table-engines
+./up.sh        # bring stack up, wait for health
+./run.sh       # run the demo (idempotent — re-runnable)
+./down.sh      # tear down + drop volumes</code></pre>
+  </div>
+</div>
+
+
+<div class="handsOn">
+  <div class="handsOn-card">
+    <h2>📺 Live demo capture</h2>
+    <p>Recorded with <a href="https://github.com/charmbracelet/vhs" target="_blank" rel="noopener">vhs</a>: the actual terminal output from <code>./run.sh</code> running on this very stack.</p>
+    <figure class="handsOn-figure">
+      <img src="../code-examples/demos/module-2-table-engines/diagrams/demo.gif" alt="Module demo GIF" loading="lazy">
+      <figcaption>Click to view full-size. Animated GIF, ~479 KB.</figcaption>
+    </figure>
+  </div>
+</div>
+
+
+<div class="handsOn">
+  <div class="handsOn-card">
+    <h2>🗂️ Architecture diagrams</h2>
+    <p>Rendered from the README's Mermaid sources. Static, but click any to view the source SVG full-size.</p>
+    <div class="handsOn-grid">
+
+
+      <figure class="handsOn-figure">
+        <a href="../code-examples/demos/module-2-table-engines/diagrams/01-flowchart-a-insert-into-source-table-b-mv-trigger.svg" target="_blank" rel="noopener">
+          <img src="../code-examples/demos/module-2-table-engines/diagrams/01-flowchart-a-insert-into-source-table-b-mv-trigger.svg" alt="A insert into source table b mv trigger" loading="lazy">
+        </a>
+        <figcaption>A insert into source table b mv trigger</figcaption>
+      </figure>
+
+
+      <figure class="handsOn-figure">
+        <a href="../code-examples/demos/module-2-table-engines/diagrams/02-flowchart-q1-is-the-table-append-only-br-analytica.svg" target="_blank" rel="noopener">
+          <img src="../code-examples/demos/module-2-table-engines/diagrams/02-flowchart-q1-is-the-table-append-only-br-analytica.svg" alt="Q1 is the table append only br analytica" loading="lazy">
+        </a>
+        <figcaption>Q1 is the table append only br analytica</figcaption>
+      </figure>
+
+
+    </div>
+  </div>
+</div>
+
+
+<div class="handsOn">
+  <div class="handsOn-card">
+    <h2>📚 Full module reference</h2>
+    <h1 id="module-2-table-engines-data-modelling">Module 2 — Table Engines &amp; Data Modelling</h1>
+<blockquote>
+<p><strong>Audience:</strong> anyone designing a ClickHouse schema. <strong>Prerequisites:</strong>
+Module 1 (parts, merges, MergeTree). <strong>Time:</strong> ~60 min reading + 30 min hands-on.</p>
+</blockquote>
+<p>By the end you will be able to:</p>
+<ul>
+<li>Pick the right <code>*MergeTree</code> variant for any append/SCD/aggregation pattern.</li>
+<li>Read sign-collapse and version-collapse semantics.</li>
+<li>Design Materialized View pipelines that pre-aggregate at insert time.</li>
+<li>Use <code>Nested</code>, <code>Array</code>, <code>Map</code> to model 1-to-many without joins.</li>
+<li>Recognise when <strong>not</strong> to use a fancy engine.</li>
+</ul>
+<hr />
+<h2 id="1-the-engine-landscape-at-a-glance">1. The engine landscape at a glance</h2>
+<pre><code>                      ┌───────────────────────────────────────┐
+                      │             Storage engines            │
+                      └──────────────┬────────────────────────┘
+                                     │
+       ┌─────────────────────────────┼──────────────────────────────────┐
+       │                             │                                   │
+       ▼                             ▼                                   ▼
+  ┌─────────┐               ┌──────────────┐                     ┌───────────┐
+  │ Log     │               │  MergeTree   │                     │ Special   │
+  │ family  │               │  family      │                     │ engines   │
+  └─────────┘               └──────┬───────┘                     └───────────┘
+       │                            │                                   │
+   ┌───┴────┐    ┌──────────────────┼────────────────────────┐    ┌────┴─────┐
+   │        │    │                  │                        │    │          │
+  Log    StripeLog              MergeTree              Replicated*    Memory   Buffer
+       TinyLog                Replacing                                Dictionary  Distributed
+                              Summing                                              Kafka / S3 / URL
+                              Aggregating                                          Merge / View / MV
+                              Collapsing
+                              VersionedCollapsing
+                              GraphiteMergeTree
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Family</th>
+<th>Use when</th>
+<th>Don't use when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Log</strong></td>
+<td>Tiny ad-hoc tables. No indexes, no parts. Atomic blocks but no resumable reads.</td>
+<td>Anything you care about losing.</td>
+</tr>
+<tr>
+<td><strong>MergeTree</strong></td>
+<td>99% of analytical tables. Default choice.</td>
+<td>High-write, mutable, single-row workloads.</td>
+</tr>
+<tr>
+<td><strong>Replicated*</strong></td>
+<td>MergeTree variants on a cluster. Module 4 deep-dives.</td>
+<td>Single-node demos.</td>
+</tr>
+<tr>
+<td><strong>Memory</strong></td>
+<td>Caches, ephemeral state, tests. Lost on restart.</td>
+<td>Anything that must survive a crash.</td>
+</tr>
+<tr>
+<td><strong>Buffer</strong></td>
+<td>Last-resort smoothing layer in front of MergeTree if you cannot batch upstream.</td>
+<td>If you can batch upstream — just batch.</td>
+</tr>
+<tr>
+<td><strong>Distributed</strong> / <strong>Kafka</strong> / <strong>MySQL</strong> / <strong>S3</strong></td>
+<td>Federation engines. They don't store data — they read or fan-out.</td>
+<td>When you actually want a local table.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2-plain-mergetree-the-baseline">2. Plain <code>MergeTree</code> — the baseline</h2>
+<p>You already know it from Module 1. Recap:</p>
+<ul>
+<li>Append-only at the part level.</li>
+<li>Parts merge in the background; rows within a part are sorted by <code>ORDER BY</code>.</li>
+<li>No deduplication, no aggregation, no rollup. Just sort+compress+merge.</li>
+</ul>
+<p>Use this until you have a <em>specific reason</em> to pick something else.</p>
+<hr />
+<h2 id="3-replacingmergetree-slowly-changing-dimensions">3. ReplacingMergeTree — slowly-changing dimensions</h2>
+<p>Same as MergeTree, but during merges, <strong>rows with the same sort key are
+collapsed into one</strong>, keeping the row with the highest <em>version</em>.</p>
+<pre><code class="language-sql">CREATE TABLE users_replacing (
+    user_id UInt64,
+    name    String,
+    email   String,
+    version UInt64
+)
+ENGINE = ReplacingMergeTree(version)
+ORDER BY user_id;
+</code></pre>
+<h3 id="mental-model">Mental model</h3>
+<pre><code>INSERT batch 1:                  INSERT batch 2:
+┌──────┬───────┬──────────┬───┐  ┌──────┬───────┬──────────┬───┐
+│ id=1 │ alice │ a@old    │ v1│  │ id=1 │ alice │ a@new    │ v2│
+│ id=2 │ bob   │ b@old    │ v1│  │ id=3 │ carol │ c@new    │ v3│
+└──────┴───────┴──────────┴───┘  └──────┴───────┴──────────┴───┘
+
+After merge (same id collapses, highest version wins):
+
+  ┌──────┬───────┬──────────┬───┐
+  │ id=1 │ alice │ a@new    │ v2│
+  │ id=2 │ bob   │ b@old    │ v1│
+  │ id=3 │ carol │ c@new    │ v3│
+  └──────┴───────┴──────────┴───┘
+</code></pre>
+<h3 id="three-ways-to-read">Three ways to read</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Latency</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SELECT * FROM t</code></td>
+<td>Fast (no merge)</td>
+<td><strong>Returns dupes</strong> until merge runs. Almost never what you want.</td>
+</tr>
+<tr>
+<td><code>SELECT * FROM t FINAL</code></td>
+<td>Slow (merges at read time)</td>
+<td>Correct, but reads the whole partition. Avoid in hot paths.</td>
+</tr>
+<tr>
+<td><code>SELECT user_id, argMax(name, version), argMax(email, version), max(version) AS v FROM t GROUP BY user_id</code></td>
+<td>Fast</td>
+<td>The production pattern. Works regardless of merge state.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Key takeaway:</strong> ReplacingMergeTree gives <em>eventual</em> dedup. If your
+query absolutely must see at most one row per key, do the dedup in the
+query (<code>argMax</code>), not via <code>FINAL</code>.</p>
+</blockquote>
+<hr />
+<h2 id="4-summingmergetree-pre-aggregated-counters">4. SummingMergeTree — pre-aggregated counters</h2>
+<p>Like MergeTree, but during merges, <strong>rows with the same sort key get their
+numeric columns summed</strong>. Non-numeric columns from the row with the
+<em>lowest</em> part get kept (treat them as the dimensions).</p>
+<pre><code class="language-sql">CREATE TABLE metrics_summing (
+    metric_date Date,
+    metric      LowCardinality(String),
+    region      LowCardinality(String),
+    value       UInt64,           -- summed
+    count       UInt64 DEFAULT 1  -- summed
+)
+ENGINE = SummingMergeTree((value, count))
+ORDER BY (metric_date, metric, region);
+</code></pre>
+<h3 id="mental-model_1">Mental model</h3>
+<pre><code>INSERT 1:                              INSERT 2:
+(date, m, region, value, count)        (date, m, region, value, count)
+('2026-05-01', 'cpu', 'us', 50, 1)    ('2026-05-01', 'cpu', 'us', 30, 1)
+('2026-05-01', 'cpu', 'us', 20, 1)    ('2026-05-01', 'cpu', 'eu', 80, 1)
+
+  After merge (sort-key duplicates summed):
+
+  ('2026-05-01', 'cpu', 'us', 100, 3)
+  ('2026-05-01', 'cpu', 'eu',  80, 1)
+</code></pre>
+<blockquote>
+<p><strong>Read pattern:</strong> still wrap in <code>sum(value)</code> / <code>sum(count)</code> even after
+SummingMergeTree, because the merge is incomplete until the next merge
+pass. The engine guarantees correct results <em>if you sum at read time</em>.</p>
+</blockquote>
+<hr />
+<h2 id="5-aggregatingmergetree-non-additive-aggregations">5. AggregatingMergeTree — non-additive aggregations</h2>
+<p>For aggregations that aren't simple sums (<code>uniq</code>, <code>quantile</code>, <code>avg</code>,
+<code>max</code>), <code>Sum</code> won't work. Aggregating stores <strong>partial aggregation states</strong>
+(<code>AggregateFunction(...)</code>) and finalises them at read time with <code>*Merge</code>.</p>
+<pre><code class="language-sql">CREATE TABLE events_agg (
+    bucket_date       Date,
+    country           LowCardinality(String),
+    uniq_users_state  AggregateFunction(uniq, UInt32),
+    revenue_state     AggregateFunction(sum, Float64),
+    p99_state         AggregateFunction(quantileTDigest(0.99), Float64)
+)
+ENGINE = AggregatingMergeTree
+ORDER BY (bucket_date, country);
+
+-- Insert STATES (not raw values) — usually fed by a Materialized View:
+INSERT INTO events_agg
+SELECT
+    bucket_date, country,
+    uniqState(user_id),
+    sumState(revenue),
+    quantileTDigestState(0.99)(latency)
+FROM raw_events
+GROUP BY bucket_date, country;
+
+-- Read: finalize with *Merge.
+SELECT bucket_date, country,
+       uniqMerge(uniq_users_state) AS uniq_users,
+       sumMerge(revenue_state)     AS revenue,
+       quantileTDigestMerge(0.99)(p99_state) AS p99
+FROM events_agg
+GROUP BY bucket_date, country;
+</code></pre>
+<blockquote>
+<p><strong>Why not just store final values?</strong> Because then you can't roll
+<em>across</em> buckets. <code>uniq</code> over (Mon ∪ Tue) ≠ <code>uniq(Mon) + uniq(Tue)</code>.
+Storing the state lets the engine merge correctly.</p>
+</blockquote>
+<hr />
+<h2 id="6-collapsingmergetree-current-state-mutations">6. CollapsingMergeTree — current-state mutations</h2>
+<p>Designed for "delete or update by writing two rows": one with <code>sign = +1</code>
+inserts, one with <code>sign = -1</code> cancels.</p>
+<pre><code class="language-sql">CREATE TABLE orders_collapsing (
+    order_id UInt64,
+    status   LowCardinality(String),
+    total    Float64,
+    sign     Int8
+)
+ENGINE = CollapsingMergeTree(sign)
+ORDER BY order_id;
+
+INSERT INTO orders_collapsing VALUES (101, 'pending', 10.0, +1);
+-- Order 101 paid: cancel old row, write new row in one INSERT
+INSERT INTO orders_collapsing VALUES
+    (101, 'pending', 10.0, -1),
+    (101, 'paid',    10.0, +1);
+</code></pre>
+<h3 id="how-collapse-works">How collapse works</h3>
+<pre><code>Before merge:                     After merge:
+┌────┬────────┬─────┬───┐         ┌────┬───────┬──────┬───┐
+│101 │pending │10.0 │+1 │  ──►    │101 │paid   │10.0  │+1 │
+│101 │pending │10.0 │-1 │         └────┴───────┴──────┴───┘
+│101 │paid    │10.0 │+1 │
+└────┴────────┴─────┴───┘
+</code></pre>
+<h3 id="two-reading-patterns">Two reading patterns</h3>
+<pre><code class="language-sql">-- Pattern A: trust the merge (eventual consistency)
+SELECT * FROM orders_collapsing FINAL;
+
+-- Pattern B: do it in the query (works pre-merge too)
+SELECT order_id,
+       argMax(status, sign) AS status,
+       sum(total * sign)    AS total
+FROM orders_collapsing
+GROUP BY order_id;
+</code></pre>
+<blockquote>
+<p><strong>Gotcha:</strong> if <code>sign = -1</code> arrives without the matching <code>sign = +1</code>
+earlier, you get a <em>negative</em> row. The +1/-1 pair must be ordered with
+-1 <em>after</em> the +1 it cancels.</p>
+</blockquote>
+<hr />
+<h2 id="7-versionedcollapsingmergetree-out-of-order-tolerant">7. VersionedCollapsingMergeTree — out-of-order tolerant</h2>
+<p>CollapsingMergeTree breaks if events arrive out of order. <strong>VersionedCollapsing</strong>
+adds a <code>version</code> column; the engine resolves on <code>(sort_key, version)</code>.</p>
+<pre><code class="language-sql">CREATE TABLE orders_versioned (
+    order_id UInt64,
+    status   LowCardinality(String),
+    total    Float64,
+    version  UInt64,    -- monotonic per order_id
+    sign     Int8
+)
+ENGINE = VersionedCollapsingMergeTree(sign, version)
+ORDER BY order_id;
+</code></pre>
+<p>The cancel rows can arrive <em>before</em> the inserts they cancel; the engine
+sorts them out at merge time using <code>version</code>.</p>
+<blockquote>
+<p><strong>Use this</strong> in any pipeline where event ordering isn't guaranteed
+(Kafka, multi-region producers, retry queues).</p>
+</blockquote>
+<hr />
+<h2 id="8-log-family-engines-when-minimalism-wins">8. Log-family engines — when minimalism wins</h2>
+<table>
+<thead>
+<tr>
+<th>Engine</th>
+<th>Atomic INSERT</th>
+<th>Indexes</th>
+<th>Compressed</th>
+<th>Concurrent reads</th>
+<th>Use it for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Log</code></td>
+<td>yes (block)</td>
+<td>no</td>
+<td>yes</td>
+<td>yes</td>
+<td>small append-only logs (audit)</td>
+</tr>
+<tr>
+<td><code>TinyLog</code></td>
+<td>no</td>
+<td>no</td>
+<td>yes</td>
+<td>one at a time</td>
+<td>scratch tables (≤ 1M rows)</td>
+</tr>
+<tr>
+<td><code>StripeLog</code></td>
+<td>no</td>
+<td>no</td>
+<td>yes</td>
+<td>yes</td>
+<td>medium tables; deprecated path</td>
+</tr>
+</tbody>
+</table>
+<p>There's no <code>OPTIMIZE</code>, no merges, no skip-indexes. The engine is just
+"appendable file". <strong>Don't use Log-family for anything important.</strong></p>
+<hr />
+<h2 id="9-memory-engine-ram-only">9. Memory engine — RAM-only</h2>
+<pre><code class="language-sql">CREATE TABLE tmp_uploads (id UUID, payload String) ENGINE = Memory;
+</code></pre>
+<ul>
+<li>Stored in process memory only. <strong>Lost on restart.</strong></li>
+<li>Reads are fast; useful for caches, joins' right-hand side, or staging.</li>
+<li>No size cap by default — easy to OOM the server.</li>
+</ul>
+<hr />
+<h2 id="10-buffer-engine-last-resort-write-smoothing">10. Buffer engine — last-resort write smoothing</h2>
+<p>A <code>Buffer</code> table sits in front of a real MergeTree and accumulates rows in
+RAM until thresholds trigger a flush.</p>
+<pre><code class="language-sql">CREATE TABLE facts_dest (...) ENGINE = MergeTree ORDER BY (...);
+
+CREATE TABLE facts_buffer AS facts_dest
+ENGINE = Buffer(default, facts_dest,
+    16,            -- num_layers
+    10, 60,        -- min/max time (seconds)
+    10000, 1_000_000,    -- min/max rows
+    10_000_000, 100_000_000); -- min/max bytes
+</code></pre>
+<blockquote>
+<p><strong>Strong recommendation:</strong> prefer batching upstream. A Buffer table is
+a band-aid that <em>loses data on crash</em> — its rows haven't been written
+to MergeTree yet. Use it only when the producer literally cannot batch.</p>
+</blockquote>
+<p><code>OPTIMIZE TABLE facts_buffer;</code> flushes manually. Reading from the Buffer
+table reads its in-memory layers + the destination table.</p>
+<hr />
+<h2 id="11-materialized-views-the-computed-table-pattern">11. Materialized Views — the "computed table" pattern</h2>
+<p>In ClickHouse a Materialized View is <strong>not a virtual view</strong>. It's a real
+table fed by a trigger that runs at INSERT time on a <em>source table</em>.</p>
+<!-- mermaid rendered as SVG above -->
+
+<pre><code class="language-sql">CREATE TABLE events_src (
+    ts DateTime, user_id UInt64,
+    event_type LowCardinality(String), revenue Float64
+) ENGINE = MergeTree ORDER BY (event_type, ts);
+
+CREATE TABLE events_per_minute (
+    bucket DateTime, event_type LowCardinality(String),
+    events UInt64, revenue Float64
+) ENGINE = SummingMergeTree ORDER BY (bucket, event_type);
+
+CREATE MATERIALIZED VIEW events_per_minute_mv TO events_per_minute AS
+SELECT
+    toStartOfMinute(ts) AS bucket, event_type,
+    count() AS events, sum(revenue) AS revenue
+FROM events_src
+GROUP BY bucket, event_type;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Implication</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Triggers on <strong>INSERT</strong>, not UPDATE</td>
+<td>Mutations don't propagate. Drop+recreate the MV to re-aggregate.</td>
+</tr>
+<tr>
+<td>One MV reads, multiple MVs allowed</td>
+<td>A single source row can feed N MVs simultaneously.</td>
+</tr>
+<tr>
+<td><code>TO &lt;table&gt;</code> is the modern form</td>
+<td>Decouples MV definition from the storage engine. Always prefer it.</td>
+</tr>
+<tr>
+<td>MV must <code>GROUP BY</code> for *MergeTree variants</td>
+<td>Otherwise the engine can't collapse correctly.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Backfill pattern:</strong> <code>INSERT INTO events_per_minute SELECT … FROM events_src GROUP BY …</code>
+after creating the MV — the MV won't see old rows on its own.</p>
+</blockquote>
+<hr />
+<h2 id="12-nested-type-1-to-many-without-joins">12. Nested type — 1-to-many without joins</h2>
+<p><code>Nested</code> stores a "table inside a row" as parallel arrays.</p>
+<pre><code class="language-sql">CREATE TABLE invoices (
+    invoice_id UInt64,
+    customer   String,
+    total      Decimal(12, 2),
+    line_items Nested(
+        sku   String,
+        qty   UInt32,
+        price Decimal(10, 2)
+    )
+) ENGINE = MergeTree ORDER BY invoice_id;
+
+INSERT INTO invoices VALUES
+    (1001, 'Alice', 49.97,
+     ['SKU-A','SKU-B','SKU-C'], [1, 2, 1], [9.99, 14.99, 10.00]);
+</code></pre>
+<p>Two equivalent reading styles:</p>
+<pre><code class="language-sql">-- Dot-notation: get parallel arrays
+SELECT invoice_id,
+       line_items.sku, line_items.qty, line_items.price,
+       arraySum(arrayMap((q, p) -&gt; q * p, line_items.qty, line_items.price)) AS computed
+FROM invoices;
+
+-- ARRAY JOIN: explode to one row per item
+SELECT invoice_id, sku, qty, price
+FROM invoices
+ARRAY JOIN line_items.sku AS sku, line_items.qty AS qty, line_items.price AS price;
+</code></pre>
+<blockquote>
+<p><strong>Prefer Nested over JOINs</strong> for tightly-bound 1-to-many like
+order-lines, page-impressions-per-session, or telemetry dimensions.
+JOINs in CH cost more than in OLTP databases.</p>
+</blockquote>
+<hr />
+<h2 id="13-the-hands-on-demo">13. The hands-on demo</h2>
+<h3 id="what-you-get">What you get</h3>
+<pre><code>docker-compose.yml          m2-clickhouse · ports 8123/9000
+configs/clickhouse-config.xml
+setup.sql · data.sql · queries.sql · extras.sql
+up.sh · run.sh · down.sh
+</code></pre>
+<h3 id="execution-flow-what-runs-in-order">Execution flow — what runs, in order</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Step</th>
+<th>What happens</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>self-bootstrap</td>
+<td>If <code>m2-clickhouse</code> isn't healthy, run <code>up.sh</code> (which evicts other demo modules first to avoid port conflicts).</td>
+</tr>
+<tr>
+<td>1</td>
+<td><code>setup.sql</code></td>
+<td>Creates database <code>m2</code> and seven tables, one per engine: <code>users_replacing</code> (Replacing), <code>metrics_summing</code> (Summing), <code>events_agg</code> (Aggregating with <code>uniq</code>/<code>sum</code>/<code>quantileTDigest</code> states), <code>orders_collapsing</code> (Collapsing), <code>audit_log</code> (Log), <code>tmp_uploads</code> (Memory), <code>facts_dest</code> + <code>facts_buffer</code> (MergeTree + Buffer in front).</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>data.sql</code></td>
+<td>Loads each engine with shape-appropriate data: dupes for Replacing, partial counters for Summing, 200k aggregate STATES for Aggregating, +1/-1 sign rows for Collapsing, a few rows for Log/Memory/Buffer.</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>queries.sql</code></td>
+<td>Walks each engine's reading pattern: dedup via <code>argMax</code>, <code>OPTIMIZE FINAL</code> reductions, <code>*Merge</code> finalizers for Aggregating, the +1/-1 collapse, and a Buffer flush via <code>OPTIMIZE TABLE m2.facts_buffer</code> to push rows down to <code>facts_dest</code>.</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>extras.sql</code></td>
+<td>Three more engines/patterns: <strong>VersionedCollapsingMergeTree</strong> (out-of-order +/-1 resolved by version), a complete <strong>Materialized View pipeline</strong> (<code>events_src</code> → <code>events_per_minute_mv</code> → <code>events_per_minute</code> SummingMergeTree, with 200k synthetic events), and the <strong>Nested type</strong> (<code>invoices.line_items.{sku, qty, price}</code>) queried with both dot-notation and <code>ARRAY JOIN</code>.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="14-decision-tree">14. Decision tree</h2>
+<!-- mermaid rendered as SVG above -->
+
+<hr />
+<h2 id="15-common-pitfalls">15. Common pitfalls</h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SELECT * FROM users_replacing</code> returns duplicates</td>
+<td>Merge hasn't run yet.</td>
+<td>Use <code>argMax</code> query pattern; never rely on background merge for correctness.</td>
+</tr>
+<tr>
+<td><code>SELECT *</code> from SummingMergeTree returns multiple rows per key</td>
+<td>Same — pre-merge state.</td>
+<td>Always wrap with <code>sum(...)</code> at read time.</td>
+</tr>
+<tr>
+<td><code>Negative</code> rows in CollapsingMergeTree</td>
+<td><code>sign=-1</code> arrived without matching <code>sign=+1</code>; or wrong sort key.</td>
+<td>Verify your producer always emits <code>+1</code> then <code>-1</code>; or switch to VersionedCollapsing.</td>
+</tr>
+<tr>
+<td>AggregatingMergeTree rows look like garbage</td>
+<td>Forgot to <code>*Merge</code> at read time, or stored values instead of <code>*State</code>.</td>
+<td>Insert <code>xxxState(...)</code>, read <code>xxxMerge(...)</code>.</td>
+</tr>
+<tr>
+<td>Buffer table silently drops rows on container restart</td>
+<td>Buffer is in RAM. Crash = data loss.</td>
+<td>Don't use Buffer; batch upstream.</td>
+</tr>
+<tr>
+<td>Materialized View misses historical data</td>
+<td>MV only triggers on INSERTs after creation.</td>
+<td>Backfill: <code>INSERT INTO target SELECT … FROM source GROUP BY …</code>.</td>
+</tr>
+<tr>
+<td>MV creates tons of tiny parts</td>
+<td>Source has small frequent inserts.</td>
+<td>Add a buffer or batch the source.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="16-talking-points-for-the-live-session">16. Talking points for the live session</h2>
+<ol>
+<li><strong>MergeTree is the answer 80% of the time.</strong> Show the decision tree
+   and walk people through it.</li>
+<li><strong><code>FINAL</code> is a debugging convenience, not a production pattern.</strong>
+   Demonstrate by running <code>argMax</code> vs <code>FINAL</code> on the demo's
+   <code>users_replacing</code> and showing query duration.</li>
+<li><strong>Storing aggregation <em>state</em> unlocks rollups.</strong> Show
+   <code>uniqState</code> → <code>uniqMerge</code> over a week's data; <code>sum</code>-of-<code>uniq</code> would be wrong.</li>
+<li><strong>Materialized Views are write-time triggers, not query-time views.</strong>
+   This is the single biggest ClickHouse misconception.</li>
+<li><strong>Nested vs JOIN:</strong> show the same query both ways, time them.
+   Nested usually wins by 5–20×.</li>
+</ol>
+<hr />
+<h2 id="17-container-ports">17. Container ports</h2>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Container port</th>
+<th>Host port</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HTTP</td>
+<td>8123</td>
+<td>8123</td>
+</tr>
+<tr>
+<td>Native (TCP)</td>
+<td>9000</td>
+<td>9000</td>
+</tr>
+</tbody>
+</table>
+  </div>
+</div>
+
+</body>
 </html>

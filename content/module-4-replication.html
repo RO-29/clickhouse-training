@@ -339,16 +339,6 @@
 <div class="nav-btn">📚 Resources</div>
 </div>
 </div>
-<!-- demo-callout: points at the runnable Docker demo for this module (private repo: no external link) -->
-<div class="demo-callout" style="margin: 0 auto; max-width: 1200px; padding: 0 20px;">
-<div style="background: linear-gradient(135deg, #2b6cb0 0%, #1a4480 100%); color: white; padding: 25px 30px; margin: 24px 0; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-<div style="display: flex; flex-direction: column; gap: 12px;">
-<div style="font-size: 1.4em; font-weight: bold;">🐳 Hands-on Docker Demo for this Module</div>
-<div style="opacity: 0.92; font-size: 0.97em; line-height: 1.55;">Self-contained ClickHouse stack: <strong>3×2 cluster</strong>. The demo lives in the repo at <code style="background: rgba(0,0,0,0.25); padding: 2px 8px; border-radius: 4px;">code-examples/demos/module-4-replication/</code> with its own README, configs, and lifecycle scripts.</div>
-<div style="font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.92em; background: rgba(0,0,0,0.25); padding: 12px 14px; border-radius: 6px; line-height: 1.6;">cd code-examples/demos/module-4-replication<br>./up.sh        <span style="opacity: 0.7;"># bring stack up</span><br>./run.sh       <span style="opacity: 0.7;"># run the demo</span><br>./down.sh      <span style="opacity: 0.7;"># tear down</span></div>
-<div style="opacity: 0.85; font-size: 0.9em;">See <code style="background: rgba(0,0,0,0.25); padding: 2px 6px; border-radius: 4px;">README.md</code> in that folder for the full execution flow, talking points, and curriculum-aligned extras.</div>
-</div>
-</div>
 </div>
 <div class="container">
 <!-- What is Replication Section -->
@@ -1502,5 +1492,1096 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
         }
     });
 });
-</script></body>
+</script>
+
+
+
+<div class="handsOn">
+  <div class="handsOn-card">
+    <h2>📚 Full module reference</h2>
+    <h1 id="module-4-replication-high-availability">Module 4 — Replication &amp; High Availability</h1>
+<blockquote>
+<p><strong>Audience:</strong> anyone running CH in production. <strong>Prerequisites:</strong> Modules
+1–3. <strong>Time:</strong> ~70 min reading + 30 min hands-on.</p>
+</blockquote>
+<p>By the end you will be able to:</p>
+<ul>
+<li>Explain the role of ZooKeeper / Keeper in CH replication.</li>
+<li>Read and reason about the ZK paths under <code>/clickhouse/tables/...</code>.</li>
+<li>Use <code>system.replicas</code>, <code>system.replication_queue</code>, <code>system.zookeeper</code> for
+  diagnosis.</li>
+<li>Configure <code>insert_quorum</code> and <code>select_sequential_consistency</code> for
+  linearisable reads.</li>
+<li>Recover a wiped replica via <code>SYSTEM DROP REPLICA</code> + recreate.</li>
+<li>Understand the migration path from ZooKeeper to ClickHouse Keeper.</li>
+</ul>
+<hr />
+<h2 id="1-what-replication-means-in-clickhouse">1. What "replication" means in ClickHouse</h2>
+<p>A <strong>replicated table</strong> uses the <code>Replicated*MergeTree</code> engine family.
+Every replica of the same shard holds the <strong>same parts</strong> on disk. They
+coordinate via <strong>ZooKeeper</strong> (or, more recently, <strong>ClickHouse Keeper</strong>, a
+drop-in Raft-based replacement that ships with the server binary).</p>
+<p>Three guarantees:</p>
+<ol>
+<li><strong>All replicas converge to the same byte content</strong> for any given table.</li>
+<li><strong>Inserts are deduplicated</strong> within a sliding window
+   (<code>replicated_deduplication_window</code>, default 100 blocks).</li>
+<li><strong>A replica can be entirely rebuilt from its peers</strong> — losing a disk
+   isn't catastrophic.</li>
+</ol>
+<p>Three things replication does <strong>not</strong> do:</p>
+<ol>
+<li>It is <em>not</em> synchronous by default. INSERT acks before peers catch up.</li>
+<li>It does <em>not</em> provide cross-shard consistency. Different shards have
+   different data.</li>
+<li>It does <em>not</em> survive losing ZK quorum — you lose write availability
+   (replicated tables go read-only) until quorum returns.</li>
+</ol>
+<hr />
+<h2 id="2-the-replication-topology">2. The replication topology</h2>
+<!-- mermaid rendered as SVG above -->
+
+<p>The <strong>interserver port</strong> (<code>9009</code> by default) is how replicas fetch parts
+from each other. ZK only stores <strong>metadata</strong> — the part name, checksum,
+which replica has the source — never the data itself.</p>
+<hr />
+<h2 id="3-the-zookeeper-schema">3. The ZooKeeper schema</h2>
+<p>For a table created as</p>
+<pre><code class="language-sql">CREATE TABLE sensor_local (...)
+ENGINE = ReplicatedMergeTree(
+    '/clickhouse/tables/{shard}/sensor_local',
+    '{replica}'
+)
+</code></pre>
+<p>ZK ends up with this tree (showing one shard):</p>
+<pre><code>/clickhouse/tables/01/sensor_local/
+├── metadata          ← schema + ENGINE
+├── columns           ← column definitions
+├── log/              ← the replication log
+│   ├── log-0000000001
+│   ├── log-0000000002
+│   └── ...
+├── replicas/
+│   ├── m4-s1r1/
+│   │   ├── log_pointer    ← last log entry this replica applied
+│   │   ├── queue/         ← entries waiting to be applied
+│   │   ├── parts/         ← parts this replica has
+│   │   └── is_active      ← ephemeral; disappears if replica dies
+│   └── m4-s1r2/
+│       └── (same shape)
+├── blocks/                ← INSERT dedup keys (sliding window)
+├── block_numbers/         ← per-partition counters
+├── leader_election/       ← which replica orchestrates merges
+└── quorum/                ← insert_quorum state
+</code></pre>
+<p>You can browse this from SQL:</p>
+<pre><code class="language-sql">SELECT name, value FROM system.zookeeper
+WHERE path = '/clickhouse/tables/01/sensor_local'
+ORDER BY name;
+</code></pre>
+<h3 id="log-is-the-source-of-truth"><code>log</code> is the source of truth</h3>
+<p>Every modifying operation (INSERT, MERGE, MUTATION, ATTACH, DROP_PART) is
+written as a <strong>log entry</strong> in <code>/log/</code>. Each replica has a <code>log_pointer</code>
+saying "I've applied up to entry N". The replication queue holds the
+entries between <code>log_pointer</code> and the latest log entry — those are what
+the replica still needs to do.</p>
+<hr />
+<h2 id="4-the-replication-queue-lifecycle">4. The replication queue lifecycle</h2>
+<!-- mermaid rendered as SVG above -->
+
+<p>Steady-state on a healthy cluster: <code>queue_size = 0</code>, <code>absolute_delay = 0</code>.</p>
+<p>When a replica is down: its queue grows. When it comes back, it drains.
+The drain is <strong>eventually consistent</strong>; for tests, force it with
+<code>SYSTEM SYNC REPLICA &lt;table&gt;</code> — the call blocks until the queue is empty.</p>
+<hr />
+<h2 id="5-the-system-tables-youll-live-in">5. The system tables you'll live in</h2>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>What's in it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>system.replicas</code></td>
+<td>One row per replicated table per node: queue size, log pointer, <code>absolute_delay</code>, <code>is_leader</code>, <code>is_readonly</code>.</td>
+</tr>
+<tr>
+<td><code>system.replication_queue</code></td>
+<td>Per-entry detail of pending operations: type (<code>GET_PART</code>, <code>MERGE_PARTS</code>), source, retry count, last error.</td>
+</tr>
+<tr>
+<td><code>system.zookeeper</code></td>
+<td>Live SQL view of ZK paths (filterable with <code>WHERE path = '...'</code>).</td>
+</tr>
+<tr>
+<td><code>system.parts</code></td>
+<td>All parts; check <code>replica_name</code>, <code>replica_path</code>.</td>
+</tr>
+<tr>
+<td><code>system.zookeeper_log</code></td>
+<td>Audit trail of ZK operations this server made.</td>
+</tr>
+<tr>
+<td><code>system.replicated_fetches</code></td>
+<td>In-flight part fetches across the interserver port.</td>
+</tr>
+<tr>
+<td><code>system.replicated_merge_tree_settings</code></td>
+<td>Effective settings for the engine.</td>
+</tr>
+</tbody>
+</table>
+<p>The single most important field for SLOs is <code>system.replicas.absolute_delay</code>:
+<em>seconds between the most recent INSERT's commit time and what this replica
+has applied</em>. Alert if it goes above your tolerance (e.g. 60 s).</p>
+<hr />
+<h2 id="6-insert_quorum-synchronous-writes-when-you-need-them">6. <code>insert_quorum</code> — synchronous writes when you need them</h2>
+<p>Default INSERT semantics: returns success once <strong>one</strong> replica has the
+data. For "I need at least 2 of 2 replicas to have this row before I ack":</p>
+<pre><code class="language-sql">SET insert_quorum = 2;
+SET insert_quorum_timeout_ms = 5000;     -- give up after 5s
+SET insert_quorum_parallel = 1;           -- allow parallel quorum INSERTs
+
+INSERT INTO sensor_local VALUES (...);
+-- blocks until 2 replicas confirm, OR errors if quorum not met in time
+</code></pre>
+<p>Tradeoffs:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;"><code>insert_quorum</code></th>
+<th>Latency</th>
+<th>Durability</th>
+<th>Use for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">0 (default)</td>
+<td>low</td>
+<td>one replica before ack</td>
+<td>most analytics</td>
+</tr>
+<tr>
+<td style="text-align: right;">1</td>
+<td>low</td>
+<td>one replica, but explicit</td>
+<td>same</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td>medium</td>
+<td>both replicas of a 2-replica shard</td>
+<td>financial / regulatory</td>
+</tr>
+<tr>
+<td style="text-align: right;"><code>&lt;n&gt;</code></td>
+<td>higher</td>
+<td>n replicas in shard</td>
+<td>RPO=0 in multi-DC</td>
+</tr>
+</tbody>
+</table>
+<p>Combine with <code>select_sequential_consistency = 1</code> to get <strong>linearisable
+reads</strong> (only consider data the quorum has seen):</p>
+<pre><code class="language-sql">SET select_sequential_consistency = 1;
+SELECT count() FROM sensor_local;
+</code></pre>
+<p>This trades latency for "no stale reads".</p>
+<hr />
+<h2 id="7-failure-scenarios-and-recovery">7. Failure scenarios and recovery</h2>
+<h3 id="scenario-a-one-replica-down">Scenario A — one replica down</h3>
+<p>What happens:
+- Reads silently route to the other replica (zero impact).
+- Writes still succeed (one-replica write); other replica's queue grows.
+- ZK shows the replica's <code>is_active</code> ephemeral node disappear.</p>
+<p>Recovery:
+- <code>docker start m4-s1r2</code> (or fix the host).
+- <code>SYSTEM SYNC REPLICA sensor_local;</code> on the recovered replica.
+- Verify <code>system.replicas.absolute_delay = 0</code>.</p>
+<h3 id="scenario-b-replica-disk-loss">Scenario B — replica disk loss</h3>
+<p>What happens: the replica's <code>/var/lib/clickhouse/data</code> is gone. ZK still
+knows it as a registered replica.</p>
+<p>Recovery (the demo's drill 4 in M8):
+1. From a peer: <code>SYSTEM DROP REPLICA 'm4-s1r2' FROM TABLE sensor_local;</code>
+   This removes the dead replica's record from ZK.
+2. On the wiped node: <code>DROP TABLE sensor_local SYNC;</code> (table metadata is
+   gone with the disk; this clears any in-memory remnants).
+3. On the wiped node: re-create the table with the same ZK path.
+4. <code>SYSTEM SYNC REPLICA sensor_local;</code> — the engine pulls all parts from
+   peers via the interserver port.</p>
+<h3 id="scenario-c-zk-quorum-lost">Scenario C — ZK quorum lost</h3>
+<p>What happens: replicated tables go <strong>read-only</strong> on every node. INSERTs
+fail with <code>Cannot allocate block number in ZooKeeper</code>.</p>
+<p>Recovery: restore ZK quorum (3-of-5 or 2-of-3 ZK nodes). CH automatically
+recovers when ZK is reachable again.</p>
+<blockquote>
+<p><strong>Don't let ZK be the single point of failure.</strong> Run 3 (small clusters)
+or 5 (big clusters) ZK / Keeper nodes across availability zones.</p>
+</blockquote>
+<hr />
+<h2 id="8-clickhouse-keeper-the-future">8. ClickHouse Keeper — the future</h2>
+<p>Keeper is a <strong>Raft-based ZK clone</strong> that ships in the <code>clickhouse-server</code>
+binary. Same client protocol, same paths. Migrate when convenient:</p>
+<pre><code class="language-bash"># Snapshot ZK
+clickhouse-keeper-converter --zookeeper-logs-dir /var/lib/zookeeper/version-2/ \
+                            --zookeeper-snapshots-dir /var/lib/zookeeper/version-2/ \
+                            --output-dir /var/lib/clickhouse-keeper/coordination/snapshots/
+
+# Configure CH to point at Keeper instead of ZK (just hostname/port change)
+# Restart CH
+</code></pre>
+<p>Why move:
+- One fewer service (Keeper runs in the CH process or as <code>clickhouse-keeper</code>).
+- Better operational tooling (same binary, same logs format).
+- Active development; ZK feature-frozen.</p>
+<p>When <strong>not</strong> to move: large existing ZK fleet, complex tooling around it,
+or a 3rd-party setup that already provides ZK.</p>
+<p>This demo uses ZooKeeper (image <code>zookeeper:3.8</code>) for compatibility. The
+swap-to-Keeper path is single-line in <code>docker-compose.yml</code>.</p>
+<hr />
+<h2 id="9-the-hands-on-demo">9. The hands-on demo</h2>
+<h3 id="container-map">Container map</h3>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Container</th>
+<th>Host HTTP</th>
+<th>Host TCP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Shard 1 R1</td>
+<td><code>m4-s1r1</code></td>
+<td>8123</td>
+<td>9000</td>
+</tr>
+<tr>
+<td>Shard 1 R2</td>
+<td><code>m4-s1r2</code></td>
+<td>8124</td>
+<td>9001</td>
+</tr>
+<tr>
+<td>Shard 2 R1</td>
+<td><code>m4-s2r1</code></td>
+<td>8125</td>
+<td>9002</td>
+</tr>
+<tr>
+<td>Shard 2 R2</td>
+<td><code>m4-s2r2</code></td>
+<td>8126</td>
+<td>9003</td>
+</tr>
+<tr>
+<td>Shard 3 R1</td>
+<td><code>m4-s3r1</code></td>
+<td>8127</td>
+<td>9004</td>
+</tr>
+<tr>
+<td>Shard 3 R2</td>
+<td><code>m4-s3r2</code></td>
+<td>8128</td>
+<td>9005</td>
+</tr>
+<tr>
+<td>ZK 1/2/3</td>
+<td><code>m4-zk1/2/3</code></td>
+<td>(internal)</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="execution-flow-what-runs-in-order">Execution flow — what runs, in order</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Step</th>
+<th>What happens</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>self-bootstrap</td>
+<td>If <code>m4-s1r1</code> isn't healthy, <code>up.sh</code> brings the 9-container stack up (3 ZK + 6 CH). Tears down peer demo modules first.</td>
+</tr>
+<tr>
+<td>1</td>
+<td><code>setup.sql</code> (via <code>m4-s1r1</code>)</td>
+<td><code>ON CLUSTER</code> creates <code>sensor_local</code> (ReplicatedMergeTree partitioned by day, ordered by <code>(sensor_id, ts)</code>) and a <code>sensor_distributed</code> Distributed wrapper on every node.</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>data.sql</code> (via <code>m4-s1r1</code>)</td>
+<td>Inserts 2M rows directly into <code>sensor_local</code> on <code>m4-s1r1</code> (not via Distributed). On purpose: only one replica writes; we want to watch the other catch up.</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>SYSTEM SYNC REPLICA sensor_local</code></td>
+<td>Run on <code>m4-s1r2</code>. Blocks until <code>m4-s1r2</code> has applied every replication-queue entry. After it returns, both replicas hold identical data.</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>queries.sql</code> (via <code>m4-s1r1</code>)</td>
+<td>Inspects <code>system.replicas</code>, <code>system.replication_queue</code>, <code>system.zookeeper</code> listing of <code>/clickhouse/tables/01/sensor_local</code>, and per-replica row counts via <code>clusterAllReplicas</code>.</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Failure drill</strong> (in run.sh)</td>
+<td><code>docker stop m4-s1r2</code> → insert 500k more rows on <code>m4-s1r1</code> → <code>docker start m4-s1r2</code> → wait 5s → <code>SYSTEM SYNC REPLICA</code> on <code>m4-s1r2</code>. Confirms <code>m4-s1r2.count() == 2.5M</code> and queue drained.</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>extras.sql</code> (via <code>m4-s1r1</code>)</td>
+<td>Sets <code>insert_quorum = 2</code>, <code>insert_quorum_timeout_ms = 5000</code>, inserts two rows — succeeds because both replicas are alive. Lists ZK quorum metadata. Toggles <code>select_sequential_consistency</code>. Inspects <code>system.replicas</code>. Prints a Keeper migration note.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="what-to-look-for">What to look for</h3>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>What you should see</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>INSERT to s1r1 only</td>
+<td><code>s1r2</code> row count matches after <code>SYSTEM SYNC REPLICA</code>.</td>
+</tr>
+<tr>
+<td><code>system.replicas</code></td>
+<td><code>absolute_delay = 0</code> once caught up; <code>is_leader = 1</code> on whichever replica leads merges.</td>
+</tr>
+<tr>
+<td>Stop s1r2, insert 500k</td>
+<td><code>s1r1.count() = 2.5M</code>, <code>s1r2.count() = 2M</code> (it's stopped).</td>
+</tr>
+<tr>
+<td>Restart s1r2 + sync</td>
+<td><code>s1r2.count() = 2.5M</code>; <code>system.replication_queue</code> empty.</td>
+</tr>
+<tr>
+<td><code>insert_quorum = 2</code> works</td>
+<td>Both replicas have the new rows immediately on INSERT return.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="10-operational-sql-cheatsheet">10. Operational SQL cheatsheet</h2>
+<pre><code class="language-sql">-- &quot;Is replication healthy?&quot;
+SELECT database, table, replica_name, queue_size, absolute_delay,
+       is_leader, is_readonly, last_queue_update_exception
+FROM system.replicas
+WHERE database NOT IN ('system')
+ORDER BY absolute_delay DESC;
+
+-- &quot;What's pending for one replica?&quot;
+SELECT type, source_replica, parts_to_merge, new_part_name,
+       create_time, last_attempt_time, num_tries, last_exception
+FROM system.replication_queue
+WHERE database = 'default' AND table = 'sensor_local'
+ORDER BY create_time;
+
+-- &quot;Force a stuck replica to retry&quot;
+SYSTEM SYNC REPLICA sensor_local;
+SYSTEM RESTART REPLICA sensor_local;        -- heavy-handed: re-init from ZK
+
+-- &quot;Drop a dead replica's record from ZK&quot;
+SYSTEM DROP REPLICA 'old-host-name' FROM TABLE sensor_local;
+
+-- &quot;What does ZK think the part list looks like?&quot;
+SELECT name FROM system.zookeeper
+WHERE path = '/clickhouse/tables/01/sensor_local/replicas/m4-s1r1/parts'
+ORDER BY name;
+</code></pre>
+<hr />
+<h2 id="11-common-pitfalls">11. Common pitfalls</h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Cannot allocate block number in ZooKeeper</code></td>
+<td>ZK quorum lost.</td>
+<td>Restore ZK; replicated tables auto-recover.</td>
+</tr>
+<tr>
+<td><code>system.replicas.is_readonly = 1</code> even though everything's running</td>
+<td>ZK session expired and didn't re-establish.</td>
+<td><code>SYSTEM RESTART REPLICA &lt;table&gt;</code> on the affected node.</td>
+</tr>
+<tr>
+<td><code>absolute_delay</code> stuck at a high value</td>
+<td>A queue entry keeps failing to apply (corrupt part, missing source).</td>
+<td><code>system.replication_queue.last_exception</code> shows why; usually <code>DROP PART</code> + re-<code>SYNC</code>.</td>
+</tr>
+<tr>
+<td>INSERT fails with <code>Quorum for previous write has not been satisfied</code></td>
+<td>Previous quorum INSERT timed out; quorum lock is held in ZK.</td>
+<td>Wait <code>insert_quorum_timeout_ms</code>, or <code>SYSTEM CLEAR QUORUM</code> (newer CH versions).</td>
+</tr>
+<tr>
+<td>Two replicas of one shard have different row counts but <code>absolute_delay = 0</code></td>
+<td>Wrote to local table on both replicas (bypassing replication).</td>
+<td>Don't write directly to local tables on both replicas. Always go via Distributed or one replica.</td>
+</tr>
+<tr>
+<td><code>Replica … has been already created</code></td>
+<td>Stale ZK record for a host that was rebuilt with the same name.</td>
+<td><code>SYSTEM DROP REPLICA '&lt;host&gt;' FROM TABLE &lt;t&gt;;</code> before recreating.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="12-talking-points-for-the-live-session">12. Talking points for the live session</h2>
+<ol>
+<li><strong>ZK stores metadata, not data.</strong> Every part still moves over the
+   interserver port; ZK just coordinates.</li>
+<li><strong>Replication is async by default.</strong> Show <code>SYSTEM SYNC REPLICA</code> and
+   <code>system.replicas.absolute_delay</code>.</li>
+<li><strong>The replication queue is a real queue.</strong> Walk through
+   <code>system.replication_queue</code> mid-INSERT.</li>
+<li><strong><code>insert_quorum</code> is your RPO=0 knob.</strong> Works, but raises tail latency.</li>
+<li><strong>Replica disk loss is recoverable.</strong> Demo the
+   <code>SYSTEM DROP REPLICA</code> + recreate flow live (Module 8 does this in drill 4).</li>
+<li><strong>ZK → Keeper.</strong> Mention the migration. Keep ZK if you have it; new
+   clusters should default to Keeper.</li>
+</ol>
+<hr />
+<h2 id="13-going-deeper">13. Going deeper</h2>
+<ul>
+<li><strong>Module 5</strong> — <code>ON CLUSTER</code> DDL coordination (also via ZK).</li>
+<li><strong>Module 8</strong> — destructive failure drills against this same cluster.</li>
+<li>ClickHouse docs: <a href="https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replication">https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replication</a></li>
+</ul>
+  </div>
+</div>
+
+
+<style>
+.handsOn {
+  margin: 24px auto; max-width: 1200px; padding: 0 20px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+}
+.handsOn-card {
+  background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 28px 32px; margin-bottom: 24px;
+}
+.handsOn-card h2 {
+  margin: 0 0 8px 0; font-size: 1.6em; color: #0f172a;
+}
+.handsOn-card h3 {
+  margin: 24px 0 8px 0; font-size: 1.2em; color: #1a4480;
+  border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;
+}
+.handsOn-card h4 { margin: 16px 0 6px 0; color: #0f172a; }
+.handsOn-card p, .handsOn-card li { color: #1e293b; line-height: 1.6; }
+.handsOn-card code {
+  background: #f1f5f9; padding: 2px 6px; border-radius: 4px;
+  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.92em;
+}
+.handsOn-card pre {
+  background: #0f172a; color: #f1f5f9; padding: 16px 18px; border-radius: 8px;
+  overflow-x: auto; font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.9em; line-height: 1.5;
+}
+.handsOn-card pre code { background: transparent; padding: 0; color: inherit; }
+.handsOn-card table {
+  border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 0.93em;
+}
+.handsOn-card th, .handsOn-card td {
+  border: 1px solid #e2e8f0; padding: 8px 12px; text-align: left;
+}
+.handsOn-card th { background: #f8fafc; color: #0f172a; }
+.handsOn-banner {
+  background: linear-gradient(135deg, #2b6cb0 0%, #1a4480 100%); color: white;
+  padding: 28px 32px; border-radius: 12px; margin-bottom: 20px;
+}
+.handsOn-banner h2 { color: white; margin: 0 0 8px 0; }
+.handsOn-banner code {
+  background: rgba(0,0,0,0.25); color: #f1f5f9;
+}
+.handsOn-banner pre {
+  background: rgba(0,0,0,0.30); color: #f1f5f9;
+}
+.handsOn-figure {
+  margin: 16px 0; padding: 12px; background: #f8fafc;
+  border: 1px solid #e2e8f0; border-radius: 8px; text-align: center;
+}
+.handsOn-figure img, .handsOn-figure object {
+  max-width: 100%; height: auto; border-radius: 4px;
+}
+.handsOn-figure figcaption {
+  margin-top: 8px; color: #475569; font-size: 0.9em; font-style: italic;
+}
+.handsOn-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 16px; margin: 12px 0;
+}
+.handsOn-card a { color: #1a4480; }
+</style>
+
+
+<div class="handsOn">
+  <div class="handsOn-banner">
+    <h2>🐳 Hands-on Docker Demo for this Module</h2>
+    <p style="opacity:0.92; line-height:1.55;">A self-contained ClickHouse stack you can run locally. Every step is reproducible; the README below walks through each concept with diagrams and measured outcomes.</p>
+    <pre><code>cd code-examples/demos/module-4-replication
+./up.sh        # bring stack up, wait for health
+./run.sh       # run the demo (idempotent — re-runnable)
+./down.sh      # tear down + drop volumes</code></pre>
+  </div>
+</div>
+
+
+<div class="handsOn">
+  <div class="handsOn-card">
+    <h2>📺 Live demo capture</h2>
+    <p>Recorded with <a href="https://github.com/charmbracelet/vhs" target="_blank" rel="noopener">vhs</a>: the actual terminal output from <code>./run.sh</code> running on this very stack.</p>
+    <figure class="handsOn-figure">
+      <img src="../code-examples/demos/module-4-replication/diagrams/demo.gif" alt="Module demo GIF" loading="lazy">
+      <figcaption>Click to view full-size. Animated GIF, ~914 KB.</figcaption>
+    </figure>
+  </div>
+</div>
+
+
+<div class="handsOn">
+  <div class="handsOn-card">
+    <h2>✨ Animated concept diagrams</h2>
+    <p>Inline SVG animations — no plugins, native browser playback. Each visualises a key flow this module covers.</p>
+    <div class="handsOn-grid">
+
+
+      <figure class="handsOn-figure">
+        <object type="image/svg+xml" data="../code-examples/demos/module-4-replication/diagrams/anim-replication-queue.svg" aria-label="Replication queue"></object>
+        <figcaption>Replication queue</figcaption>
+      </figure>
+
+
+    </div>
+  </div>
+</div>
+
+
+<div class="handsOn">
+  <div class="handsOn-card">
+    <h2>🗂️ Architecture diagrams</h2>
+    <p>Rendered from the README's Mermaid sources. Static, but click any to view the source SVG full-size.</p>
+    <div class="handsOn-grid">
+
+
+      <figure class="handsOn-figure">
+        <a href="../code-examples/demos/module-4-replication/diagrams/01-flowchart-subgraph-zk-zookeeper-keeper-ensemble-3-.svg" target="_blank" rel="noopener">
+          <img src="../code-examples/demos/module-4-replication/diagrams/01-flowchart-subgraph-zk-zookeeper-keeper-ensemble-3-.svg" alt="Subgraph zk zookeeper keeper ensemble 3" loading="lazy">
+        </a>
+        <figcaption>Subgraph zk zookeeper keeper ensemble 3</figcaption>
+      </figure>
+
+
+      <figure class="handsOn-figure">
+        <a href="../code-examples/demos/module-4-replication/diagrams/02-sequencediagram-participant-client.svg" target="_blank" rel="noopener">
+          <img src="../code-examples/demos/module-4-replication/diagrams/02-sequencediagram-participant-client.svg" alt="Participant client" loading="lazy">
+        </a>
+        <figcaption>Participant client</figcaption>
+      </figure>
+
+
+    </div>
+  </div>
+</div>
+
+
+<div class="handsOn">
+  <div class="handsOn-card">
+    <h2>📚 Full module reference</h2>
+    <h1 id="module-4-replication-high-availability">Module 4 — Replication &amp; High Availability</h1>
+<blockquote>
+<p><strong>Audience:</strong> anyone running CH in production. <strong>Prerequisites:</strong> Modules
+1–3. <strong>Time:</strong> ~70 min reading + 30 min hands-on.</p>
+</blockquote>
+<p>By the end you will be able to:</p>
+<ul>
+<li>Explain the role of ZooKeeper / Keeper in CH replication.</li>
+<li>Read and reason about the ZK paths under <code>/clickhouse/tables/...</code>.</li>
+<li>Use <code>system.replicas</code>, <code>system.replication_queue</code>, <code>system.zookeeper</code> for
+  diagnosis.</li>
+<li>Configure <code>insert_quorum</code> and <code>select_sequential_consistency</code> for
+  linearisable reads.</li>
+<li>Recover a wiped replica via <code>SYSTEM DROP REPLICA</code> + recreate.</li>
+<li>Understand the migration path from ZooKeeper to ClickHouse Keeper.</li>
+</ul>
+<hr />
+<h2 id="1-what-replication-means-in-clickhouse">1. What "replication" means in ClickHouse</h2>
+<p>A <strong>replicated table</strong> uses the <code>Replicated*MergeTree</code> engine family.
+Every replica of the same shard holds the <strong>same parts</strong> on disk. They
+coordinate via <strong>ZooKeeper</strong> (or, more recently, <strong>ClickHouse Keeper</strong>, a
+drop-in Raft-based replacement that ships with the server binary).</p>
+<p>Three guarantees:</p>
+<ol>
+<li><strong>All replicas converge to the same byte content</strong> for any given table.</li>
+<li><strong>Inserts are deduplicated</strong> within a sliding window
+   (<code>replicated_deduplication_window</code>, default 100 blocks).</li>
+<li><strong>A replica can be entirely rebuilt from its peers</strong> — losing a disk
+   isn't catastrophic.</li>
+</ol>
+<p>Three things replication does <strong>not</strong> do:</p>
+<ol>
+<li>It is <em>not</em> synchronous by default. INSERT acks before peers catch up.</li>
+<li>It does <em>not</em> provide cross-shard consistency. Different shards have
+   different data.</li>
+<li>It does <em>not</em> survive losing ZK quorum — you lose write availability
+   (replicated tables go read-only) until quorum returns.</li>
+</ol>
+<hr />
+<h2 id="2-the-replication-topology">2. The replication topology</h2>
+<!-- mermaid rendered as SVG above -->
+
+<p>The <strong>interserver port</strong> (<code>9009</code> by default) is how replicas fetch parts
+from each other. ZK only stores <strong>metadata</strong> — the part name, checksum,
+which replica has the source — never the data itself.</p>
+<hr />
+<h2 id="3-the-zookeeper-schema">3. The ZooKeeper schema</h2>
+<p>For a table created as</p>
+<pre><code class="language-sql">CREATE TABLE sensor_local (...)
+ENGINE = ReplicatedMergeTree(
+    '/clickhouse/tables/{shard}/sensor_local',
+    '{replica}'
+)
+</code></pre>
+<p>ZK ends up with this tree (showing one shard):</p>
+<pre><code>/clickhouse/tables/01/sensor_local/
+├── metadata          ← schema + ENGINE
+├── columns           ← column definitions
+├── log/              ← the replication log
+│   ├── log-0000000001
+│   ├── log-0000000002
+│   └── ...
+├── replicas/
+│   ├── m4-s1r1/
+│   │   ├── log_pointer    ← last log entry this replica applied
+│   │   ├── queue/         ← entries waiting to be applied
+│   │   ├── parts/         ← parts this replica has
+│   │   └── is_active      ← ephemeral; disappears if replica dies
+│   └── m4-s1r2/
+│       └── (same shape)
+├── blocks/                ← INSERT dedup keys (sliding window)
+├── block_numbers/         ← per-partition counters
+├── leader_election/       ← which replica orchestrates merges
+└── quorum/                ← insert_quorum state
+</code></pre>
+<p>You can browse this from SQL:</p>
+<pre><code class="language-sql">SELECT name, value FROM system.zookeeper
+WHERE path = '/clickhouse/tables/01/sensor_local'
+ORDER BY name;
+</code></pre>
+<h3 id="log-is-the-source-of-truth"><code>log</code> is the source of truth</h3>
+<p>Every modifying operation (INSERT, MERGE, MUTATION, ATTACH, DROP_PART) is
+written as a <strong>log entry</strong> in <code>/log/</code>. Each replica has a <code>log_pointer</code>
+saying "I've applied up to entry N". The replication queue holds the
+entries between <code>log_pointer</code> and the latest log entry — those are what
+the replica still needs to do.</p>
+<hr />
+<h2 id="4-the-replication-queue-lifecycle">4. The replication queue lifecycle</h2>
+<!-- mermaid rendered as SVG above -->
+
+<p>Steady-state on a healthy cluster: <code>queue_size = 0</code>, <code>absolute_delay = 0</code>.</p>
+<p>When a replica is down: its queue grows. When it comes back, it drains.
+The drain is <strong>eventually consistent</strong>; for tests, force it with
+<code>SYSTEM SYNC REPLICA &lt;table&gt;</code> — the call blocks until the queue is empty.</p>
+<hr />
+<h2 id="5-the-system-tables-youll-live-in">5. The system tables you'll live in</h2>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>What's in it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>system.replicas</code></td>
+<td>One row per replicated table per node: queue size, log pointer, <code>absolute_delay</code>, <code>is_leader</code>, <code>is_readonly</code>.</td>
+</tr>
+<tr>
+<td><code>system.replication_queue</code></td>
+<td>Per-entry detail of pending operations: type (<code>GET_PART</code>, <code>MERGE_PARTS</code>), source, retry count, last error.</td>
+</tr>
+<tr>
+<td><code>system.zookeeper</code></td>
+<td>Live SQL view of ZK paths (filterable with <code>WHERE path = '...'</code>).</td>
+</tr>
+<tr>
+<td><code>system.parts</code></td>
+<td>All parts; check <code>replica_name</code>, <code>replica_path</code>.</td>
+</tr>
+<tr>
+<td><code>system.zookeeper_log</code></td>
+<td>Audit trail of ZK operations this server made.</td>
+</tr>
+<tr>
+<td><code>system.replicated_fetches</code></td>
+<td>In-flight part fetches across the interserver port.</td>
+</tr>
+<tr>
+<td><code>system.replicated_merge_tree_settings</code></td>
+<td>Effective settings for the engine.</td>
+</tr>
+</tbody>
+</table>
+<p>The single most important field for SLOs is <code>system.replicas.absolute_delay</code>:
+<em>seconds between the most recent INSERT's commit time and what this replica
+has applied</em>. Alert if it goes above your tolerance (e.g. 60 s).</p>
+<hr />
+<h2 id="6-insert_quorum-synchronous-writes-when-you-need-them">6. <code>insert_quorum</code> — synchronous writes when you need them</h2>
+<p>Default INSERT semantics: returns success once <strong>one</strong> replica has the
+data. For "I need at least 2 of 2 replicas to have this row before I ack":</p>
+<pre><code class="language-sql">SET insert_quorum = 2;
+SET insert_quorum_timeout_ms = 5000;     -- give up after 5s
+SET insert_quorum_parallel = 1;           -- allow parallel quorum INSERTs
+
+INSERT INTO sensor_local VALUES (...);
+-- blocks until 2 replicas confirm, OR errors if quorum not met in time
+</code></pre>
+<p>Tradeoffs:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;"><code>insert_quorum</code></th>
+<th>Latency</th>
+<th>Durability</th>
+<th>Use for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">0 (default)</td>
+<td>low</td>
+<td>one replica before ack</td>
+<td>most analytics</td>
+</tr>
+<tr>
+<td style="text-align: right;">1</td>
+<td>low</td>
+<td>one replica, but explicit</td>
+<td>same</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td>medium</td>
+<td>both replicas of a 2-replica shard</td>
+<td>financial / regulatory</td>
+</tr>
+<tr>
+<td style="text-align: right;"><code>&lt;n&gt;</code></td>
+<td>higher</td>
+<td>n replicas in shard</td>
+<td>RPO=0 in multi-DC</td>
+</tr>
+</tbody>
+</table>
+<p>Combine with <code>select_sequential_consistency = 1</code> to get <strong>linearisable
+reads</strong> (only consider data the quorum has seen):</p>
+<pre><code class="language-sql">SET select_sequential_consistency = 1;
+SELECT count() FROM sensor_local;
+</code></pre>
+<p>This trades latency for "no stale reads".</p>
+<hr />
+<h2 id="7-failure-scenarios-and-recovery">7. Failure scenarios and recovery</h2>
+<h3 id="scenario-a-one-replica-down">Scenario A — one replica down</h3>
+<p>What happens:
+- Reads silently route to the other replica (zero impact).
+- Writes still succeed (one-replica write); other replica's queue grows.
+- ZK shows the replica's <code>is_active</code> ephemeral node disappear.</p>
+<p>Recovery:
+- <code>docker start m4-s1r2</code> (or fix the host).
+- <code>SYSTEM SYNC REPLICA sensor_local;</code> on the recovered replica.
+- Verify <code>system.replicas.absolute_delay = 0</code>.</p>
+<h3 id="scenario-b-replica-disk-loss">Scenario B — replica disk loss</h3>
+<p>What happens: the replica's <code>/var/lib/clickhouse/data</code> is gone. ZK still
+knows it as a registered replica.</p>
+<p>Recovery (the demo's drill 4 in M8):
+1. From a peer: <code>SYSTEM DROP REPLICA 'm4-s1r2' FROM TABLE sensor_local;</code>
+   This removes the dead replica's record from ZK.
+2. On the wiped node: <code>DROP TABLE sensor_local SYNC;</code> (table metadata is
+   gone with the disk; this clears any in-memory remnants).
+3. On the wiped node: re-create the table with the same ZK path.
+4. <code>SYSTEM SYNC REPLICA sensor_local;</code> — the engine pulls all parts from
+   peers via the interserver port.</p>
+<h3 id="scenario-c-zk-quorum-lost">Scenario C — ZK quorum lost</h3>
+<p>What happens: replicated tables go <strong>read-only</strong> on every node. INSERTs
+fail with <code>Cannot allocate block number in ZooKeeper</code>.</p>
+<p>Recovery: restore ZK quorum (3-of-5 or 2-of-3 ZK nodes). CH automatically
+recovers when ZK is reachable again.</p>
+<blockquote>
+<p><strong>Don't let ZK be the single point of failure.</strong> Run 3 (small clusters)
+or 5 (big clusters) ZK / Keeper nodes across availability zones.</p>
+</blockquote>
+<hr />
+<h2 id="8-clickhouse-keeper-the-future">8. ClickHouse Keeper — the future</h2>
+<p>Keeper is a <strong>Raft-based ZK clone</strong> that ships in the <code>clickhouse-server</code>
+binary. Same client protocol, same paths. Migrate when convenient:</p>
+<pre><code class="language-bash"># Snapshot ZK
+clickhouse-keeper-converter --zookeeper-logs-dir /var/lib/zookeeper/version-2/ \
+                            --zookeeper-snapshots-dir /var/lib/zookeeper/version-2/ \
+                            --output-dir /var/lib/clickhouse-keeper/coordination/snapshots/
+
+# Configure CH to point at Keeper instead of ZK (just hostname/port change)
+# Restart CH
+</code></pre>
+<p>Why move:
+- One fewer service (Keeper runs in the CH process or as <code>clickhouse-keeper</code>).
+- Better operational tooling (same binary, same logs format).
+- Active development; ZK feature-frozen.</p>
+<p>When <strong>not</strong> to move: large existing ZK fleet, complex tooling around it,
+or a 3rd-party setup that already provides ZK.</p>
+<p>This demo uses ZooKeeper (image <code>zookeeper:3.8</code>) for compatibility. The
+swap-to-Keeper path is single-line in <code>docker-compose.yml</code>.</p>
+<hr />
+<h2 id="9-the-hands-on-demo">9. The hands-on demo</h2>
+<h3 id="container-map">Container map</h3>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Container</th>
+<th>Host HTTP</th>
+<th>Host TCP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Shard 1 R1</td>
+<td><code>m4-s1r1</code></td>
+<td>8123</td>
+<td>9000</td>
+</tr>
+<tr>
+<td>Shard 1 R2</td>
+<td><code>m4-s1r2</code></td>
+<td>8124</td>
+<td>9001</td>
+</tr>
+<tr>
+<td>Shard 2 R1</td>
+<td><code>m4-s2r1</code></td>
+<td>8125</td>
+<td>9002</td>
+</tr>
+<tr>
+<td>Shard 2 R2</td>
+<td><code>m4-s2r2</code></td>
+<td>8126</td>
+<td>9003</td>
+</tr>
+<tr>
+<td>Shard 3 R1</td>
+<td><code>m4-s3r1</code></td>
+<td>8127</td>
+<td>9004</td>
+</tr>
+<tr>
+<td>Shard 3 R2</td>
+<td><code>m4-s3r2</code></td>
+<td>8128</td>
+<td>9005</td>
+</tr>
+<tr>
+<td>ZK 1/2/3</td>
+<td><code>m4-zk1/2/3</code></td>
+<td>(internal)</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="execution-flow-what-runs-in-order">Execution flow — what runs, in order</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Step</th>
+<th>What happens</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>self-bootstrap</td>
+<td>If <code>m4-s1r1</code> isn't healthy, <code>up.sh</code> brings the 9-container stack up (3 ZK + 6 CH). Tears down peer demo modules first.</td>
+</tr>
+<tr>
+<td>1</td>
+<td><code>setup.sql</code> (via <code>m4-s1r1</code>)</td>
+<td><code>ON CLUSTER</code> creates <code>sensor_local</code> (ReplicatedMergeTree partitioned by day, ordered by <code>(sensor_id, ts)</code>) and a <code>sensor_distributed</code> Distributed wrapper on every node.</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>data.sql</code> (via <code>m4-s1r1</code>)</td>
+<td>Inserts 2M rows directly into <code>sensor_local</code> on <code>m4-s1r1</code> (not via Distributed). On purpose: only one replica writes; we want to watch the other catch up.</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>SYSTEM SYNC REPLICA sensor_local</code></td>
+<td>Run on <code>m4-s1r2</code>. Blocks until <code>m4-s1r2</code> has applied every replication-queue entry. After it returns, both replicas hold identical data.</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>queries.sql</code> (via <code>m4-s1r1</code>)</td>
+<td>Inspects <code>system.replicas</code>, <code>system.replication_queue</code>, <code>system.zookeeper</code> listing of <code>/clickhouse/tables/01/sensor_local</code>, and per-replica row counts via <code>clusterAllReplicas</code>.</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Failure drill</strong> (in run.sh)</td>
+<td><code>docker stop m4-s1r2</code> → insert 500k more rows on <code>m4-s1r1</code> → <code>docker start m4-s1r2</code> → wait 5s → <code>SYSTEM SYNC REPLICA</code> on <code>m4-s1r2</code>. Confirms <code>m4-s1r2.count() == 2.5M</code> and queue drained.</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>extras.sql</code> (via <code>m4-s1r1</code>)</td>
+<td>Sets <code>insert_quorum = 2</code>, <code>insert_quorum_timeout_ms = 5000</code>, inserts two rows — succeeds because both replicas are alive. Lists ZK quorum metadata. Toggles <code>select_sequential_consistency</code>. Inspects <code>system.replicas</code>. Prints a Keeper migration note.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="what-to-look-for">What to look for</h3>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>What you should see</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>INSERT to s1r1 only</td>
+<td><code>s1r2</code> row count matches after <code>SYSTEM SYNC REPLICA</code>.</td>
+</tr>
+<tr>
+<td><code>system.replicas</code></td>
+<td><code>absolute_delay = 0</code> once caught up; <code>is_leader = 1</code> on whichever replica leads merges.</td>
+</tr>
+<tr>
+<td>Stop s1r2, insert 500k</td>
+<td><code>s1r1.count() = 2.5M</code>, <code>s1r2.count() = 2M</code> (it's stopped).</td>
+</tr>
+<tr>
+<td>Restart s1r2 + sync</td>
+<td><code>s1r2.count() = 2.5M</code>; <code>system.replication_queue</code> empty.</td>
+</tr>
+<tr>
+<td><code>insert_quorum = 2</code> works</td>
+<td>Both replicas have the new rows immediately on INSERT return.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="10-operational-sql-cheatsheet">10. Operational SQL cheatsheet</h2>
+<pre><code class="language-sql">-- &quot;Is replication healthy?&quot;
+SELECT database, table, replica_name, queue_size, absolute_delay,
+       is_leader, is_readonly, last_queue_update_exception
+FROM system.replicas
+WHERE database NOT IN ('system')
+ORDER BY absolute_delay DESC;
+
+-- &quot;What's pending for one replica?&quot;
+SELECT type, source_replica, parts_to_merge, new_part_name,
+       create_time, last_attempt_time, num_tries, last_exception
+FROM system.replication_queue
+WHERE database = 'default' AND table = 'sensor_local'
+ORDER BY create_time;
+
+-- &quot;Force a stuck replica to retry&quot;
+SYSTEM SYNC REPLICA sensor_local;
+SYSTEM RESTART REPLICA sensor_local;        -- heavy-handed: re-init from ZK
+
+-- &quot;Drop a dead replica's record from ZK&quot;
+SYSTEM DROP REPLICA 'old-host-name' FROM TABLE sensor_local;
+
+-- &quot;What does ZK think the part list looks like?&quot;
+SELECT name FROM system.zookeeper
+WHERE path = '/clickhouse/tables/01/sensor_local/replicas/m4-s1r1/parts'
+ORDER BY name;
+</code></pre>
+<hr />
+<h2 id="11-common-pitfalls">11. Common pitfalls</h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Cannot allocate block number in ZooKeeper</code></td>
+<td>ZK quorum lost.</td>
+<td>Restore ZK; replicated tables auto-recover.</td>
+</tr>
+<tr>
+<td><code>system.replicas.is_readonly = 1</code> even though everything's running</td>
+<td>ZK session expired and didn't re-establish.</td>
+<td><code>SYSTEM RESTART REPLICA &lt;table&gt;</code> on the affected node.</td>
+</tr>
+<tr>
+<td><code>absolute_delay</code> stuck at a high value</td>
+<td>A queue entry keeps failing to apply (corrupt part, missing source).</td>
+<td><code>system.replication_queue.last_exception</code> shows why; usually <code>DROP PART</code> + re-<code>SYNC</code>.</td>
+</tr>
+<tr>
+<td>INSERT fails with <code>Quorum for previous write has not been satisfied</code></td>
+<td>Previous quorum INSERT timed out; quorum lock is held in ZK.</td>
+<td>Wait <code>insert_quorum_timeout_ms</code>, or <code>SYSTEM CLEAR QUORUM</code> (newer CH versions).</td>
+</tr>
+<tr>
+<td>Two replicas of one shard have different row counts but <code>absolute_delay = 0</code></td>
+<td>Wrote to local table on both replicas (bypassing replication).</td>
+<td>Don't write directly to local tables on both replicas. Always go via Distributed or one replica.</td>
+</tr>
+<tr>
+<td><code>Replica … has been already created</code></td>
+<td>Stale ZK record for a host that was rebuilt with the same name.</td>
+<td><code>SYSTEM DROP REPLICA '&lt;host&gt;' FROM TABLE &lt;t&gt;;</code> before recreating.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="12-talking-points-for-the-live-session">12. Talking points for the live session</h2>
+<ol>
+<li><strong>ZK stores metadata, not data.</strong> Every part still moves over the
+   interserver port; ZK just coordinates.</li>
+<li><strong>Replication is async by default.</strong> Show <code>SYSTEM SYNC REPLICA</code> and
+   <code>system.replicas.absolute_delay</code>.</li>
+<li><strong>The replication queue is a real queue.</strong> Walk through
+   <code>system.replication_queue</code> mid-INSERT.</li>
+<li><strong><code>insert_quorum</code> is your RPO=0 knob.</strong> Works, but raises tail latency.</li>
+<li><strong>Replica disk loss is recoverable.</strong> Demo the
+   <code>SYSTEM DROP REPLICA</code> + recreate flow live (Module 8 does this in drill 4).</li>
+<li><strong>ZK → Keeper.</strong> Mention the migration. Keep ZK if you have it; new
+   clusters should default to Keeper.</li>
+</ol>
+<hr />
+<h2 id="13-going-deeper">13. Going deeper</h2>
+<ul>
+<li><strong>Module 5</strong> — <code>ON CLUSTER</code> DDL coordination (also via ZK).</li>
+<li><strong>Module 8</strong> — destructive failure drills against this same cluster.</li>
+<li>ClickHouse docs: <a href="https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replication">https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replication</a></li>
+</ul>
+  </div>
+</div>
+
+</body>
 </html>

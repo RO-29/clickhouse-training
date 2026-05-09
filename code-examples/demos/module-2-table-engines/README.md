@@ -439,10 +439,10 @@ flowchart TD
     Q2{Need updates?} -- "no" --> MT[MergeTree]
     Q2 -- "yes, by replace" --> Q3
     Q2 -- "yes, by sum" --> SMT[SummingMergeTree]
-    Q2 -- "yes, complex agg<br/>(uniq, quantile)" --> AMT[AggregatingMergeTree<br/>+ MV from raw table]
+    Q2 -- "yes, complex agg<br/>uniq, quantile" --> AMT["AggregatingMergeTree + MV from raw table"]
     Q2 -- "yes, by cancel/replace" --> Q4
     Q3{Out-of-order events?} -- "no" --> RMT[ReplacingMergeTree]
-    Q3 -- "yes" --> RMT_V[ReplacingMergeTree(version)]
+    Q3 -- "yes" --> RMT_V["ReplacingMergeTree with version"]
     Q4{Out-of-order events?} -- "no" --> CMT[CollapsingMergeTree]
     Q4 -- "yes" --> VCM[VersionedCollapsingMergeTree]
 

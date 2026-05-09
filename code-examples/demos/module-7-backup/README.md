@@ -20,10 +20,10 @@ By the end you will be able to:
 flowchart TB
     Need[Need a backup?]
     Need --> Q1{What for?}
-    Q1 -- "instant local snapshot before risky DDL" --> FZ[ALTER TABLE FREEZE]
-    Q1 -- "managed backup file (zip)" --> BU[BACKUP TO Disk('backups', 'name.zip')]
-    Q1 -- "to object storage (S3 / GCS)" --> S3[BACKUP TO S3('endpoint', key, secret)]
-    Q1 -- "scheduled prod backups, S3 sync, retention" --> CB[clickhouse-backup CLI]
+    Q1 -- "instant local snapshot before risky DDL" --> FZ["ALTER TABLE FREEZE"]
+    Q1 -- "managed backup file (zip)" --> BU["BACKUP TO Disk('backups','name.zip')"]
+    Q1 -- "to object storage (S3 / GCS)" --> S3["BACKUP TO S3('endpoint', key, secret)"]
+    Q1 -- "scheduled prod backups, S3 sync, retention" --> CB["clickhouse-backup CLI"]
 
     FZ -->|fast, hardlinked| Use1[Same host only<br/>recoverable by ATTACH PART]
     BU -->|portable| Use2[Single zip; readable across hosts]

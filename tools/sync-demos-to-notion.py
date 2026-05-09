@@ -201,6 +201,25 @@ def build_demo_blocks(folder: Path) -> list[dict]:
         "live source lives in the repo at the path shown under 'Run locally'."
     ))
 
+    diag_dir = folder / "diagrams"
+    if diag_dir.exists():
+        anim_count = sum(1 for f in diag_dir.glob("anim-*.svg"))
+        diag_count = sum(1 for f in diag_dir.glob("[0-9]*.svg"))
+        gif = diag_dir / "demo.gif"
+        bits = []
+        if gif.exists():
+            bits.append("a GIF capture of `./run.sh`")
+        if anim_count:
+            bits.append(f"{anim_count} animated SVG concept diagram(s)")
+        if diag_count:
+            bits.append(f"{diag_count} architecture diagram(s) rendered from the README's Mermaid sources")
+        if bits:
+            blocks.append(paragraph(
+                "Visuals (in the repo at code-examples/demos/" + folder.name +
+                "/diagrams/, also embedded into the corresponding HTML page on the training site): "
+                + "; ".join(bits) + "."
+            ))
+
     blocks.append(heading(2, "🚀 Run locally"))
     blocks.extend(code_block(
         f"cd code-examples/demos/{folder.name}\n"

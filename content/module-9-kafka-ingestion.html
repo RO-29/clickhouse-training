@@ -355,16 +355,6 @@
 <div class="nav-btn">📚 Resources</div>
 </div>
 </div>
-<!-- demo-callout: points at the runnable Docker demo for this module (private repo: no external link) -->
-<div class="demo-callout" style="margin: 0 auto; max-width: 1200px; padding: 0 20px;">
-<div style="background: linear-gradient(135deg, #2b6cb0 0%, #1a4480 100%); color: white; padding: 25px 30px; margin: 24px 0; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-<div style="display: flex; flex-direction: column; gap: 12px;">
-<div style="font-size: 1.4em; font-weight: bold;">🐳 Hands-on Docker Demo for this Module</div>
-<div style="opacity: 0.92; font-size: 0.97em; line-height: 1.55;">Self-contained ClickHouse stack: <strong>ClickHouse + Kafka</strong>. The demo lives in the repo at <code style="background: rgba(0,0,0,0.25); padding: 2px 8px; border-radius: 4px;">code-examples/demos/module-9-kafka/</code> with its own README, configs, and lifecycle scripts.</div>
-<div style="font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.92em; background: rgba(0,0,0,0.25); padding: 12px 14px; border-radius: 6px; line-height: 1.6;">cd code-examples/demos/module-9-kafka<br>./up.sh        <span style="opacity: 0.7;"># bring stack up</span><br>./run.sh       <span style="opacity: 0.7;"># run the demo</span><br>./down.sh      <span style="opacity: 0.7;"># tear down</span></div>
-<div style="opacity: 0.85; font-size: 0.9em;">See <code style="background: rgba(0,0,0,0.25); padding: 2px 6px; border-radius: 4px;">README.md</code> in that folder for the full execution flow, talking points, and curriculum-aligned extras.</div>
-</div>
-</div>
 </div>
 <div class="container">
 <!-- What is Kafka-Based Ingestion Section -->
@@ -1499,5 +1489,1400 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
         }
     });
 });
-</script></body>
+</script>
+
+
+
+<div class="handsOn">
+  <div class="handsOn-card">
+    <h2>📚 Full module reference</h2>
+    <h1 id="module-9-kafka-ingestion">Module 9 — Kafka Ingestion</h1>
+<blockquote>
+<p><strong>Audience:</strong> anyone wiring Kafka into ClickHouse. <strong>Prerequisites:</strong>
+Modules 1–2. <strong>Time:</strong> ~70 min reading + 30 min hands-on.</p>
+</blockquote>
+<p>By the end you will be able to:</p>
+<ul>
+<li>Build the canonical <code>Kafka engine → MV → MergeTree</code> pipeline.</li>
+<li>Configure consumer groups, batching, and retries.</li>
+<li>Route bad messages to a Dead Letter Queue (DLQ).</li>
+<li>Achieve "exactly once" semantics over an at-least-once source.</li>
+<li>Reset offsets for replay; pause and resume consumption.</li>
+<li>Pick the right wire format (JSON, CSV, Avro, Protobuf).</li>
+</ul>
+<hr />
+<h2 id="1-the-mental-model">1. The mental model</h2>
+<p>ClickHouse's Kafka engine is a <strong>consumer</strong>, not a destination. Selecting
+from it consumes messages. To make ingest durable you put a Materialized
+View on top of it that writes the consumed rows to a real MergeTree.</p>
+<!-- mermaid rendered as SVG above -->
+
+<p>Three rules to remember:</p>
+<ol>
+<li><strong>Don't <code>SELECT * FROM events_kafka</code>.</strong> A direct SELECT consumes
+   messages and throws them away. Use it only for diagnosis with <code>LIMIT 1</code>.</li>
+<li><strong>The MV is the durability boundary.</strong> If you DROP the MV without
+   replacement, the engine still consumes — your data is gone.</li>
+<li><strong>One Kafka source can feed N MVs.</strong> A single read of the topic can
+   power both the durable destination and any number of pre-aggregations.</li>
+</ol>
+<hr />
+<h2 id="2-the-kafka-source-table">2. The Kafka source table</h2>
+<pre><code class="language-sql">CREATE TABLE events_kafka (
+    event_time DateTime,
+    user_id    UInt64,
+    event_type String,
+    revenue    Float64,
+    payload    String
+)
+ENGINE = Kafka
+SETTINGS
+    kafka_broker_list   = 'm9-kafka:29092',
+    kafka_topic_list    = 'events',
+    kafka_group_name    = 'ch_consumer',
+    kafka_format        = 'JSONEachRow',
+    kafka_num_consumers = 1,
+    kafka_max_block_size = 1048576;
+</code></pre>
+<p>Settings worth knowing:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Default</th>
+<th>What it controls</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kafka_broker_list</code></td>
+<td>required</td>
+<td>Comma-separated <code>host:port</code>. Multiple brokers is fine.</td>
+</tr>
+<tr>
+<td><code>kafka_topic_list</code></td>
+<td>required</td>
+<td>Comma-separated topics. Regex with <code>kafka_topic_regex</code>.</td>
+</tr>
+<tr>
+<td><code>kafka_group_name</code></td>
+<td>required</td>
+<td>Consumer group ID. Multiple CH instances in the same group share partitions.</td>
+</tr>
+<tr>
+<td><code>kafka_format</code></td>
+<td>required</td>
+<td><code>JSONEachRow</code>, <code>CSV</code>, <code>TabSeparated</code>, <code>Avro</code>, <code>AvroConfluent</code>, <code>Protobuf</code>, …</td>
+</tr>
+<tr>
+<td><code>kafka_num_consumers</code></td>
+<td>1</td>
+<td>Threads per topic per node.</td>
+</tr>
+<tr>
+<td><code>kafka_max_block_size</code></td>
+<td>1 048 576</td>
+<td>Rows the consumer batches before emitting one block.</td>
+</tr>
+<tr>
+<td><code>kafka_thread_per_consumer</code></td>
+<td>0</td>
+<td>If 1, each consumer gets its own thread (useful &gt;1 partition).</td>
+</tr>
+<tr>
+<td><code>kafka_skip_broken_messages</code></td>
+<td>0</td>
+<td>Skip N badly-formed messages per block; rest of the block proceeds.</td>
+</tr>
+<tr>
+<td><code>kafka_handle_error_mode</code></td>
+<td><code>'default'</code></td>
+<td><code>'stream'</code> exposes <code>_error</code> / <code>_raw_message</code> virtual columns. See §5.</td>
+</tr>
+<tr>
+<td><code>kafka_commit_every_batch</code></td>
+<td>0</td>
+<td>Commit per batch instead of per block. Trades latency for granularity.</td>
+</tr>
+<tr>
+<td><code>kafka_max_rows_per_message</code></td>
+<td>1</td>
+<td>For some formats, multiple rows per message.</td>
+</tr>
+</tbody>
+</table>
+<p>Server-level defaults live in <code>&lt;kafka&gt;</code> in the server config:</p>
+<pre><code class="language-xml">&lt;kafka&gt;
+    &lt;num_threads&gt;2&lt;/num_threads&gt;
+    &lt;flush_interval_ms&gt;7500&lt;/flush_interval_ms&gt;
+    &lt;flush_on_rows&gt;10000&lt;/flush_on_rows&gt;
+    &lt;max_retries&gt;30&lt;/max_retries&gt;
+    &lt;retry_backoff_ms&gt;100&lt;/retry_backoff_ms&gt;
+&lt;/kafka&gt;
+</code></pre>
+<hr />
+<h2 id="3-the-materialized-view-glue">3. The Materialized View glue</h2>
+<pre><code class="language-sql">CREATE TABLE events (
+    event_time  DateTime,
+    user_id     UInt64,
+    event_type  LowCardinality(String),
+    revenue     Float64,
+    payload     String,
+    inserted_at DateTime DEFAULT now()
+)
+ENGINE = MergeTree
+PARTITION BY toYYYYMMDD(event_time)
+ORDER BY (event_type, event_time);
+
+CREATE MATERIALIZED VIEW events_mv TO events AS
+SELECT event_time, user_id, event_type, revenue, payload
+FROM events_kafka;
+</code></pre>
+<p>The MV reads the Kafka source and writes to the destination. As long as
+the MV exists, the engine consumes. Drop it (<code>DROP TABLE events_mv</code>) and
+consumption stops; CH commits no further offsets.</p>
+<h3 id="multiple-mvs-from-one-source">Multiple MVs from one source</h3>
+<pre><code class="language-sql">CREATE TABLE events_per_minute (...) ENGINE = SummingMergeTree ORDER BY (...);
+
+CREATE MATERIALIZED VIEW events_per_minute_mv TO events_per_minute AS
+SELECT toStartOfMinute(event_time) AS minute,
+       event_type,
+       count() AS events,
+       sum(revenue) AS revenue
+FROM events_kafka
+GROUP BY minute, event_type;
+</code></pre>
+<p>Both MVs run from the same Kafka read. Single network/IO, two writes.</p>
+<hr />
+<h2 id="4-the-end-to-end-flow">4. The end-to-end flow</h2>
+<!-- mermaid rendered as SVG above -->
+
+<p>Failure semantics:</p>
+<ul>
+<li><strong>Server crash mid-block</strong> — uncommitted messages are re-consumed on
+  restart. <code>events</code> may have duplicates if the prior INSERT partially
+  succeeded; deduplicate in the destination if it matters.</li>
+<li><strong>MV crash</strong> — same as above; the MV's INSERT errored, so the offset
+  isn't committed.</li>
+<li><strong>Bad message</strong> — by default, the <em>whole block</em> fails. Enable
+  <code>kafka_skip_broken_messages</code> or <code>kafka_handle_error_mode = 'stream'</code>.</li>
+</ul>
+<hr />
+<h2 id="5-dead-letter-queue-kafka_handle_error_mode-stream">5. Dead Letter Queue — <code>kafka_handle_error_mode = 'stream'</code></h2>
+<p>The default mode poisons a block of <em>good</em> messages if any one of them
+fails to parse. The <code>'stream'</code> mode lets bad messages flow with two extra
+virtual columns:</p>
+<table>
+<thead>
+<tr>
+<th>Virtual column</th>
+<th>Type</th>
+<th>Contains</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_error</code></td>
+<td>String</td>
+<td>Empty if the message parsed cleanly; an error string if not.</td>
+</tr>
+<tr>
+<td><code>_raw_message</code></td>
+<td>String</td>
+<td>The raw bytes of the message.</td>
+</tr>
+<tr>
+<td><code>_topic</code></td>
+<td>LowCardinality(String)</td>
+<td>Topic name.</td>
+</tr>
+<tr>
+<td><code>_partition</code></td>
+<td>UInt64</td>
+<td>Partition number.</td>
+</tr>
+<tr>
+<td><code>_offset</code></td>
+<td>UInt64</td>
+<td>Offset within the partition.</td>
+</tr>
+<tr>
+<td><code>_timestamp</code></td>
+<td>Nullable(DateTime)</td>
+<td>Producer timestamp.</td>
+</tr>
+</tbody>
+</table>
+<p>Then split with two MVs:</p>
+<pre><code class="language-sql">CREATE TABLE events_kafka_safe (
+    event_time DateTime, user_id UInt64,
+    event_type String, revenue Float64, payload String
+)
+ENGINE = Kafka
+SETTINGS
+    kafka_broker_list       = 'm9-kafka:29092',
+    kafka_topic_list        = 'events',
+    kafka_group_name        = 'ch_consumer_safe',
+    kafka_format            = 'JSONEachRow',
+    kafka_handle_error_mode = 'stream';
+
+-- Good messages → durable destination
+CREATE MATERIALIZED VIEW events_safe_mv TO events_safe AS
+SELECT event_time, user_id, event_type, revenue, payload
+FROM events_kafka_safe WHERE _error = '';
+
+-- Bad messages → DLQ table for replay/inspection
+CREATE TABLE events_dlq (
+    received_at DateTime DEFAULT now(),
+    error       String,
+    raw         String,
+    topic       String,
+    partition   UInt32,
+    offset      UInt64
+) ENGINE = MergeTree ORDER BY (received_at, topic, partition);
+
+CREATE MATERIALIZED VIEW events_dlq_mv TO events_dlq AS
+SELECT now() AS received_at,
+       _error AS error,
+       _raw_message AS raw,
+       _topic AS topic,
+       _partition AS partition,
+       _offset AS offset
+FROM events_kafka_safe
+WHERE _error != '';
+</code></pre>
+<p>Now produce a deliberately-broken message:</p>
+<pre><code class="language-bash">echo '{not valid json' | kafka-console-producer --bootstrap-server localhost:9092 --topic events
+</code></pre>
+<p>It lands in <code>events_dlq</code>, not in <code>events_safe</code>. Inspect, fix the
+producer, optionally re-publish from the DLQ.</p>
+<hr />
+<h2 id="6-exactly-once-via-replacingmergetree">6. Exactly-once via <code>ReplacingMergeTree</code></h2>
+<p>Kafka offers at-least-once delivery. After a failover or replay, you
+might see the same message twice. To get <strong>at-most-once at the table
+level</strong>, dedupe on a stable key with <code>ReplacingMergeTree</code>:</p>
+<pre><code class="language-sql">CREATE TABLE events_unique (
+    event_time  DateTime,
+    user_id     UInt64,
+    event_type  LowCardinality(String),
+    revenue     Float64,
+    payload     String,
+    ingested_at DateTime DEFAULT now()    -- the version
+)
+ENGINE = ReplacingMergeTree(ingested_at)
+ORDER BY (user_id, event_time);
+
+CREATE MATERIALIZED VIEW events_unique_mv TO events_unique AS
+SELECT event_time, user_id, event_type, revenue, payload, now() AS ingested_at
+FROM events_kafka;
+
+-- Read with FINAL or argMax to see only the latest version per key.
+SELECT count() FROM events_unique FINAL;
+</code></pre>
+<p>The dedup key <code>(user_id, event_time)</code> must be <strong>stable across retries</strong>
+— typically the producer's natural primary key.</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Throughput</th>
+<th>Correctness</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Plain MergeTree</td>
+<td>highest</td>
+<td>duplicates possible after failure</td>
+</tr>
+<tr>
+<td>ReplacingMergeTree</td>
+<td>high</td>
+<td>dedup on read (<code>FINAL</code>) or post-merge</td>
+</tr>
+<tr>
+<td>AggregatingMergeTree + idempotent agg</td>
+<td>high</td>
+<td>duplicates absorbed by the aggregator</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="7-format-coverage">7. Format coverage</h2>
+<p><code>JSONEachRow</code> is the demo's choice. CH supports many more:</p>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Schema</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>JSONEachRow</code></td>
+<td>implicit</td>
+<td>One JSON object per line. Most flexible; modest overhead.</td>
+</tr>
+<tr>
+<td><code>JSON</code></td>
+<td>implicit</td>
+<td>Single big JSON blob with <code>data: [...]</code>. Less common in Kafka.</td>
+</tr>
+<tr>
+<td><code>CSV</code> / <code>CSVWithNames</code></td>
+<td>implicit (or header)</td>
+<td>Fast; no nesting.</td>
+</tr>
+<tr>
+<td><code>TabSeparated</code></td>
+<td>implicit</td>
+<td>Even faster; no quoting needed.</td>
+</tr>
+<tr>
+<td><code>Protobuf</code></td>
+<td>required</td>
+<td><code>format_schema = 'events.proto:EventMessage'</code>. Compact, typed.</td>
+</tr>
+<tr>
+<td><code>Avro</code></td>
+<td>embedded</td>
+<td>One schema per message header.</td>
+</tr>
+<tr>
+<td><code>AvroConfluent</code></td>
+<td>registry</td>
+<td>Confluent Schema Registry magic byte + ID.</td>
+</tr>
+<tr>
+<td><code>Parquet</code></td>
+<td>embedded</td>
+<td>Often used for batch ingest, less for streaming.</td>
+</tr>
+</tbody>
+</table>
+<p>Schema-bound formats need the schema mounted under
+<code>/var/lib/clickhouse/format_schemas/</code>:</p>
+<pre><code class="language-sql">CREATE TABLE events_kafka_proto (
+    ...
+)
+ENGINE = Kafka
+SETTINGS
+    kafka_format = 'Protobuf',
+    format_schema = 'events.proto:EventMessage',
+    ...;
+</code></pre>
+<hr />
+<h2 id="8-operational-sql-cheatsheet">8. Operational SQL cheatsheet</h2>
+<pre><code class="language-sql">-- Lag and assignments
+SELECT
+    database, table, consumer_id,
+    assignments.topic AS topic,
+    assignments.partition_id AS partition,
+    assignments.current_offset AS offset
+FROM system.kafka_consumers
+ARRAY JOIN assignments
+WHERE database = 'm9';
+
+-- Lifetime counters
+SELECT event, value
+FROM system.events
+WHERE event LIKE 'Kafka%'
+ORDER BY event;
+
+-- Pause / resume consumption (without dropping the MV)
+DETACH TABLE events_mv;     -- consumer keeps running but doesn't write
+ATTACH TABLE events_mv;     -- resume; offsets resume from where Kafka committed
+
+-- Hard reset offsets (replay everything)
+docker exec m9-kafka kafka-consumer-groups \
+    --bootstrap-server localhost:9092 \
+    --group ch_consumer --reset-offsets --to-earliest \
+    --topic events --execute
+
+-- Per-consumer-group lag
+docker exec m9-kafka kafka-consumer-groups \
+    --bootstrap-server localhost:9092 \
+    --group ch_consumer --describe
+</code></pre>
+<hr />
+<h2 id="9-the-hands-on-demo">9. The hands-on demo</h2>
+<h3 id="what-you-get">What you get</h3>
+<pre><code>docker-compose.yml          m9-clickhouse + m9-kafka + m9-zk + m9-kafka-ui
+configs/clickhouse-config.xml
+setup.sql · extras.sql · queries.sql
+produce.py                  JSON-line producer (pure stdlib)
+up.sh · run.sh · down.sh
+</code></pre>
+<h3 id="container-map">Container map</h3>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Container</th>
+<th>Host ports</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ClickHouse</td>
+<td><code>m9-clickhouse</code></td>
+<td>8123, 9000</td>
+</tr>
+<tr>
+<td>Kafka</td>
+<td><code>m9-kafka</code></td>
+<td>9092 (host), 29092 (internal)</td>
+</tr>
+<tr>
+<td>ZooKeeper</td>
+<td><code>m9-zk</code></td>
+<td>(internal only)</td>
+</tr>
+<tr>
+<td>Kafka UI</td>
+<td><code>m9-kafka-ui</code></td>
+<td>8080</td>
+</tr>
+</tbody>
+</table>
+<p>Internally the broker is <code>m9-kafka:29092</code> (used in <code>setup.sql</code>). From
+the host: <code>localhost:9092</code>.</p>
+<h3 id="execution-flow-what-runs-in-order">Execution flow — what runs, in order</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Step</th>
+<th>What happens</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>self-bootstrap</td>
+<td><code>up.sh</code> brings up the 4-container stack and waits until <code>m9-clickhouse:/ping</code> and <code>m9-kafka:9092</code> both answer.</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Create <code>events</code> topic</td>
+<td><code>kafka-topics --create --if-not-exists --topic events --partitions 3 --replication-factor 1</code>.</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>setup.sql</code></td>
+<td>Creates database <code>m9</code> and the canonical pipeline: <code>events_kafka</code> (Kafka engine, JSONEachRow, group <code>ch_consumer</code>), <code>events</code> (durable MergeTree), <code>events_mv</code> (MV moves rows from Kafka → events), <code>events_per_minute</code> (SummingMergeTree), <code>events_per_minute_mv</code> (minute-bucket aggregation). One Kafka read serves both MVs.</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>extras.sql</code></td>
+<td>Adds the <strong>DLQ pipeline</strong>: <code>events_kafka_safe</code> with <code>kafka_handle_error_mode = 'stream'</code> (group <code>ch_consumer_safe</code>); two MVs split it on <code>_error == ''</code> → <code>events_safe</code>, <code>_error != ''</code> → <code>events_dlq</code> (with topic / partition / offset preserved). Also creates <code>events_unique</code> (ReplacingMergeTree on <code>(user_id, event_time)</code>) and <code>events_unique_mv</code>.</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Produce <strong>valid</strong> messages</td>
+<td><code>python3 produce.py --rows $ROWS</code> (default 100k) → piped into <code>kafka-console-producer --topic events</code>.</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Produce <strong>broken</strong> messages</td>
+<td>50 deliberately malformed JSON lines → <code>kafka-console-producer --topic events</code>. These get rejected by the strict consumer (<code>events_kafka</code>) but flow through the safe consumer into <code>events_dlq</code>.</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Sleep 8 s</td>
+<td>Lets the Kafka MVs catch up (default <code>flush_interval_ms = 7500</code>).</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>queries.sql</code></td>
+<td>Inspects: total rows in <code>events</code>, per-event-type breakdown, the SummingMergeTree minute buckets, <code>system.kafka_consumers</code> (assignments, offsets), <code>system.events</code> Kafka counters.</td>
+</tr>
+<tr>
+<td>8</td>
+<td>DLQ + exactly-once verification</td>
+<td>Prints <code>events_dlq</code> count (~50, the bad messages), <code>events_safe</code> count (~<code>$ROWS</code>), <code>events_unique FINAL</code> count, top-3 <code>_error</code> strings.</td>
+</tr>
+</tbody>
+</table>
+<p>Run with bigger volume:</p>
+<pre><code class="language-bash">ROWS=500000 ./run.sh
+</code></pre>
+<hr />
+<h2 id="10-common-pitfalls">10. Common pitfalls</h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SELECT * FROM events_kafka</code> returns rows once and never again</td>
+<td>Direct SELECT consumes messages.</td>
+<td>Don't. Use the MV. For diagnostics: <code>SELECT * FROM events_kafka LIMIT 1</code>.</td>
+</tr>
+<tr>
+<td>MV creates millions of tiny parts</td>
+<td>Tiny <code>kafka_max_block_size</code> and high message rate.</td>
+<td>Raise to <code>1048576</code> rows or <code>64 * 1024 * 1024</code> bytes. Match <code>flush_on_rows</code> server setting.</td>
+</tr>
+<tr>
+<td>One bad message stops ingestion</td>
+<td>Default <code>kafka_handle_error_mode = 'default'</code>.</td>
+<td><code>kafka_skip_broken_messages = N</code> for tolerance, or DLQ pattern.</td>
+</tr>
+<tr>
+<td>Duplicates after Kafka rebalance</td>
+<td>Kafka redelivered uncommitted messages.</td>
+<td>Use <code>ReplacingMergeTree</code> on a stable key, or AggregatingMergeTree with idempotent aggregates.</td>
+</tr>
+<tr>
+<td>"Cannot resolve hostname m9-kafka"</td>
+<td><code>kafka_broker_list</code> uses internal hostname; CH can't reach it from host network.</td>
+<td>Use the hostname that's reachable from CH (the demo uses <code>m9-kafka:29092</code> on the shared network).</td>
+</tr>
+<tr>
+<td>Lag grows unbounded</td>
+<td>Single consumer can't keep up with topic throughput.</td>
+<td>Increase <code>kafka_num_consumers</code>, or scale CH replicas in the same group.</td>
+</tr>
+<tr>
+<td>Consumer group resets every restart</td>
+<td>Group ID changes (e.g. random suffix).</td>
+<td>Use a stable <code>kafka_group_name</code>. Treat it like a database name.</td>
+</tr>
+<tr>
+<td>Offsets stuck on a corrupted message</td>
+<td>The block keeps failing; CH retries forever.</td>
+<td>Skip the offset via the kafka CLI tools, or switch to <code>'stream'</code> mode + DLQ.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="11-tuning-knobs-by-goal">11. Tuning knobs by goal</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Knobs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Throughput</td>
+<td><code>kafka_num_consumers</code>↑, <code>kafka_max_block_size</code>↑, multiple CH replicas in same group</td>
+</tr>
+<tr>
+<td>Latency</td>
+<td><code>flush_interval_ms</code>↓, <code>flush_on_rows</code>↓, <code>kafka_max_block_size</code>↓</td>
+</tr>
+<tr>
+<td>Tolerance to bad messages</td>
+<td><code>kafka_handle_error_mode = 'stream'</code> + DLQ MV</td>
+</tr>
+<tr>
+<td>RPO=0 (no message loss)</td>
+<td>producer <code>acks=all</code> + <code>kafka_commit_every_batch=1</code> + dedup on consumer</td>
+</tr>
+<tr>
+<td>Smaller storage footprint</td>
+<td><code>events.payload</code> with <code>CODEC(ZSTD)</code>, partition by day, drop column-level TTL</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="12-talking-points-for-the-live-session">12. Talking points for the live session</h2>
+<ol>
+<li><strong>Kafka engine is a <em>consumer</em>, not a destination.</strong> Demonstrate by
+   <code>SELECT * FROM events_kafka LIMIT 5</code> and watching messages disappear.</li>
+<li><strong>MV is the durability boundary.</strong> Drop the MV, produce more
+   messages, show that they're consumed and discarded.</li>
+<li><strong>DLQ in 30 seconds.</strong> Show drill 5 (broken JSON) and the
+   <code>events_dlq</code> table.</li>
+<li><strong>Exactly-once is a property of the destination,</strong> not the source.
+   <code>ReplacingMergeTree</code> is how CH gets there.</li>
+<li><strong>Schema-bound formats</strong> (Protobuf/Avro) for production. Mention
+   <code>format_schema_path</code> and the AvroConfluent magic byte.</li>
+<li><strong>Operational ergonomics:</strong> <code>system.kafka_consumers</code>, kafka-cli
+   group-describe, DETACH/ATTACH MV for pause/resume.</li>
+</ol>
+<hr />
+<h2 id="13-going-deeper">13. Going deeper</h2>
+<ul>
+<li><strong>Module 2</strong> — the engines this module writes into.</li>
+<li><strong>Module 6</strong> — query optimisation for the high-volume <code>events</code> table.</li>
+<li>ClickHouse docs: <a href="https://clickhouse.com/docs/en/integrations/kafka">https://clickhouse.com/docs/en/integrations/kafka</a></li>
+<li>Confluent's "Kafka Connect ClickHouse Sink" for the <em>opposite</em>
+  direction (CH → Kafka).</li>
+</ul>
+  </div>
+</div>
+
+
+<style>
+.handsOn {
+  margin: 24px auto; max-width: 1200px; padding: 0 20px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+}
+.handsOn-card {
+  background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 28px 32px; margin-bottom: 24px;
+}
+.handsOn-card h2 {
+  margin: 0 0 8px 0; font-size: 1.6em; color: #0f172a;
+}
+.handsOn-card h3 {
+  margin: 24px 0 8px 0; font-size: 1.2em; color: #1a4480;
+  border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;
+}
+.handsOn-card h4 { margin: 16px 0 6px 0; color: #0f172a; }
+.handsOn-card p, .handsOn-card li { color: #1e293b; line-height: 1.6; }
+.handsOn-card code {
+  background: #f1f5f9; padding: 2px 6px; border-radius: 4px;
+  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.92em;
+}
+.handsOn-card pre {
+  background: #0f172a; color: #f1f5f9; padding: 16px 18px; border-radius: 8px;
+  overflow-x: auto; font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.9em; line-height: 1.5;
+}
+.handsOn-card pre code { background: transparent; padding: 0; color: inherit; }
+.handsOn-card table {
+  border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 0.93em;
+}
+.handsOn-card th, .handsOn-card td {
+  border: 1px solid #e2e8f0; padding: 8px 12px; text-align: left;
+}
+.handsOn-card th { background: #f8fafc; color: #0f172a; }
+.handsOn-banner {
+  background: linear-gradient(135deg, #2b6cb0 0%, #1a4480 100%); color: white;
+  padding: 28px 32px; border-radius: 12px; margin-bottom: 20px;
+}
+.handsOn-banner h2 { color: white; margin: 0 0 8px 0; }
+.handsOn-banner code {
+  background: rgba(0,0,0,0.25); color: #f1f5f9;
+}
+.handsOn-banner pre {
+  background: rgba(0,0,0,0.30); color: #f1f5f9;
+}
+.handsOn-figure {
+  margin: 16px 0; padding: 12px; background: #f8fafc;
+  border: 1px solid #e2e8f0; border-radius: 8px; text-align: center;
+}
+.handsOn-figure img, .handsOn-figure object {
+  max-width: 100%; height: auto; border-radius: 4px;
+}
+.handsOn-figure figcaption {
+  margin-top: 8px; color: #475569; font-size: 0.9em; font-style: italic;
+}
+.handsOn-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 16px; margin: 12px 0;
+}
+.handsOn-card a { color: #1a4480; }
+</style>
+
+
+<div class="handsOn">
+  <div class="handsOn-banner">
+    <h2>🐳 Hands-on Docker Demo for this Module</h2>
+    <p style="opacity:0.92; line-height:1.55;">A self-contained ClickHouse stack you can run locally. Every step is reproducible; the README below walks through each concept with diagrams and measured outcomes.</p>
+    <pre><code>cd code-examples/demos/module-9-kafka
+./up.sh        # bring stack up, wait for health
+./run.sh       # run the demo (idempotent — re-runnable)
+./down.sh      # tear down + drop volumes</code></pre>
+  </div>
+</div>
+
+
+<div class="handsOn">
+  <div class="handsOn-card">
+    <h2>📺 Live demo capture</h2>
+    <p>Recorded with <a href="https://github.com/charmbracelet/vhs" target="_blank" rel="noopener">vhs</a>: the actual terminal output from <code>./run.sh</code> running on this very stack.</p>
+    <figure class="handsOn-figure">
+      <img src="../code-examples/demos/module-9-kafka/diagrams/demo.gif" alt="Module demo GIF" loading="lazy">
+      <figcaption>Click to view full-size. Animated GIF, ~1198 KB.</figcaption>
+    </figure>
+  </div>
+</div>
+
+
+<div class="handsOn">
+  <div class="handsOn-card">
+    <h2>✨ Animated concept diagrams</h2>
+    <p>Inline SVG animations — no plugins, native browser playback. Each visualises a key flow this module covers.</p>
+    <div class="handsOn-grid">
+
+
+      <figure class="handsOn-figure">
+        <object type="image/svg+xml" data="../code-examples/demos/module-9-kafka/diagrams/anim-kafka-pipeline.svg" aria-label="Kafka pipeline"></object>
+        <figcaption>Kafka pipeline</figcaption>
+      </figure>
+
+
+    </div>
+  </div>
+</div>
+
+
+<div class="handsOn">
+  <div class="handsOn-card">
+    <h2>🗂️ Architecture diagrams</h2>
+    <p>Rendered from the README's Mermaid sources. Static, but click any to view the source SVG full-size.</p>
+    <div class="handsOn-grid">
+
+
+      <figure class="handsOn-figure">
+        <a href="../code-examples/demos/module-9-kafka/diagrams/01-flowchart-subgraph-kafka-kafka-topic-events-br-n-p.svg" target="_blank" rel="noopener">
+          <img src="../code-examples/demos/module-9-kafka/diagrams/01-flowchart-subgraph-kafka-kafka-topic-events-br-n-p.svg" alt="Subgraph kafka kafka topic events br n p" loading="lazy">
+        </a>
+        <figcaption>Subgraph kafka kafka topic events br n p</figcaption>
+      </figure>
+
+
+      <figure class="handsOn-figure">
+        <a href="../code-examples/demos/module-9-kafka/diagrams/02-sequencediagram-actor-producer-as-producer.svg" target="_blank" rel="noopener">
+          <img src="../code-examples/demos/module-9-kafka/diagrams/02-sequencediagram-actor-producer-as-producer.svg" alt="Actor producer as producer" loading="lazy">
+        </a>
+        <figcaption>Actor producer as producer</figcaption>
+      </figure>
+
+
+    </div>
+  </div>
+</div>
+
+
+<div class="handsOn">
+  <div class="handsOn-card">
+    <h2>📚 Full module reference</h2>
+    <h1 id="module-9-kafka-ingestion">Module 9 — Kafka Ingestion</h1>
+<blockquote>
+<p><strong>Audience:</strong> anyone wiring Kafka into ClickHouse. <strong>Prerequisites:</strong>
+Modules 1–2. <strong>Time:</strong> ~70 min reading + 30 min hands-on.</p>
+</blockquote>
+<p>By the end you will be able to:</p>
+<ul>
+<li>Build the canonical <code>Kafka engine → MV → MergeTree</code> pipeline.</li>
+<li>Configure consumer groups, batching, and retries.</li>
+<li>Route bad messages to a Dead Letter Queue (DLQ).</li>
+<li>Achieve "exactly once" semantics over an at-least-once source.</li>
+<li>Reset offsets for replay; pause and resume consumption.</li>
+<li>Pick the right wire format (JSON, CSV, Avro, Protobuf).</li>
+</ul>
+<hr />
+<h2 id="1-the-mental-model">1. The mental model</h2>
+<p>ClickHouse's Kafka engine is a <strong>consumer</strong>, not a destination. Selecting
+from it consumes messages. To make ingest durable you put a Materialized
+View on top of it that writes the consumed rows to a real MergeTree.</p>
+<!-- mermaid rendered as SVG above -->
+
+<p>Three rules to remember:</p>
+<ol>
+<li><strong>Don't <code>SELECT * FROM events_kafka</code>.</strong> A direct SELECT consumes
+   messages and throws them away. Use it only for diagnosis with <code>LIMIT 1</code>.</li>
+<li><strong>The MV is the durability boundary.</strong> If you DROP the MV without
+   replacement, the engine still consumes — your data is gone.</li>
+<li><strong>One Kafka source can feed N MVs.</strong> A single read of the topic can
+   power both the durable destination and any number of pre-aggregations.</li>
+</ol>
+<hr />
+<h2 id="2-the-kafka-source-table">2. The Kafka source table</h2>
+<pre><code class="language-sql">CREATE TABLE events_kafka (
+    event_time DateTime,
+    user_id    UInt64,
+    event_type String,
+    revenue    Float64,
+    payload    String
+)
+ENGINE = Kafka
+SETTINGS
+    kafka_broker_list   = 'm9-kafka:29092',
+    kafka_topic_list    = 'events',
+    kafka_group_name    = 'ch_consumer',
+    kafka_format        = 'JSONEachRow',
+    kafka_num_consumers = 1,
+    kafka_max_block_size = 1048576;
+</code></pre>
+<p>Settings worth knowing:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Default</th>
+<th>What it controls</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kafka_broker_list</code></td>
+<td>required</td>
+<td>Comma-separated <code>host:port</code>. Multiple brokers is fine.</td>
+</tr>
+<tr>
+<td><code>kafka_topic_list</code></td>
+<td>required</td>
+<td>Comma-separated topics. Regex with <code>kafka_topic_regex</code>.</td>
+</tr>
+<tr>
+<td><code>kafka_group_name</code></td>
+<td>required</td>
+<td>Consumer group ID. Multiple CH instances in the same group share partitions.</td>
+</tr>
+<tr>
+<td><code>kafka_format</code></td>
+<td>required</td>
+<td><code>JSONEachRow</code>, <code>CSV</code>, <code>TabSeparated</code>, <code>Avro</code>, <code>AvroConfluent</code>, <code>Protobuf</code>, …</td>
+</tr>
+<tr>
+<td><code>kafka_num_consumers</code></td>
+<td>1</td>
+<td>Threads per topic per node.</td>
+</tr>
+<tr>
+<td><code>kafka_max_block_size</code></td>
+<td>1 048 576</td>
+<td>Rows the consumer batches before emitting one block.</td>
+</tr>
+<tr>
+<td><code>kafka_thread_per_consumer</code></td>
+<td>0</td>
+<td>If 1, each consumer gets its own thread (useful &gt;1 partition).</td>
+</tr>
+<tr>
+<td><code>kafka_skip_broken_messages</code></td>
+<td>0</td>
+<td>Skip N badly-formed messages per block; rest of the block proceeds.</td>
+</tr>
+<tr>
+<td><code>kafka_handle_error_mode</code></td>
+<td><code>'default'</code></td>
+<td><code>'stream'</code> exposes <code>_error</code> / <code>_raw_message</code> virtual columns. See §5.</td>
+</tr>
+<tr>
+<td><code>kafka_commit_every_batch</code></td>
+<td>0</td>
+<td>Commit per batch instead of per block. Trades latency for granularity.</td>
+</tr>
+<tr>
+<td><code>kafka_max_rows_per_message</code></td>
+<td>1</td>
+<td>For some formats, multiple rows per message.</td>
+</tr>
+</tbody>
+</table>
+<p>Server-level defaults live in <code>&lt;kafka&gt;</code> in the server config:</p>
+<pre><code class="language-xml">&lt;kafka&gt;
+    &lt;num_threads&gt;2&lt;/num_threads&gt;
+    &lt;flush_interval_ms&gt;7500&lt;/flush_interval_ms&gt;
+    &lt;flush_on_rows&gt;10000&lt;/flush_on_rows&gt;
+    &lt;max_retries&gt;30&lt;/max_retries&gt;
+    &lt;retry_backoff_ms&gt;100&lt;/retry_backoff_ms&gt;
+&lt;/kafka&gt;
+</code></pre>
+<hr />
+<h2 id="3-the-materialized-view-glue">3. The Materialized View glue</h2>
+<pre><code class="language-sql">CREATE TABLE events (
+    event_time  DateTime,
+    user_id     UInt64,
+    event_type  LowCardinality(String),
+    revenue     Float64,
+    payload     String,
+    inserted_at DateTime DEFAULT now()
+)
+ENGINE = MergeTree
+PARTITION BY toYYYYMMDD(event_time)
+ORDER BY (event_type, event_time);
+
+CREATE MATERIALIZED VIEW events_mv TO events AS
+SELECT event_time, user_id, event_type, revenue, payload
+FROM events_kafka;
+</code></pre>
+<p>The MV reads the Kafka source and writes to the destination. As long as
+the MV exists, the engine consumes. Drop it (<code>DROP TABLE events_mv</code>) and
+consumption stops; CH commits no further offsets.</p>
+<h3 id="multiple-mvs-from-one-source">Multiple MVs from one source</h3>
+<pre><code class="language-sql">CREATE TABLE events_per_minute (...) ENGINE = SummingMergeTree ORDER BY (...);
+
+CREATE MATERIALIZED VIEW events_per_minute_mv TO events_per_minute AS
+SELECT toStartOfMinute(event_time) AS minute,
+       event_type,
+       count() AS events,
+       sum(revenue) AS revenue
+FROM events_kafka
+GROUP BY minute, event_type;
+</code></pre>
+<p>Both MVs run from the same Kafka read. Single network/IO, two writes.</p>
+<hr />
+<h2 id="4-the-end-to-end-flow">4. The end-to-end flow</h2>
+<!-- mermaid rendered as SVG above -->
+
+<p>Failure semantics:</p>
+<ul>
+<li><strong>Server crash mid-block</strong> — uncommitted messages are re-consumed on
+  restart. <code>events</code> may have duplicates if the prior INSERT partially
+  succeeded; deduplicate in the destination if it matters.</li>
+<li><strong>MV crash</strong> — same as above; the MV's INSERT errored, so the offset
+  isn't committed.</li>
+<li><strong>Bad message</strong> — by default, the <em>whole block</em> fails. Enable
+  <code>kafka_skip_broken_messages</code> or <code>kafka_handle_error_mode = 'stream'</code>.</li>
+</ul>
+<hr />
+<h2 id="5-dead-letter-queue-kafka_handle_error_mode-stream">5. Dead Letter Queue — <code>kafka_handle_error_mode = 'stream'</code></h2>
+<p>The default mode poisons a block of <em>good</em> messages if any one of them
+fails to parse. The <code>'stream'</code> mode lets bad messages flow with two extra
+virtual columns:</p>
+<table>
+<thead>
+<tr>
+<th>Virtual column</th>
+<th>Type</th>
+<th>Contains</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_error</code></td>
+<td>String</td>
+<td>Empty if the message parsed cleanly; an error string if not.</td>
+</tr>
+<tr>
+<td><code>_raw_message</code></td>
+<td>String</td>
+<td>The raw bytes of the message.</td>
+</tr>
+<tr>
+<td><code>_topic</code></td>
+<td>LowCardinality(String)</td>
+<td>Topic name.</td>
+</tr>
+<tr>
+<td><code>_partition</code></td>
+<td>UInt64</td>
+<td>Partition number.</td>
+</tr>
+<tr>
+<td><code>_offset</code></td>
+<td>UInt64</td>
+<td>Offset within the partition.</td>
+</tr>
+<tr>
+<td><code>_timestamp</code></td>
+<td>Nullable(DateTime)</td>
+<td>Producer timestamp.</td>
+</tr>
+</tbody>
+</table>
+<p>Then split with two MVs:</p>
+<pre><code class="language-sql">CREATE TABLE events_kafka_safe (
+    event_time DateTime, user_id UInt64,
+    event_type String, revenue Float64, payload String
+)
+ENGINE = Kafka
+SETTINGS
+    kafka_broker_list       = 'm9-kafka:29092',
+    kafka_topic_list        = 'events',
+    kafka_group_name        = 'ch_consumer_safe',
+    kafka_format            = 'JSONEachRow',
+    kafka_handle_error_mode = 'stream';
+
+-- Good messages → durable destination
+CREATE MATERIALIZED VIEW events_safe_mv TO events_safe AS
+SELECT event_time, user_id, event_type, revenue, payload
+FROM events_kafka_safe WHERE _error = '';
+
+-- Bad messages → DLQ table for replay/inspection
+CREATE TABLE events_dlq (
+    received_at DateTime DEFAULT now(),
+    error       String,
+    raw         String,
+    topic       String,
+    partition   UInt32,
+    offset      UInt64
+) ENGINE = MergeTree ORDER BY (received_at, topic, partition);
+
+CREATE MATERIALIZED VIEW events_dlq_mv TO events_dlq AS
+SELECT now() AS received_at,
+       _error AS error,
+       _raw_message AS raw,
+       _topic AS topic,
+       _partition AS partition,
+       _offset AS offset
+FROM events_kafka_safe
+WHERE _error != '';
+</code></pre>
+<p>Now produce a deliberately-broken message:</p>
+<pre><code class="language-bash">echo '{not valid json' | kafka-console-producer --bootstrap-server localhost:9092 --topic events
+</code></pre>
+<p>It lands in <code>events_dlq</code>, not in <code>events_safe</code>. Inspect, fix the
+producer, optionally re-publish from the DLQ.</p>
+<hr />
+<h2 id="6-exactly-once-via-replacingmergetree">6. Exactly-once via <code>ReplacingMergeTree</code></h2>
+<p>Kafka offers at-least-once delivery. After a failover or replay, you
+might see the same message twice. To get <strong>at-most-once at the table
+level</strong>, dedupe on a stable key with <code>ReplacingMergeTree</code>:</p>
+<pre><code class="language-sql">CREATE TABLE events_unique (
+    event_time  DateTime,
+    user_id     UInt64,
+    event_type  LowCardinality(String),
+    revenue     Float64,
+    payload     String,
+    ingested_at DateTime DEFAULT now()    -- the version
+)
+ENGINE = ReplacingMergeTree(ingested_at)
+ORDER BY (user_id, event_time);
+
+CREATE MATERIALIZED VIEW events_unique_mv TO events_unique AS
+SELECT event_time, user_id, event_type, revenue, payload, now() AS ingested_at
+FROM events_kafka;
+
+-- Read with FINAL or argMax to see only the latest version per key.
+SELECT count() FROM events_unique FINAL;
+</code></pre>
+<p>The dedup key <code>(user_id, event_time)</code> must be <strong>stable across retries</strong>
+— typically the producer's natural primary key.</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Throughput</th>
+<th>Correctness</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Plain MergeTree</td>
+<td>highest</td>
+<td>duplicates possible after failure</td>
+</tr>
+<tr>
+<td>ReplacingMergeTree</td>
+<td>high</td>
+<td>dedup on read (<code>FINAL</code>) or post-merge</td>
+</tr>
+<tr>
+<td>AggregatingMergeTree + idempotent agg</td>
+<td>high</td>
+<td>duplicates absorbed by the aggregator</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="7-format-coverage">7. Format coverage</h2>
+<p><code>JSONEachRow</code> is the demo's choice. CH supports many more:</p>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Schema</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>JSONEachRow</code></td>
+<td>implicit</td>
+<td>One JSON object per line. Most flexible; modest overhead.</td>
+</tr>
+<tr>
+<td><code>JSON</code></td>
+<td>implicit</td>
+<td>Single big JSON blob with <code>data: [...]</code>. Less common in Kafka.</td>
+</tr>
+<tr>
+<td><code>CSV</code> / <code>CSVWithNames</code></td>
+<td>implicit (or header)</td>
+<td>Fast; no nesting.</td>
+</tr>
+<tr>
+<td><code>TabSeparated</code></td>
+<td>implicit</td>
+<td>Even faster; no quoting needed.</td>
+</tr>
+<tr>
+<td><code>Protobuf</code></td>
+<td>required</td>
+<td><code>format_schema = 'events.proto:EventMessage'</code>. Compact, typed.</td>
+</tr>
+<tr>
+<td><code>Avro</code></td>
+<td>embedded</td>
+<td>One schema per message header.</td>
+</tr>
+<tr>
+<td><code>AvroConfluent</code></td>
+<td>registry</td>
+<td>Confluent Schema Registry magic byte + ID.</td>
+</tr>
+<tr>
+<td><code>Parquet</code></td>
+<td>embedded</td>
+<td>Often used for batch ingest, less for streaming.</td>
+</tr>
+</tbody>
+</table>
+<p>Schema-bound formats need the schema mounted under
+<code>/var/lib/clickhouse/format_schemas/</code>:</p>
+<pre><code class="language-sql">CREATE TABLE events_kafka_proto (
+    ...
+)
+ENGINE = Kafka
+SETTINGS
+    kafka_format = 'Protobuf',
+    format_schema = 'events.proto:EventMessage',
+    ...;
+</code></pre>
+<hr />
+<h2 id="8-operational-sql-cheatsheet">8. Operational SQL cheatsheet</h2>
+<pre><code class="language-sql">-- Lag and assignments
+SELECT
+    database, table, consumer_id,
+    assignments.topic AS topic,
+    assignments.partition_id AS partition,
+    assignments.current_offset AS offset
+FROM system.kafka_consumers
+ARRAY JOIN assignments
+WHERE database = 'm9';
+
+-- Lifetime counters
+SELECT event, value
+FROM system.events
+WHERE event LIKE 'Kafka%'
+ORDER BY event;
+
+-- Pause / resume consumption (without dropping the MV)
+DETACH TABLE events_mv;     -- consumer keeps running but doesn't write
+ATTACH TABLE events_mv;     -- resume; offsets resume from where Kafka committed
+
+-- Hard reset offsets (replay everything)
+docker exec m9-kafka kafka-consumer-groups \
+    --bootstrap-server localhost:9092 \
+    --group ch_consumer --reset-offsets --to-earliest \
+    --topic events --execute
+
+-- Per-consumer-group lag
+docker exec m9-kafka kafka-consumer-groups \
+    --bootstrap-server localhost:9092 \
+    --group ch_consumer --describe
+</code></pre>
+<hr />
+<h2 id="9-the-hands-on-demo">9. The hands-on demo</h2>
+<h3 id="what-you-get">What you get</h3>
+<pre><code>docker-compose.yml          m9-clickhouse + m9-kafka + m9-zk + m9-kafka-ui
+configs/clickhouse-config.xml
+setup.sql · extras.sql · queries.sql
+produce.py                  JSON-line producer (pure stdlib)
+up.sh · run.sh · down.sh
+</code></pre>
+<h3 id="container-map">Container map</h3>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Container</th>
+<th>Host ports</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ClickHouse</td>
+<td><code>m9-clickhouse</code></td>
+<td>8123, 9000</td>
+</tr>
+<tr>
+<td>Kafka</td>
+<td><code>m9-kafka</code></td>
+<td>9092 (host), 29092 (internal)</td>
+</tr>
+<tr>
+<td>ZooKeeper</td>
+<td><code>m9-zk</code></td>
+<td>(internal only)</td>
+</tr>
+<tr>
+<td>Kafka UI</td>
+<td><code>m9-kafka-ui</code></td>
+<td>8080</td>
+</tr>
+</tbody>
+</table>
+<p>Internally the broker is <code>m9-kafka:29092</code> (used in <code>setup.sql</code>). From
+the host: <code>localhost:9092</code>.</p>
+<h3 id="execution-flow-what-runs-in-order">Execution flow — what runs, in order</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Step</th>
+<th>What happens</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>self-bootstrap</td>
+<td><code>up.sh</code> brings up the 4-container stack and waits until <code>m9-clickhouse:/ping</code> and <code>m9-kafka:9092</code> both answer.</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Create <code>events</code> topic</td>
+<td><code>kafka-topics --create --if-not-exists --topic events --partitions 3 --replication-factor 1</code>.</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>setup.sql</code></td>
+<td>Creates database <code>m9</code> and the canonical pipeline: <code>events_kafka</code> (Kafka engine, JSONEachRow, group <code>ch_consumer</code>), <code>events</code> (durable MergeTree), <code>events_mv</code> (MV moves rows from Kafka → events), <code>events_per_minute</code> (SummingMergeTree), <code>events_per_minute_mv</code> (minute-bucket aggregation). One Kafka read serves both MVs.</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>extras.sql</code></td>
+<td>Adds the <strong>DLQ pipeline</strong>: <code>events_kafka_safe</code> with <code>kafka_handle_error_mode = 'stream'</code> (group <code>ch_consumer_safe</code>); two MVs split it on <code>_error == ''</code> → <code>events_safe</code>, <code>_error != ''</code> → <code>events_dlq</code> (with topic / partition / offset preserved). Also creates <code>events_unique</code> (ReplacingMergeTree on <code>(user_id, event_time)</code>) and <code>events_unique_mv</code>.</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Produce <strong>valid</strong> messages</td>
+<td><code>python3 produce.py --rows $ROWS</code> (default 100k) → piped into <code>kafka-console-producer --topic events</code>.</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Produce <strong>broken</strong> messages</td>
+<td>50 deliberately malformed JSON lines → <code>kafka-console-producer --topic events</code>. These get rejected by the strict consumer (<code>events_kafka</code>) but flow through the safe consumer into <code>events_dlq</code>.</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Sleep 8 s</td>
+<td>Lets the Kafka MVs catch up (default <code>flush_interval_ms = 7500</code>).</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>queries.sql</code></td>
+<td>Inspects: total rows in <code>events</code>, per-event-type breakdown, the SummingMergeTree minute buckets, <code>system.kafka_consumers</code> (assignments, offsets), <code>system.events</code> Kafka counters.</td>
+</tr>
+<tr>
+<td>8</td>
+<td>DLQ + exactly-once verification</td>
+<td>Prints <code>events_dlq</code> count (~50, the bad messages), <code>events_safe</code> count (~<code>$ROWS</code>), <code>events_unique FINAL</code> count, top-3 <code>_error</code> strings.</td>
+</tr>
+</tbody>
+</table>
+<p>Run with bigger volume:</p>
+<pre><code class="language-bash">ROWS=500000 ./run.sh
+</code></pre>
+<hr />
+<h2 id="10-common-pitfalls">10. Common pitfalls</h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SELECT * FROM events_kafka</code> returns rows once and never again</td>
+<td>Direct SELECT consumes messages.</td>
+<td>Don't. Use the MV. For diagnostics: <code>SELECT * FROM events_kafka LIMIT 1</code>.</td>
+</tr>
+<tr>
+<td>MV creates millions of tiny parts</td>
+<td>Tiny <code>kafka_max_block_size</code> and high message rate.</td>
+<td>Raise to <code>1048576</code> rows or <code>64 * 1024 * 1024</code> bytes. Match <code>flush_on_rows</code> server setting.</td>
+</tr>
+<tr>
+<td>One bad message stops ingestion</td>
+<td>Default <code>kafka_handle_error_mode = 'default'</code>.</td>
+<td><code>kafka_skip_broken_messages = N</code> for tolerance, or DLQ pattern.</td>
+</tr>
+<tr>
+<td>Duplicates after Kafka rebalance</td>
+<td>Kafka redelivered uncommitted messages.</td>
+<td>Use <code>ReplacingMergeTree</code> on a stable key, or AggregatingMergeTree with idempotent aggregates.</td>
+</tr>
+<tr>
+<td>"Cannot resolve hostname m9-kafka"</td>
+<td><code>kafka_broker_list</code> uses internal hostname; CH can't reach it from host network.</td>
+<td>Use the hostname that's reachable from CH (the demo uses <code>m9-kafka:29092</code> on the shared network).</td>
+</tr>
+<tr>
+<td>Lag grows unbounded</td>
+<td>Single consumer can't keep up with topic throughput.</td>
+<td>Increase <code>kafka_num_consumers</code>, or scale CH replicas in the same group.</td>
+</tr>
+<tr>
+<td>Consumer group resets every restart</td>
+<td>Group ID changes (e.g. random suffix).</td>
+<td>Use a stable <code>kafka_group_name</code>. Treat it like a database name.</td>
+</tr>
+<tr>
+<td>Offsets stuck on a corrupted message</td>
+<td>The block keeps failing; CH retries forever.</td>
+<td>Skip the offset via the kafka CLI tools, or switch to <code>'stream'</code> mode + DLQ.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="11-tuning-knobs-by-goal">11. Tuning knobs by goal</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Knobs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Throughput</td>
+<td><code>kafka_num_consumers</code>↑, <code>kafka_max_block_size</code>↑, multiple CH replicas in same group</td>
+</tr>
+<tr>
+<td>Latency</td>
+<td><code>flush_interval_ms</code>↓, <code>flush_on_rows</code>↓, <code>kafka_max_block_size</code>↓</td>
+</tr>
+<tr>
+<td>Tolerance to bad messages</td>
+<td><code>kafka_handle_error_mode = 'stream'</code> + DLQ MV</td>
+</tr>
+<tr>
+<td>RPO=0 (no message loss)</td>
+<td>producer <code>acks=all</code> + <code>kafka_commit_every_batch=1</code> + dedup on consumer</td>
+</tr>
+<tr>
+<td>Smaller storage footprint</td>
+<td><code>events.payload</code> with <code>CODEC(ZSTD)</code>, partition by day, drop column-level TTL</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="12-talking-points-for-the-live-session">12. Talking points for the live session</h2>
+<ol>
+<li><strong>Kafka engine is a <em>consumer</em>, not a destination.</strong> Demonstrate by
+   <code>SELECT * FROM events_kafka LIMIT 5</code> and watching messages disappear.</li>
+<li><strong>MV is the durability boundary.</strong> Drop the MV, produce more
+   messages, show that they're consumed and discarded.</li>
+<li><strong>DLQ in 30 seconds.</strong> Show drill 5 (broken JSON) and the
+   <code>events_dlq</code> table.</li>
+<li><strong>Exactly-once is a property of the destination,</strong> not the source.
+   <code>ReplacingMergeTree</code> is how CH gets there.</li>
+<li><strong>Schema-bound formats</strong> (Protobuf/Avro) for production. Mention
+   <code>format_schema_path</code> and the AvroConfluent magic byte.</li>
+<li><strong>Operational ergonomics:</strong> <code>system.kafka_consumers</code>, kafka-cli
+   group-describe, DETACH/ATTACH MV for pause/resume.</li>
+</ol>
+<hr />
+<h2 id="13-going-deeper">13. Going deeper</h2>
+<ul>
+<li><strong>Module 2</strong> — the engines this module writes into.</li>
+<li><strong>Module 6</strong> — query optimisation for the high-volume <code>events</code> table.</li>
+<li>ClickHouse docs: <a href="https://clickhouse.com/docs/en/integrations/kafka">https://clickhouse.com/docs/en/integrations/kafka</a></li>
+<li>Confluent's "Kafka Connect ClickHouse Sink" for the <em>opposite</em>
+  direction (CH → Kafka).</li>
+</ul>
+  </div>
+</div>
+
+</body>
 </html>
