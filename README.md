@@ -125,6 +125,40 @@ cd code-examples/demos/module-1-fundamentals/
 > **Run one module at a time.** Most modules bind host port `8123`. Tear
 > down with `./down.sh` before starting the next module.
 
+#### Accessing the running stack
+
+Once a module is up, ClickHouse and its companions are reachable on
+`localhost`:
+
+| What                                | URL / address                                      |
+|-------------------------------------|----------------------------------------------------|
+| Browser query UI (`/play`)          | http://localhost:8123/play                         |
+| HTTP API                            | `curl 'http://localhost:8123/?query=SELECT+1'`     |
+| Health probe                        | http://localhost:8123/ping                         |
+| Native protocol (TCP)               | `clickhouse-client --host localhost --port 9000`   |
+| Interactive shell (any module)      | `docker exec -it m<N>-clickhouse clickhouse-client` |
+
+**Cluster modules (3, 4, 5, 8)** expose every replica:
+
+| Replica | HTTP URL                     | Native           |
+|---------|------------------------------|------------------|
+| s1r1    | http://localhost:8123        | `localhost:9000` |
+| s1r2    | http://localhost:8124        | `localhost:9001` |
+| s2r1    | http://localhost:8125        | `localhost:9002` |
+| s2r2    | http://localhost:8126        | `localhost:9003` |
+| s3r1    | http://localhost:8127        | `localhost:9004` |
+| s3r2    | http://localhost:8128        | `localhost:9005` |
+
+```bash
+docker exec -it m3-s1r1 clickhouse-client          # any cluster module
+```
+
+**Module 7** also exposes the MinIO console:
+http://localhost:9101 (login `minioadmin` / `minioadmin`).
+
+**Module 9** also exposes the Kafka UI: http://localhost:8080,
+broker bootstrap from the host: `localhost:9092`.
+
 See **`code-examples/demos/README.md`** for the full module map.
 
 ### 🌐 Interactive HTML modules
