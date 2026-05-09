@@ -1,53 +1,57 @@
-# Module 3 — Sharding
+# Module 3 — Sharding (standalone)
 
-**Goal:** show how a `Distributed` table fans inserts across 3 shards using
-`cityHash64(user_id)` as the sharding key, and how `internal_replication`
-interacts with `ReplicatedMergeTree`.
+Self-contained 3-shard × 2-replica cluster with a 3-node ZooKeeper ensemble.
 
-## Prereqs
+## What you get
 
-```bash
-docker compose -f code-examples/docker/docker-compose-cluster.yml up -d
-# wait until all 6 CH nodes + 3 ZK nodes are healthy
 ```
+docker-compose.yml          # 9 containers — 3 ZK + 6 ClickHouse
+configs/cluster-node.xml
+configs/macros/macros-s{1-3}r{1-2}.xml
+setup.sql · data.sql · queries.sql
+up.sh · run.sh · down.sh
+```
+
+## Container map
+
+| Role          | Container | Host HTTP | Host TCP |
+|---------------|-----------|-----------|----------|
+| Shard 1 R1    | `m3-s1r1` | 8123      | 9000     |
+| Shard 1 R2    | `m3-s1r2` | 8124      | 9001     |
+| Shard 2 R1    | `m3-s2r1` | 8125      | 9002     |
+| Shard 2 R2    | `m3-s2r2` | 8126      | 9003     |
+| Shard 3 R1    | `m3-s3r1` | 8127      | 9004     |
+| Shard 3 R2    | `m3-s3r2` | 8128      | 9005     |
+| ZK 1 / 2 / 3  | `m3-zk1/2/3` | (internal only) | |
+
+Cluster name: `clickhouse_cluster`.
 
 ## Run
 
 ```bash
-./run.sh
+./up.sh        # 9 containers up; ZK quorum + 6 CH /ping responding
+./run.sh       # ON CLUSTER DDL, 5M rows via Distributed, demo queries
+./down.sh      # docker compose down -v
 ```
 
 ## What this proves
 
 1. **Topology**: `system.clusters` returns 3 shards × 2 replicas.
-2. **Distributed insert** — insert via `hits_distributed`; rows physically land
-   on `hits_local` on the right shard based on `cityHash64(user_id) % 3`.
-3. **Per-shard balance**: `clusterAllReplicas` shows roughly `5M / 3` rows per
+2. **Distributed insert** — rows physically land on the right shard via
+   `cityHash64(user_id) % 3`.
+3. **Per-shard balance** — `clusterAllReplicas` shows roughly 5M/3 rows per
    shard.
-4. **Replica equivalence**: both replicas of shard 1 store the same byte count.
-5. **Query routing**: `WHERE user_id = 42` hits exactly one shard (visible in
-   `EXPLAIN`), because the sharding expression is `cityHash64(user_id)`.
-
-## Key knobs to talk through
-
-- **Sharding key**: must be a deterministic function of stable columns. Bad
-  choice (`rand()`, `now()`) → uneven distribution.
-- **`internal_replication = true` (in cluster XML)** — Distributed writes to
-  *one* replica and lets ReplicatedMergeTree replicate the rest. Set to false
-  only if your local table is plain MergeTree (rare; not recommended).
-- **Weighted shards**: `<weight>2</weight>` on a bigger box would receive 2×
-  the share. Useful for heterogeneous fleets.
-- **`SYSTEM FLUSH DISTRIBUTED`** — Distributed inserts go through a per-node
-  spool. Flush before counting if you want exact numbers immediately.
-- **`cluster()` vs `clusterAllReplicas()`**: the former hits one replica per
-  shard, the latter hits every replica. Use `clusterAllReplicas` for
-  introspection only — *not* aggregates over data.
+4. **Replica equivalence**: both replicas of shard 1 store equal byte counts.
+5. **Query routing**: `WHERE user_id = 42` hits exactly one shard.
 
 ## Cleanup
 
+`./down.sh` drops everything including volumes. To clear data without
+tearing down:
+
 ```bash
-docker exec -i clickhouse-s1r1 clickhouse-client \
+docker exec -i m3-s1r1 clickhouse-client \
   --query "DROP TABLE hits_distributed ON CLUSTER clickhouse_cluster SYNC"
-docker exec -i clickhouse-s1r1 clickhouse-client \
+docker exec -i m3-s1r1 clickhouse-client \
   --query "DROP TABLE hits_local ON CLUSTER clickhouse_cluster SYNC"
 ```

@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
-# Module 2 — Table engines tour. Single node.
+# Module 2 — Table engines tour.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$HERE/../lib/ch.sh"
+ch() { docker exec -i m2-clickhouse clickhouse-client --multiquery --query "$1"; }
 
-echo "==> waiting for clickhouse-single"
-ch_wait_single
+if ! docker exec m2-clickhouse wget --spider -q http://localhost:8123/ping 2>/dev/null; then
+    "$HERE/up.sh"
+fi
 
 echo "==> setup.sql"
-ch_single "$(<"$HERE/setup.sql")"
+ch "$(<"$HERE/setup.sql")"
 
 echo "==> data.sql"
-ch_single "$(<"$HERE/data.sql")"
+ch "$(<"$HERE/data.sql")"
 
 echo "==> queries.sql"
-ch_single "$(<"$HERE/queries.sql")"
+ch "$(<"$HERE/queries.sql")"
 
 cat <<EOF
 
 ✓ Module 2 demo complete.
 
-Engines covered:  Replacing · Summing · Aggregating · Collapsing
-                  Log · Memory · Buffer
+Stack still running. Tear down with:  ./down.sh
 EOF

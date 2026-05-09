@@ -1,5 +1,5 @@
 -- Module 9: Kafka ingestion.
--- The kafka container is reachable inside the docker network as kafka:29092.
+-- The kafka broker is reachable inside the m9-net network at m9-kafka:29092.
 
 CREATE DATABASE IF NOT EXISTS m9;
 
@@ -15,7 +15,7 @@ CREATE TABLE m9.events_kafka
 )
 ENGINE = Kafka
 SETTINGS
-    kafka_broker_list   = 'kafka:29092',
+    kafka_broker_list   = 'm9-kafka:29092',
     kafka_topic_list    = 'events',
     kafka_group_name    = 'ch_consumer',
     kafka_format        = 'JSONEachRow',

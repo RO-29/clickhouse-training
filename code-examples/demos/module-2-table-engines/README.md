@@ -3,17 +3,19 @@
 **Goal:** make the *behavioural* differences between MergeTree variants
 concrete: Replacing, Summing, Aggregating, Collapsing, plus Log, Memory, Buffer.
 
-## Prereqs
-
-```bash
-docker compose -f code-examples/docker/docker-compose-single.yml up -d
-```
-
 ## Run
 
 ```bash
-./run.sh
+./up.sh        # bring stack up
+./run.sh       # demo
+./down.sh      # tear down
 ```
+
+`./run.sh` self-bootstraps if the stack isn't already up.
+
+## Container
+
+`m2-clickhouse` on host ports 8123 (HTTP) and 9000 (Native).
 
 ## What each section shows
 
@@ -45,6 +47,9 @@ docker compose -f code-examples/docker/docker-compose-single.yml up -d
 
 ## Cleanup
 
+`./down.sh` drops the container and the volume. To clear data without
+tearing down the stack:
+
 ```bash
-docker exec -i clickhouse-single clickhouse-client --query "DROP DATABASE m2"
+docker exec -i m2-clickhouse clickhouse-client --query "DROP DATABASE m2"
 ```

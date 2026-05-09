@@ -3,23 +3,17 @@
 **Goal:** see, with measurements, why ordering, projections, and skip-indexes
 matter. Same 20M rows in three layouts.
 
-## Prereqs
-
-```bash
-docker compose -f code-examples/docker/docker-compose-single.yml up -d
-```
-
-Single-node compose limits the container to 4G RAM; the demo fits comfortably
-in that.
-
 ## Run
 
 ```bash
-./run.sh
+./up.sh        # m6-clickhouse with 6G memory limit
+./run.sh       # 60M inserts (~30–60s) + demo queries
+./down.sh
 ```
 
-It takes ~30–60s for the inserts on a laptop. The query phase is a few
-seconds.
+## Container
+
+`m6-clickhouse` on host ports 8123 (HTTP) and 9000 (Native).
 
 ## What you should observe
 
@@ -62,6 +56,8 @@ Q2 PROJ: ~0.02 s  read_rows ~3k
 
 ## Cleanup
 
+`./down.sh` drops the volume. To clear data without tearing down:
+
 ```bash
-docker exec -i clickhouse-single clickhouse-client --query "DROP DATABASE m6"
+docker exec -i m6-clickhouse clickhouse-client --query "DROP DATABASE m6"
 ```

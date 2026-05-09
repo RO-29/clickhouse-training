@@ -1,60 +1,63 @@
-# Module 7 — Backup & Recovery
+# Module 7 — Backup & Recovery (standalone)
 
-**Goal:** demonstrate the three legitimate backup paths in ClickHouse:
+Self-contained stack: ClickHouse + MinIO (S3) + bucket bootstrap. Demonstrates
+all three real-world backup paths.
 
-1. `ALTER TABLE … FREEZE` — instant hard-link snapshot.
-2. `BACKUP … TO Disk(...)` — backup to a named disk on the host.
-3. `BACKUP … TO S3(...)` — backup to S3 (MinIO here).
+## What you get
 
-…and the corresponding `RESTORE` flow for each.
-
-## Prereqs
-
-```bash
-docker compose -f code-examples/docker/docker-compose-single.yml up -d
+```
+docker-compose.yml          # m7-clickhouse + m7-minio + m7-minio-init
+configs/clickhouse-config.xml   # backups disk + S3 allow-list
+setup.sql · queries.sql · queries-s3.sql
+up.sh · run.sh · down.sh
 ```
 
-The script will start MinIO and connect it to the same docker network as
-`clickhouse-single`.
+## Container map
+
+| Service     | Container       | Host ports         |
+|-------------|-----------------|--------------------|
+| ClickHouse  | `m7-clickhouse` | 8123, 9000         |
+| MinIO       | `m7-minio`      | 9100 (S3), 9101 (console) |
+| Bootstrap   | `m7-minio-init` | (one-shot)         |
+
+MinIO console: http://localhost:9101 — `minioadmin / minioadmin`.
 
 ## Run
 
 ```bash
-./run.sh
+./up.sh        # CH + MinIO up; bucket 'clickhouse-backups' created
+./run.sh       # FREEZE + BACKUP TO Disk + RESTORE, then BACKUP TO S3
+./down.sh
 ```
-
-`run.sh` mounts `configs/backups.xml` into the running container and
-restarts it once. After that, BACKUP/RESTORE work for the rest of the
-session.
 
 ## What this proves
 
-| Step                                | Outcome                                                                       |
-|-------------------------------------|-------------------------------------------------------------------------------|
-| `ALTER … FREEZE`                    | Hard links under `/var/lib/clickhouse/shadow/<N>/` — same inodes, no copy.   |
-| `BACKUP TO Disk('backups', ...)`    | Single zip under `/var/lib/clickhouse/backups/`.                              |
-| Drop table + `RESTORE`              | Row count returns to 2,000,000.                                              |
-| `DETACH PARTITION`                  | Rows for that month vanish from queries; files moved to `detached/`.         |
-| `ATTACH PARTITION`                  | Rows reappear; no merge, no rewrite.                                         |
-| `BACKUP TO S3(...)`                 | Manifest + parts written to MinIO bucket; visible at http://localhost:9101.  |
-| `RESTORE FROM S3(...)`              | Round-trip from object storage.                                              |
+| Step                                      | Outcome                                                                       |
+|-------------------------------------------|-------------------------------------------------------------------------------|
+| `ALTER … FREEZE`                          | Hardlinks under `/var/lib/clickhouse/shadow/<N>/`.                            |
+| `BACKUP TO Disk('backups', ...)`          | Single zip under `/var/lib/clickhouse/backups/`.                              |
+| Drop table + `RESTORE`                    | Row count returns to 2,000,000.                                              |
+| `DETACH PARTITION` / `ATTACH PARTITION`   | Per-partition mobility without rewrite.                                       |
+| `BACKUP TO S3('http://m7-minio:9000/...')`| Manifest + parts in MinIO bucket; visible at http://localhost:9101.          |
+| `RESTORE FROM S3(...)`                    | Round-trip from object storage.                                              |
 
 ## Knobs to know
 
-- **`backups.xml`** — required. ClickHouse refuses BACKUP/RESTORE to disks
-  not in `<allowed_disk>` / `<allowed_path>`.
-- **`SETTINGS async = 1`** on `BACKUP` returns immediately and you poll
-  `system.backups`. Use for big tables where you don't want to hold the HTTP
-  request open.
-- **Incremental backup** — `SETTINGS base_backup = ...` references a prior
+- The `backups` disk and allow-list live in `configs/clickhouse-config.xml`.
+  ClickHouse will refuse BACKUP/RESTORE without them.
+- **`SETTINGS async = 1`** on `BACKUP` returns immediately; poll
+  `system.backups`. Use for big tables.
+- **Incremental backup**: `SETTINGS base_backup = ...` references a prior
   backup; only changed parts go to disk.
-- **`FREEZE` is per-table**, not per-database; freezes are local to one host.
-  For coordinated cluster-wide snapshots, use `BACKUP … ON CLUSTER`.
+- **`FREEZE` is per-host.** For coordinated cluster snapshots, use
+  `BACKUP … ON CLUSTER`.
 
 ## Cleanup
 
+`./down.sh` drops volumes including the MinIO bucket. To clear data without
+tearing down:
+
 ```bash
-docker exec -i clickhouse-single clickhouse-client --query "DROP DATABASE m7"
-docker exec clickhouse-single rm -rf /var/lib/clickhouse/shadow/* /var/lib/clickhouse/backups/*
-docker compose -f docker-compose.minio.yml down -v
+docker exec -i m7-clickhouse clickhouse-client --query "DROP DATABASE m7"
+docker exec m7-clickhouse rm -rf /var/lib/clickhouse/shadow/* /var/lib/clickhouse/backups/*
 ```

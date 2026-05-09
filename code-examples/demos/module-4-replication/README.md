@@ -1,47 +1,40 @@
-# Module 4 — Replication
+# Module 4 — Replication (standalone)
 
-**Goal:** make ZooKeeper-coordinated replication tangible. Insert into one
-replica, watch the other catch up; kill it, recover it.
+Self-contained cluster (3 ZK + 6 CH, prefix `m4-`) for hands-on replication
+work. Insert into one replica, watch the other catch up; kill it, recover.
 
-## Prereqs
+## Container map
 
-```bash
-docker compose -f code-examples/docker/docker-compose-cluster.yml up -d
-```
+| Role        | Container | Host HTTP | Host TCP |
+|-------------|-----------|-----------|----------|
+| Shard 1 R1  | `m4-s1r1` | 8123      | 9000     |
+| Shard 1 R2  | `m4-s1r2` | 8124      | 9001     |
+| Shard 2 R1  | `m4-s2r1` | 8125      | 9002     |
+| Shard 2 R2  | `m4-s2r2` | 8126      | 9003     |
+| Shard 3 R1  | `m4-s3r1` | 8127      | 9004     |
+| Shard 3 R2  | `m4-s3r2` | 8128      | 9005     |
+| ZK 1/2/3    | `m4-zk1/2/3` | (internal) | |
 
 ## Run
 
 ```bash
-./run.sh
+./up.sh        # start cluster
+./run.sh       # demo + kill-replica drill
+./down.sh      # tear down (with volumes)
 ```
 
 ## What this proves
 
 | Step                          | Outcome                                                                 |
 |-------------------------------|-------------------------------------------------------------------------|
-| Insert into `s1r1` only       | `s1r2` row count matches after `SYSTEM SYNC REPLICA`.                  |
-| `system.replicas`             | `absolute_delay = 0` once caught up. `is_leader` indicates merge owner. |
-| `system.zookeeper`            | Live view of the `/clickhouse/tables/01/sensor_local` znodes.           |
-| Stop `s1r2`, insert 500k more | `s1r1.count()` = 2.5M, `s1r2.count()` = 2M (it's stopped).              |
-| Start `s1r2`, sync            | `s1r2.count()` = 2.5M; queue drains.                                    |
+| Insert into `m4-s1r1` only    | `m4-s1r2` row count matches after `SYSTEM SYNC REPLICA`.               |
+| `system.replicas`             | `absolute_delay = 0` once caught up.                                   |
+| Stop `m4-s1r2`, insert 500k more | `m4-s1r1.count()` = 2.5M, `m4-s1r2.count()` = 2M (it's stopped).    |
+| Start `m4-s1r2`, sync         | `m4-s1r2.count()` = 2.5M; queue drains.                                |
 
 ## Talking points
 
-- **Path templates** — `/clickhouse/tables/{shard}/sensor_local` is rendered
-  per node using its `macros.xml`. `{replica}` is the replica identity.
-- **Inserts replicate via parts**, not row-by-row WAL — the new replica fetches
-  parts from a peer via the interserver port (9009).
-- **`absolute_delay`** — seconds between *most recent insertion's commit time*
-  and *what this replica has applied*. Useful as a SLO signal.
-- **`SYSTEM SYNC REPLICA`** waits until the queue is drained. Use in tests.
-- **`SYSTEM RESTART REPLICA`** is the heavy-handed fix when ZK and disk are
-  out of sync — it tears down the in-process state and re-reads from ZK.
-
-## Cleanup
-
-```bash
-docker exec -i clickhouse-s1r1 clickhouse-client \
-  --query "DROP TABLE sensor_distributed ON CLUSTER clickhouse_cluster SYNC"
-docker exec -i clickhouse-s1r1 clickhouse-client \
-  --query "DROP TABLE sensor_local ON CLUSTER clickhouse_cluster SYNC"
-```
+- **`/clickhouse/tables/{shard}/sensor_local`** — the `{shard}` token is
+  rendered per node from `configs/macros/macros-sNrM.xml`.
+- **`absolute_delay`** is a great SLO signal — alert above some threshold.
+- **`SYSTEM RESTART REPLICA`** is the heavy reset for ZK/disk skew.

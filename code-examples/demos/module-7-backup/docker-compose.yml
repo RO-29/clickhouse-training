@@ -1,0 +1,69 @@
+# Module 7: Backup & Recovery — single ClickHouse + MinIO sidecar.
+# Both share m7-net so ClickHouse can BACKUP TO S3('http://m7-minio:9000/...').
+version: '3.8'
+
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: m7-clickhouse
+    hostname: m7-clickhouse
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    ulimits:
+      nofile: { soft: 262144, hard: 262144 }
+    volumes:
+      - m7_data:/var/lib/clickhouse
+      - m7_logs:/var/log/clickhouse-server
+      - ./configs/clickhouse-config.xml:/etc/clickhouse-server/config.d/00-custom.xml:ro
+    networks: [m7-net]
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    container_name: m7-minio
+    hostname: m7-minio
+    ports:
+      - "9100:9000"      # S3 API
+      - "9101:9001"      # console
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - m7_minio:/data
+    networks: [m7-net]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: m7-minio-init
+    depends_on:
+      minio: { condition: service_healthy }
+    networks: [m7-net]
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://m7-minio:9000 minioadmin minioadmin &&
+        mc mb -p local/clickhouse-backups || true &&
+        echo 'bucket ready'
+      "
+    restart: "no"
+
+volumes:
+  m7_data:
+  m7_logs:
+  m7_minio:
+
+networks:
+  m7-net:
+    driver: bridge

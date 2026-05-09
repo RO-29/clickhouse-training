@@ -1,33 +1,32 @@
 #!/usr/bin/env bash
-# Module 3 — Sharding. Cluster.
+# Module 3 — Sharding.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$HERE/../lib/ch.sh"
 
-echo "==> waiting for cluster nodes"
-ch_wait_cluster
+ch_node() { local n="$1"; shift; docker exec -i "$n" clickhouse-client --multiquery --query "$1"; }
 
-echo "==> setup.sql (ON CLUSTER DDL via s1r1)"
-ch_node s1r1 "$(<"$HERE/setup.sql")"
+if ! docker exec m3-s1r1 wget --spider -q http://localhost:8123/ping 2>/dev/null; then
+    "$HERE/up.sh"
+fi
 
-echo "==> data.sql (5M rows via Distributed table on s1r1)"
-ch_node s1r1 "$(<"$HERE/data.sql")"
+echo "==> setup.sql (ON CLUSTER DDL via m3-s1r1)"
+ch_node m3-s1r1 "$(<"$HERE/setup.sql")"
 
-# Distributed inserts buffer briefly; flush them so per-shard counts settle.
+echo "==> data.sql (5M rows via Distributed on m3-s1r1)"
+ch_node m3-s1r1 "$(<"$HERE/data.sql")"
+
 echo "==> SYSTEM FLUSH DISTRIBUTED on every node"
-for n in s1r1 s1r2 s2r1 s2r2 s3r1 s3r2; do
+for n in m3-s1r1 m3-s1r2 m3-s2r1 m3-s2r2 m3-s3r1 m3-s3r2; do
     ch_node "$n" "SYSTEM FLUSH DISTRIBUTED hits_distributed" || true
 done
 
 echo "==> queries.sql"
-ch_node s1r1 "$(<"$HERE/queries.sql")"
+ch_node m3-s1r1 "$(<"$HERE/queries.sql")"
 
 cat <<EOF
 
 ✓ Module 3 demo complete.
 
-Try interactively:
-  docker exec -it clickhouse-s1r1 clickhouse-client
-  > SELECT shardNum(), count() FROM hits_distributed GROUP BY shardNum();
-  > SELECT * FROM system.distribution_queue;
+Stack still running. Tear down with:  ./down.sh
+Interactive client:                   docker exec -it m3-s1r1 clickhouse-client
 EOF

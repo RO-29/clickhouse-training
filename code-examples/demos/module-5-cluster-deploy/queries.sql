@@ -16,7 +16,7 @@ FROM clusterAllReplicas('clickhouse_cluster', analytics, page_views_local)
 GROUP BY host, shard ORDER BY shard, host;
 
 -- 4. remote() — ad-hoc one-off; we point at a specific node.
-SELECT count() FROM remote('clickhouse-s2r1:9000', analytics, page_views_local);
+SELECT count() FROM remote('m5-s2r1:9000', analytics, page_views_local);
 
 -- 5. Distributed query plan
 EXPLAIN SELECT page, count() FROM analytics.page_views_distributed

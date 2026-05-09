@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<!-- Module 4: cluster node config. ZK hosts are m4-zk1/2/3.
+     Cluster name: clickhouse_cluster (3 shards × 2 replicas). -->
+<config>
+    <logger>
+        <level>notice</level>
+        <log>/var/log/clickhouse-server/clickhouse-server.log</log>
+        <errorlog>/var/log/clickhouse-server/clickhouse-server.err.log</errorlog>
+        <size>1000M</size><count>10</count>
+    </logger>
+
+    <query_log><database>system</database><table>query_log</table></query_log>
+    <part_log><database>system</database><table>part_log</table></part_log>
+
+    <max_memory_usage>3221225472</max_memory_usage>
+
+    <listen_host>0.0.0.0</listen_host>
+    <http_port>8123</http_port>
+    <tcp_port>9000</tcp_port>
+    <interserver_http_port>9009</interserver_http_port>
+
+    <max_connections>4096</max_connections>
+    <background_pool_size>16</background_pool_size>
+    <background_schedule_pool_size>16</background_schedule_pool_size>
+
+    <merge_tree>
+        <replicated_deduplication_window>100</replicated_deduplication_window>
+        <replicated_deduplication_window_seconds>604800</replicated_deduplication_window_seconds>
+    </merge_tree>
+
+    <zookeeper>
+        <node><host>m4-zk1</host><port>2181</port></node>
+        <node><host>m4-zk2</host><port>2181</port></node>
+        <node><host>m4-zk3</host><port>2181</port></node>
+    </zookeeper>
+
+    <remote_servers>
+        <clickhouse_cluster>
+            <shard>
+                <internal_replication>true</internal_replication>
+                <replica><host>m4-s1r1</host><port>9000</port></replica>
+                <replica><host>m4-s1r2</host><port>9000</port></replica>
+            </shard>
+            <shard>
+                <internal_replication>true</internal_replication>
+                <replica><host>m4-s2r1</host><port>9000</port></replica>
+                <replica><host>m4-s2r2</host><port>9000</port></replica>
+            </shard>
+            <shard>
+                <internal_replication>true</internal_replication>
+                <replica><host>m4-s3r1</host><port>9000</port></replica>
+                <replica><host>m4-s3r2</host><port>9000</port></replica>
+            </shard>
+        </clickhouse_cluster>
+    </remote_servers>
+
+    <distributed_ddl><path>/clickhouse/task_queue/ddl</path></distributed_ddl>
+
+    <path>/var/lib/clickhouse/</path>
+    <tmp_path>/var/lib/clickhouse/tmp/</tmp_path>
+    <user_files_path>/var/lib/clickhouse/user_files/</user_files_path>
+</config>

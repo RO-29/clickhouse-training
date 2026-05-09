@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<config>
+    <macros>
+        <cluster>clickhouse_cluster</cluster>
+        <shard>02</shard>
+        <replica>m4-s2r2</replica>
+    </macros>
+</config>

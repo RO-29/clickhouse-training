@@ -1,0 +1,35 @@
+# Module 1: Fundamentals — standalone single-node stack.
+# Up:    ./up.sh
+# Run:   ./run.sh
+# Down:  ./down.sh
+version: '3.8'
+
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: m1-clickhouse
+    hostname: m1-clickhouse
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    ulimits:
+      nofile: { soft: 262144, hard: 262144 }
+    volumes:
+      - m1_data:/var/lib/clickhouse
+      - m1_logs:/var/log/clickhouse-server
+      - ./configs/clickhouse-config.xml:/etc/clickhouse-server/config.d/00-custom.xml:ro
+    networks: [m1-net]
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  m1_data:
+  m1_logs:
+
+networks:
+  m1-net:
+    driver: bridge

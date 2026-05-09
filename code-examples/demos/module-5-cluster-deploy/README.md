@@ -1,45 +1,52 @@
-# Module 5 — Cluster Deployment
+# Module 5 — Cluster Deployment (standalone)
 
-**Goal:** drive the cluster as a single thing — DDL fanout, audit trail,
-ad-hoc queries with `remote()` / `cluster()` / `clusterAllReplicas()`.
+Self-contained 3×2 cluster (prefix `m5-`) for `ON CLUSTER` DDL,
+`distributed_ddl_queue` audit, and `cluster()` / `remote()` /
+`clusterAllReplicas()` table functions.
 
-## Prereqs
+## Container map
 
-```bash
-docker compose -f code-examples/docker/docker-compose-cluster.yml up -d
-```
+| Role        | Container | Host HTTP | Host TCP |
+|-------------|-----------|-----------|----------|
+| Shard 1 R1  | `m5-s1r1` | 8123      | 9000     |
+| Shard 1 R2  | `m5-s1r2` | 8124      | 9001     |
+| Shard 2 R1  | `m5-s2r1` | 8125      | 9002     |
+| Shard 2 R2  | `m5-s2r2` | 8126      | 9003     |
+| Shard 3 R1  | `m5-s3r1` | 8127      | 9004     |
+| Shard 3 R2  | `m5-s3r2` | 8128      | 9005     |
+| ZK 1/2/3    | `m5-zk1/2/3` | (internal) | |
 
 ## Run
 
 ```bash
+./up.sh
 ./run.sh
+./down.sh
 ```
 
 ## What this proves
 
-- One `CREATE TABLE … ON CLUSTER` creates the table on every replica
-  (visible in `system.distributed_ddl_queue`).
-- `cluster('clickhouse_cluster', db, tbl)` is a one-shot way to query *every
-  shard* without creating a Distributed table.
-- `clusterAllReplicas(...)` hits *every replica* — only safe for diagnostics.
-- `remote(host:port, db, tbl)` is "go ask this specific node," handy for
-  cross-cluster sanity checks.
+- One `CREATE TABLE … ON CLUSTER` materialises on every replica (visible in
+  `system.distributed_ddl_queue`).
+- `cluster('clickhouse_cluster', db, tbl)` queries every shard without a
+  Distributed table.
+- `clusterAllReplicas(...)` hits every replica — diagnostics only.
+- `remote('m5-s2r1:9000', db, tbl)` is a one-shot point query.
 
-## Knobs you should know
+## Knobs to know
 
-- **`distributed_ddl_task_timeout`** (default 180s) — how long the initiator
-  waits for every node to ack. Bump for big clusters; reduce for tight CI.
-- **`distributed_ddl_entry_format_version`** — leave at default; relevant only
-  if mixing CH versions during upgrades.
+- **`distributed_ddl_task_timeout`** — how long the initiator waits for every
+  node to ack.
 - **`distributed_product_mode`** — controls how `IN`/`JOIN` between two
-  Distributed tables expand. `'allow'` is fine for small clusters; `'global'`
-  rewrites to GLOBAL IN/JOIN so the right side is broadcast.
-- **`prefer_localhost_replica`** — query starts on the same host wherever
-  possible. Default `1`. Turn off if you're load-testing the network path.
+  Distributed tables expand. `'global'` rewrites to GLOBAL IN/JOIN.
+- **`prefer_localhost_replica`** — keep the query on the same host when
+  possible (default 1).
 
 ## Cleanup
 
+`./down.sh` drops everything. To clear data without tearing down:
+
 ```bash
-docker exec -i clickhouse-s1r1 clickhouse-client \
+docker exec -i m5-s1r1 clickhouse-client \
   --query "DROP DATABASE analytics ON CLUSTER clickhouse_cluster SYNC"
 ```

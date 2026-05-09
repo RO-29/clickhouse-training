@@ -1,0 +1,32 @@
+# Module 2: Table engines — standalone single-node stack.
+version: '3.8'
+
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: m2-clickhouse
+    hostname: m2-clickhouse
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    ulimits:
+      nofile: { soft: 262144, hard: 262144 }
+    volumes:
+      - m2_data:/var/lib/clickhouse
+      - m2_logs:/var/log/clickhouse-server
+      - ./configs/clickhouse-config.xml:/etc/clickhouse-server/config.d/00-custom.xml:ro
+    networks: [m2-net]
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  m2_data:
+  m2_logs:
+
+networks:
+  m2-net:
+    driver: bridge

@@ -1,31 +1,28 @@
 #!/usr/bin/env bash
-# Module 1 — Fundamentals.  Single node.
+# Module 1 — Fundamentals.  ./up.sh first (or this script will call it).
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../lib/ch.sh
-source "$HERE/../lib/ch.sh"
 
-echo "==> waiting for clickhouse-single"
-ch_wait_single
+ch() { docker exec -i m1-clickhouse clickhouse-client --multiquery --query "$1"; }
+
+# Self-bootstrap: bring stack up if it's not already.
+if ! docker exec m1-clickhouse wget --spider -q http://localhost:8123/ping 2>/dev/null; then
+    "$HERE/up.sh"
+fi
 
 echo "==> setup.sql"
-ch_single "$(<"$HERE/setup.sql")"
+ch "$(<"$HERE/setup.sql")"
 
-echo "==> data.sql (this generates ~2M rows in 3 inserts)"
-ch_single "$(<"$HERE/data.sql")"
+echo "==> data.sql (~2M rows in 3 inserts)"
+ch "$(<"$HERE/data.sql")"
 
 echo "==> queries.sql"
-ch_single "$(<"$HERE/queries.sql")"
+ch "$(<"$HERE/queries.sql")"
 
 cat <<EOF
 
 ✓ Module 1 demo complete.
 
-Next, try these interactively:
-  docker exec -it clickhouse-single clickhouse-client
-  > USE m1;
-  > SHOW CREATE TABLE events;
-  > SELECT * FROM system.parts WHERE table='events' ORDER BY name LIMIT 5;
-  > SELECT * FROM system.merges;          # nothing if idle, lots during OPTIMIZE
-  > SELECT * FROM system.mutations LIMIT 3;
+Stack still running. Tear down with:  ./down.sh
+Interactive client:                   docker exec -it m1-clickhouse clickhouse-client
 EOF

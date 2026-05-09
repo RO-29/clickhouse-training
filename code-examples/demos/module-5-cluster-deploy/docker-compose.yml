@@ -1,0 +1,156 @@
+# Module 5: Sharding — standalone 3×2 cluster + 3-node ZooKeeper.
+# Container names prefixed m5- so this stack doesn't collide with other modules.
+version: '3.8'
+
+x-zk-base: &zk-base
+  image: zookeeper:3.8
+  networks: [m5-net]
+  healthcheck:
+    test: ["CMD-SHELL", "echo ruok | nc -w 2 localhost 2181 | grep -q imok"]
+    interval: 5s
+    timeout: 3s
+    retries: 20
+
+x-ch-base: &ch-base
+  image: clickhouse/clickhouse-server:latest
+  ulimits:
+    nofile: { soft: 262144, hard: 262144 }
+  networks: [m5-net]
+  healthcheck:
+    test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+    interval: 5s
+    timeout: 3s
+    retries: 30
+
+services:
+  m5-zk1:
+    <<: *zk-base
+    container_name: m5-zk1
+    hostname: m5-zk1
+    environment:
+      ZOO_MY_ID: 1
+      ZOO_SERVERS: server.1=m5-zk1:2888:3888;2181 server.2=m5-zk2:2888:3888;2181 server.3=m5-zk3:2888:3888;2181
+      ZOO_4LW_COMMANDS_WHITELIST: ruok,mntr,conf,stat
+    volumes: [m5_zk1_data:/data, m5_zk1_log:/datalog]
+
+  m5-zk2:
+    <<: *zk-base
+    container_name: m5-zk2
+    hostname: m5-zk2
+    environment:
+      ZOO_MY_ID: 2
+      ZOO_SERVERS: server.1=m5-zk1:2888:3888;2181 server.2=m5-zk2:2888:3888;2181 server.3=m5-zk3:2888:3888;2181
+      ZOO_4LW_COMMANDS_WHITELIST: ruok,mntr,conf,stat
+    volumes: [m5_zk2_data:/data, m5_zk2_log:/datalog]
+
+  m5-zk3:
+    <<: *zk-base
+    container_name: m5-zk3
+    hostname: m5-zk3
+    environment:
+      ZOO_MY_ID: 3
+      ZOO_SERVERS: server.1=m5-zk1:2888:3888;2181 server.2=m5-zk2:2888:3888;2181 server.3=m5-zk3:2888:3888;2181
+      ZOO_4LW_COMMANDS_WHITELIST: ruok,mntr,conf,stat
+    volumes: [m5_zk3_data:/data, m5_zk3_log:/datalog]
+
+  m5-s1r1:
+    <<: *ch-base
+    container_name: m5-s1r1
+    hostname: m5-s1r1
+    ports: ["8123:8123", "9000:9000"]
+    depends_on:
+      m5-zk1: { condition: service_healthy }
+      m5-zk2: { condition: service_healthy }
+      m5-zk3: { condition: service_healthy }
+    volumes:
+      - m5_s1r1:/var/lib/clickhouse
+      - ./configs/cluster-node.xml:/etc/clickhouse-server/config.d/00-cluster.xml:ro
+      - ./configs/macros/macros-s1r1.xml:/etc/clickhouse-server/config.d/01-macros.xml:ro
+
+  m5-s1r2:
+    <<: *ch-base
+    container_name: m5-s1r2
+    hostname: m5-s1r2
+    ports: ["8124:8123", "9001:9000"]
+    depends_on:
+      m5-zk1: { condition: service_healthy }
+      m5-zk2: { condition: service_healthy }
+      m5-zk3: { condition: service_healthy }
+    volumes:
+      - m5_s1r2:/var/lib/clickhouse
+      - ./configs/cluster-node.xml:/etc/clickhouse-server/config.d/00-cluster.xml:ro
+      - ./configs/macros/macros-s1r2.xml:/etc/clickhouse-server/config.d/01-macros.xml:ro
+
+  m5-s2r1:
+    <<: *ch-base
+    container_name: m5-s2r1
+    hostname: m5-s2r1
+    ports: ["8125:8123", "9002:9000"]
+    depends_on:
+      m5-zk1: { condition: service_healthy }
+      m5-zk2: { condition: service_healthy }
+      m5-zk3: { condition: service_healthy }
+    volumes:
+      - m5_s2r1:/var/lib/clickhouse
+      - ./configs/cluster-node.xml:/etc/clickhouse-server/config.d/00-cluster.xml:ro
+      - ./configs/macros/macros-s2r1.xml:/etc/clickhouse-server/config.d/01-macros.xml:ro
+
+  m5-s2r2:
+    <<: *ch-base
+    container_name: m5-s2r2
+    hostname: m5-s2r2
+    ports: ["8126:8123", "9003:9000"]
+    depends_on:
+      m5-zk1: { condition: service_healthy }
+      m5-zk2: { condition: service_healthy }
+      m5-zk3: { condition: service_healthy }
+    volumes:
+      - m5_s2r2:/var/lib/clickhouse
+      - ./configs/cluster-node.xml:/etc/clickhouse-server/config.d/00-cluster.xml:ro
+      - ./configs/macros/macros-s2r2.xml:/etc/clickhouse-server/config.d/01-macros.xml:ro
+
+  m5-s3r1:
+    <<: *ch-base
+    container_name: m5-s3r1
+    hostname: m5-s3r1
+    ports: ["8127:8123", "9004:9000"]
+    depends_on:
+      m5-zk1: { condition: service_healthy }
+      m5-zk2: { condition: service_healthy }
+      m5-zk3: { condition: service_healthy }
+    volumes:
+      - m5_s3r1:/var/lib/clickhouse
+      - ./configs/cluster-node.xml:/etc/clickhouse-server/config.d/00-cluster.xml:ro
+      - ./configs/macros/macros-s3r1.xml:/etc/clickhouse-server/config.d/01-macros.xml:ro
+
+  m5-s3r2:
+    <<: *ch-base
+    container_name: m5-s3r2
+    hostname: m5-s3r2
+    ports: ["8128:8123", "9005:9000"]
+    depends_on:
+      m5-zk1: { condition: service_healthy }
+      m5-zk2: { condition: service_healthy }
+      m5-zk3: { condition: service_healthy }
+    volumes:
+      - m5_s3r2:/var/lib/clickhouse
+      - ./configs/cluster-node.xml:/etc/clickhouse-server/config.d/00-cluster.xml:ro
+      - ./configs/macros/macros-s3r2.xml:/etc/clickhouse-server/config.d/01-macros.xml:ro
+
+volumes:
+  m5_zk1_data: {}
+  m5_zk2_data: {}
+  m5_zk3_data: {}
+  m5_zk1_log: {}
+  m5_zk2_log: {}
+  m5_zk3_log: {}
+  m5_s1r1: {}
+  m5_s1r2: {}
+  m5_s2r1: {}
+  m5_s2r2: {}
+  m5_s3r1: {}
+  m5_s3r2: {}
+
+networks:
+  m5-net:
+    driver: bridge
