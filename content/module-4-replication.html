@@ -1454,6 +1454,19 @@ FROM system.replication_queue;
 
 
 
+
+
+
+</div>
+
+
+</div>
+
+
+</div>
+
+
+
 <style>
 .handsOn {
   margin: 24px auto; max-width: 1200px; padding: 0 20px;
@@ -1513,24 +1526,50 @@ FROM system.replication_queue;
 }
 .handsOn-card a { color: #1a4480; }
 
-.ai-discuss-btn {
-  display: inline-block;
-  margin-left: 12px;
-  padding: 4px 12px;
-  font-size: 0.72em;
-  font-weight: 600;
-  background: #e0f2fe;
-  color: #075985 !important;
-  text-decoration: none !important;
+.ai-discuss {
+  margin: 12px 0 18px 0;
   border: 1px solid #7dd3fc;
-  border-radius: 999px;
-  vertical-align: middle;
-  white-space: nowrap;
-  transition: background 0.15s, transform 0.15s;
+  background: #f0f9ff;
+  border-radius: 8px;
+  font-size: 0.95em;
 }
-.ai-discuss-btn:hover {
-  background: #bae6fd;
-  transform: translateY(-1px);
+.ai-discuss summary {
+  cursor: pointer;
+  padding: 8px 14px;
+  font-weight: 600;
+  color: #075985;
+  user-select: none;
+  list-style: none;
+}
+.ai-discuss summary::before { content: "▶ "; font-size: 0.8em; }
+.ai-discuss[open] summary::before { content: "▼ "; }
+.ai-discuss summary::-webkit-details-marker { display: none; }
+.ai-discuss-body {
+  padding: 4px 14px 14px 14px;
+  border-top: 1px solid #bae6fd;
+  background: #ffffff;
+}
+.ai-discuss-toolbar {
+  display: flex; align-items: center; gap: 14px;
+  margin: 10px 0;
+}
+.ai-discuss-copy {
+  background: #0f172a; color: #f1f5f9;
+  border: none; border-radius: 6px;
+  padding: 6px 14px; font-size: 0.9em;
+  cursor: pointer;
+}
+.ai-discuss-copy:hover { background: #1e293b; }
+.ai-discuss-hint { color: #475569; font-size: 0.85em; font-style: italic; }
+.ai-discuss pre {
+  background: #0f172a; color: #f1f5f9;
+  padding: 14px 16px; border-radius: 8px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.88em;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.55;
+  margin: 0;
 }
 
 .handsOn-source-tag {
@@ -1684,7 +1723,40 @@ FROM system.replication_queue;
 <li>Understand the migration path from ZooKeeper to ClickHouse Keeper.</li>
 </ul>
 <hr />
-<h2 id="1-what-replication-means-in-clickhouse">1. What "replication" means in ClickHouse<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Replication%20%26%20High%20Availability%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22What%20%22replication%22%20means%20in%20ClickHouse%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0AA%20%2A%2Areplicated%20table%2A%2A%20uses%20the%20%60Replicated%2AMergeTree%60%20engine%20family.%20Every%20replica%20of%20the%20same%20shard%20holds%20the%20%2A%2Asame%20parts%2A%2A%20on%20disk.%20They%20coordinate%20via%20%2A%2AZooKeeper%2A%2A%20%28or%2C%20more%20recently%2C%20%2A%2AClickHouse%20Keeper%2A%2A%2C%20a%20drop-in%20Raft-based%20replacement%20that%20ships%20with%20the%20server%20binary%29.%20Three%20guarantees%3A%201.%20%2A%2AAll%20replicas%20converge%20to%20the%20same%20byte%20content%2A%2A%20for%20any%20given%20table.%202.%20%2A%2AInserts%20are%20deduplicated%2A%2A%20within%20a%20sliding%20window%20%28%60replicated_deduplication_window%60%2C%20default%20100%20blocks%29.%203.%20%2A%2AA%20replica%20can%20be%20entirely%20rebuilt%20from%20its%20peers%2A%2A%20%E2%80%94%20losing%20a%20disk%20isn%27t%20catastrophic.%20Three%20things%20replica...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="1-what-replication-means-in-clickhouse">1. What "replication" means in ClickHouse</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Replication &amp; High Availability&quot;. I want to deeply understand the section: &quot;What &quot;replication&quot; means in ClickHouse&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+A **replicated table** uses the `Replicated*MergeTree` engine family. Every replica of the same shard holds the **same parts** on disk. They coordinate via **ZooKeeper** (or, more recently, **ClickHouse Keeper**, a drop-in Raft-based replacement that ships with the server binary). Three guarantees: 1. **All replicas converge to the same byte content** for any given table. 2. **Inserts are deduplicated** within a sliding window (`replicated_deduplication_window`, default 100 blocks). 3. **A replica can be entirely rebuilt from its peers** — losing a disk isn&#x27;t catastrophic. Three things replica...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <p>A <strong>replicated table</strong> uses the <code>Replicated*MergeTree</code> engine family.
 Every replica of the same shard holds the <strong>same parts</strong> on disk. They
 coordinate via <strong>ZooKeeper</strong> (or, more recently, <strong>ClickHouse Keeper</strong>, a
@@ -1706,14 +1778,80 @@ drop-in Raft-based replacement that ships with the server binary).</p>
    (replicated tables go read-only) until quorum returns.</li>
 </ol>
 <hr />
-<h2 id="2-the-replication-topology">2. The replication topology<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Replication%20%26%20High%20Availability%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22The%20replication%20topology%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0AThe%20%2A%2Ainterserver%20port%2A%2A%20%28%609009%60%20by%20default%29%20is%20how%20replicas%20fetch%20parts%20from%20each%20other.%20ZK%20only%20stores%20%2A%2Ametadata%2A%2A%20%E2%80%94%20the%20part%20name%2C%20checksum%2C%20which%20replica%20has%20the%20source%20%E2%80%94%20never%20the%20data%20itself.%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="2-the-replication-topology">2. The replication topology</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Replication &amp; High Availability&quot;. I want to deeply understand the section: &quot;The replication topology&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+The **interserver port** (`9009` by default) is how replicas fetch parts from each other. ZK only stores **metadata** — the part name, checksum, which replica has the source — never the data itself.
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <!-- mermaid rendered as SVG above -->
 
 <p>The <strong>interserver port</strong> (<code>9009</code> by default) is how replicas fetch parts
 from each other. ZK only stores <strong>metadata</strong> — the part name, checksum,
 which replica has the source — never the data itself.</p>
 <hr />
-<h2 id="3-the-zookeeper-schema">3. The ZooKeeper schema<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Replication%20%26%20High%20Availability%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22The%20ZooKeeper%20schema%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0AFor%20a%20table%20created%20as%20ZK%20ends%20up%20with%20this%20tree%20%28showing%20one%20shard%29%3A%20You%20can%20browse%20this%20from%20SQL%3A%20%23%23%23%20%60log%60%20is%20the%20source%20of%20truth%20Every%20modifying%20operation%20%28INSERT%2C%20MERGE%2C%20MUTATION%2C%20ATTACH%2C%20DROP_PART%29%20is%20written%20as%20a%20%2A%2Alog%20entry%2A%2A%20in%20%60%2Flog%2F%60.%20Each%20replica%20has%20a%20%60log_pointer%60%20saying%20%22I%27ve%20applied%20up%20to%20entry%20N%22.%20The%20replication%20queue%20holds%20the%20entries%20between%20%60log_pointer%60%20and%20the%20latest%20log%20entry%20%E2%80%94%20those%20are%20what%20the%20replica%20still%20needs%20to%20do.%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="3-the-zookeeper-schema">3. The ZooKeeper schema</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Replication &amp; High Availability&quot;. I want to deeply understand the section: &quot;The ZooKeeper schema&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+For a table created as ZK ends up with this tree (showing one shard): You can browse this from SQL: ### `log` is the source of truth Every modifying operation (INSERT, MERGE, MUTATION, ATTACH, DROP_PART) is written as a **log entry** in `/log/`. Each replica has a `log_pointer` saying &quot;I&#x27;ve applied up to entry N&quot;. The replication queue holds the entries between `log_pointer` and the latest log entry — those are what the replica still needs to do.
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <p>For a table created as</p>
 <pre><code class="language-sql">CREATE TABLE sensor_local (...)
 ENGINE = ReplicatedMergeTree(
@@ -1754,7 +1892,40 @@ saying "I've applied up to entry N". The replication queue holds the
 entries between <code>log_pointer</code> and the latest log entry — those are what
 the replica still needs to do.</p>
 <hr />
-<h2 id="4-the-replication-queue-lifecycle">4. The replication queue lifecycle<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Replication%20%26%20High%20Availability%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22The%20replication%20queue%20lifecycle%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0ASteady-state%20on%20a%20healthy%20cluster%3A%20%60queue_size%20%3D%200%60%2C%20%60absolute_delay%20%3D%200%60.%20When%20a%20replica%20is%20down%3A%20its%20queue%20grows.%20When%20it%20comes%20back%2C%20it%20drains.%20The%20drain%20is%20%2A%2Aeventually%20consistent%2A%2A%3B%20for%20tests%2C%20force%20it%20with%20%60SYSTEM%20SYNC%20REPLICA%20%3Ctable%3E%60%20%E2%80%94%20the%20call%20blocks%20until%20the%20queue%20is%20empty.%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="4-the-replication-queue-lifecycle">4. The replication queue lifecycle</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Replication &amp; High Availability&quot;. I want to deeply understand the section: &quot;The replication queue lifecycle&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+Steady-state on a healthy cluster: `queue_size = 0`, `absolute_delay = 0`. When a replica is down: its queue grows. When it comes back, it drains. The drain is **eventually consistent**; for tests, force it with `SYSTEM SYNC REPLICA &lt;table&gt;` — the call blocks until the queue is empty.
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <!-- mermaid rendered as SVG above -->
 
 <p>Steady-state on a healthy cluster: <code>queue_size = 0</code>, <code>absolute_delay = 0</code>.</p>
@@ -1762,7 +1933,40 @@ the replica still needs to do.</p>
 The drain is <strong>eventually consistent</strong>; for tests, force it with
 <code>SYSTEM SYNC REPLICA &lt;table&gt;</code> — the call blocks until the queue is empty.</p>
 <hr />
-<h2 id="5-the-system-tables-youll-live-in">5. The system tables you'll live in<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Replication%20%26%20High%20Availability%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22The%20system%20tables%20you%27ll%20live%20in%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A%7C%20Table%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20What%27s%20in%20it%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60system.replicas%60%20%20%20%20%20%20%20%20%20%20%20%20%7C%20One%20row%20per%20replicated%20table%20per%20node%3A%20queue%20size%2C%20log%20pointer%2C%20%60absolute_delay%60%2C%20%60is_leader%60%2C%20%60is_readonly%60.%20%7C%20%7C%20%60system.replication_queue%60%20%20%20%7C%20Per-entry%20detail%20of%20pending%20operations%3A%20type%20%28%60GET_PART%60%2C%20%60MERGE_PARTS%60%29%2C%20source%2C%20retry%20count%2C%20last%20error.%20%7C%20%7C%20%60system.zookeeper%60%20%20%20%20%20%20%20%20%20%20%20%7C%20Live%20SQL%20view%20of%20ZK%20paths%20%28filterable%20with%20%60WHERE%20path%20%3D%20%27...%27%60%29.%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60system.parts%60%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20All%20parts%3B%20check%20%60replica_name%60%2C%20%60...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="5-the-system-tables-youll-live-in">5. The system tables you'll live in</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Replication &amp; High Availability&quot;. I want to deeply understand the section: &quot;The system tables you&#x27;ll live in&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+| Table                        | What&#x27;s in it                                                                            | | `system.replicas`            | One row per replicated table per node: queue size, log pointer, `absolute_delay`, `is_leader`, `is_readonly`. | | `system.replication_queue`   | Per-entry detail of pending operations: type (`GET_PART`, `MERGE_PARTS`), source, retry count, last error. | | `system.zookeeper`           | Live SQL view of ZK paths (filterable with `WHERE path = &#x27;...&#x27;`).                       | | `system.parts`               | All parts; check `replica_name`, `...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <table>
 <thead>
 <tr>
@@ -1805,7 +2009,40 @@ The drain is <strong>eventually consistent</strong>; for tests, force it with
 <em>seconds between the most recent INSERT's commit time and what this replica
 has applied</em>. Alert if it goes above your tolerance (e.g. 60 s).</p>
 <hr />
-<h2 id="6-insert_quorum-synchronous-writes-when-you-need-them">6. <code>insert_quorum</code> — synchronous writes when you need them<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Replication%20%26%20High%20Availability%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22insert_quorum%20%E2%80%94%20synchronous%20writes%20when%20you%20need%20them%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A%28no%20excerpt%20%E2%80%94%20section%20heading%20was%20%22insert_quorum%20%E2%80%94%20synchronous%20writes%20when%20you%20need%20them%22%29%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="6-insert_quorum-synchronous-writes-when-you-need-them">6. <code>insert_quorum</code> — synchronous writes when you need them</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Replication &amp; High Availability&quot;. I want to deeply understand the section: &quot;insert_quorum — synchronous writes when you need them&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+(no excerpt — section heading was &quot;insert_quorum — synchronous writes when you need them&quot;)
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <p>Default INSERT semantics: returns success once <strong>one</strong> replica has the
 data. For "I need at least 2 of 2 replicas to have this row before I ack":</p>
 <pre><code class="language-sql">SET insert_quorum = 2;
@@ -1859,7 +2096,40 @@ SELECT count() FROM sensor_local;
 </code></pre>
 <p>This trades latency for "no stale reads".</p>
 <hr />
-<h2 id="7-failure-scenarios-and-recovery">7. Failure scenarios and recovery<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Replication%20%26%20High%20Availability%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Failure%20scenarios%20and%20recovery%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A%23%23%23%20Scenario%20A%20%E2%80%94%20one%20replica%20down%20What%20happens%3A%20-%20Reads%20silently%20route%20to%20the%20other%20replica%20%28zero%20impact%29.%20-%20Writes%20still%20succeed%20%28one-replica%20write%29%3B%20other%20replica%27s%20queue%20grows.%20-%20ZK%20shows%20the%20replica%27s%20%60is_active%60%20ephemeral%20node%20disappear.%20Recovery%3A%20-%20%60docker%20start%20m4-s1r2%60%20%28or%20fix%20the%20host%29.%20-%20%60SYSTEM%20SYNC%20REPLICA%20sensor_local%3B%60%20on%20the%20recovered%20replica.%20-%20Verify%20%60system.replicas.absolute_delay%20%3D%200%60.%20%23%23%23%20Scenario%20B%20%E2%80%94%20replica%20disk%20loss%20What%20happens%3A%20the%20replica%27s%20%60%2Fvar%2Flib%2Fclickhouse%2Fdata%60%20is%20gone.%20ZK%20still%20knows%20it%20as%20a%20registered%20replica.%20Recovery%20%28the%20demo%27s%20drill%204%20in%20M8%29%3A%201.%20From%20a%20pee...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="7-failure-scenarios-and-recovery">7. Failure scenarios and recovery</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Replication &amp; High Availability&quot;. I want to deeply understand the section: &quot;Failure scenarios and recovery&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+### Scenario A — one replica down What happens: - Reads silently route to the other replica (zero impact). - Writes still succeed (one-replica write); other replica&#x27;s queue grows. - ZK shows the replica&#x27;s `is_active` ephemeral node disappear. Recovery: - `docker start m4-s1r2` (or fix the host). - `SYSTEM SYNC REPLICA sensor_local;` on the recovered replica. - Verify `system.replicas.absolute_delay = 0`. ### Scenario B — replica disk loss What happens: the replica&#x27;s `/var/lib/clickhouse/data` is gone. ZK still knows it as a registered replica. Recovery (the demo&#x27;s drill 4 in M8): 1. From a pee...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <h3 id="scenario-a-one-replica-down">Scenario A — one replica down</h3>
 <p>What happens:
 - Reads silently route to the other replica (zero impact).
@@ -1890,7 +2160,40 @@ recovers when ZK is reachable again.</p>
 or 5 (big clusters) ZK / Keeper nodes across availability zones.</p>
 </blockquote>
 <hr />
-<h2 id="8-clickhouse-keeper-the-future">8. ClickHouse Keeper — the future<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Replication%20%26%20High%20Availability%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22ClickHouse%20Keeper%20%E2%80%94%20the%20future%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0AKeeper%20is%20a%20%2A%2ARaft-based%20ZK%20clone%2A%2A%20that%20ships%20in%20the%20%60clickhouse-server%60%20binary.%20Same%20client%20protocol%2C%20same%20paths.%20Migrate%20when%20convenient%3A%20Why%20move%3A%20-%20One%20fewer%20service%20%28Keeper%20runs%20in%20the%20CH%20process%20or%20as%20%60clickhouse-keeper%60%29.%20-%20Better%20operational%20tooling%20%28same%20binary%2C%20same%20logs%20format%29.%20-%20Active%20development%3B%20ZK%20feature-frozen.%20When%20%2A%2Anot%2A%2A%20to%20move%3A%20large%20existing%20ZK%20fleet%2C%20complex%20tooling%20around%20it%2C%20or%20a%203rd-party%20setup%20that%20already%20provides%20ZK.%20This%20demo%20uses%20ZooKeeper%20%28image%20%60zookeeper%3A3.8%60%29%20for%20compatibility.%20The%20swap-to-Keeper%20path%20is%20single-line%20in%20%60docker-compose.yml%60.%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="8-clickhouse-keeper-the-future">8. ClickHouse Keeper — the future</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Replication &amp; High Availability&quot;. I want to deeply understand the section: &quot;ClickHouse Keeper — the future&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+Keeper is a **Raft-based ZK clone** that ships in the `clickhouse-server` binary. Same client protocol, same paths. Migrate when convenient: Why move: - One fewer service (Keeper runs in the CH process or as `clickhouse-keeper`). - Better operational tooling (same binary, same logs format). - Active development; ZK feature-frozen. When **not** to move: large existing ZK fleet, complex tooling around it, or a 3rd-party setup that already provides ZK. This demo uses ZooKeeper (image `zookeeper:3.8`) for compatibility. The swap-to-Keeper path is single-line in `docker-compose.yml`.
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <p>Keeper is a <strong>Raft-based ZK clone</strong> that ships in the <code>clickhouse-server</code>
 binary. Same client protocol, same paths. Migrate when convenient:</p>
 <pre><code class="language-bash"># Snapshot ZK
@@ -1910,7 +2213,40 @@ or a 3rd-party setup that already provides ZK.</p>
 <p>This demo uses ZooKeeper (image <code>zookeeper:3.8</code>) for compatibility. The
 swap-to-Keeper path is single-line in <code>docker-compose.yml</code>.</p>
 <hr />
-<h2 id="9-the-hands-on-demo">9. The hands-on demo<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Replication%20%26%20High%20Availability%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22The%20hands-on%20demo%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A%23%23%23%20Container%20map%20%7C%20Role%20%20%20%20%20%20%20%20%7C%20Container%20%7C%20Host%20HTTP%20%7C%20Host%20TCP%20%7C%20%7C%20Shard%201%20R1%20%20%7C%20%60m4-s1r1%60%20%7C%208123%20%20%20%20%20%20%7C%209000%20%20%20%20%20%7C%20%7C%20Shard%201%20R2%20%20%7C%20%60m4-s1r2%60%20%7C%208124%20%20%20%20%20%20%7C%209001%20%20%20%20%20%7C%20%7C%20Shard%202%20R1%20%20%7C%20%60m4-s2r1%60%20%7C%208125%20%20%20%20%20%20%7C%209002%20%20%20%20%20%7C%20%7C%20Shard%202%20R2%20%20%7C%20%60m4-s2r2%60%20%7C%208126%20%20%20%20%20%20%7C%209003%20%20%20%20%20%7C%20%7C%20Shard%203%20R1%20%20%7C%20%60m4-s3r1%60%20%7C%208127%20%20%20%20%20%20%7C%209004%20%20%20%20%20%7C%20%7C%20Shard%203%20R2%20%20%7C%20%60m4-s3r2%60%20%7C%208128%20%20%20%20%20%20%7C%209005%20%20%20%20%20%7C%20%7C%20ZK%201%2F2%2F3%20%20%20%20%7C%20%60m4-zk1%2F2%2F3%60%20%7C%20%28internal%29%20%7C%20%7C%20%23%23%23%20Execution%20flow%20%E2%80%94%20what%20runs%2C%20in%20order%20%7C%20%23%20%20%7C%20Step%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20What%20happens...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="9-the-hands-on-demo">9. The hands-on demo</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Replication &amp; High Availability&quot;. I want to deeply understand the section: &quot;The hands-on demo&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+### Container map | Role        | Container | Host HTTP | Host TCP | | Shard 1 R1  | `m4-s1r1` | 8123      | 9000     | | Shard 1 R2  | `m4-s1r2` | 8124      | 9001     | | Shard 2 R1  | `m4-s2r1` | 8125      | 9002     | | Shard 2 R2  | `m4-s2r2` | 8126      | 9003     | | Shard 3 R1  | `m4-s3r1` | 8127      | 9004     | | Shard 3 R2  | `m4-s3r2` | 8128      | 9005     | | ZK 1/2/3    | `m4-zk1/2/3` | (internal) | | ### Execution flow — what runs, in order | #  | Step                                | What happens...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <h3 id="container-map">Container map</h3>
 <table>
 <thead>
@@ -2045,7 +2381,40 @@ swap-to-Keeper path is single-line in <code>docker-compose.yml</code>.</p>
 </tbody>
 </table>
 <hr />
-<h2 id="10-operational-sql-cheatsheet">10. Operational SQL cheatsheet<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Replication%20%26%20High%20Availability%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Operational%20SQL%20cheatsheet%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A%28no%20excerpt%20%E2%80%94%20section%20heading%20was%20%22Operational%20SQL%20cheatsheet%22%29%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="10-operational-sql-cheatsheet">10. Operational SQL cheatsheet</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Replication &amp; High Availability&quot;. I want to deeply understand the section: &quot;Operational SQL cheatsheet&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+(no excerpt — section heading was &quot;Operational SQL cheatsheet&quot;)
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <pre><code class="language-sql">-- &quot;Is replication healthy?&quot;
 SELECT database, table, replica_name, queue_size, absolute_delay,
        is_leader, is_readonly, last_queue_update_exception
@@ -2073,7 +2442,40 @@ WHERE path = '/clickhouse/tables/01/sensor_local/replicas/m4-s1r1/parts'
 ORDER BY name;
 </code></pre>
 <hr />
-<h2 id="11-common-pitfalls">11. Common pitfalls<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Replication%20%26%20High%20Availability%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Common%20pitfalls%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A%7C%20Symptom%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Cause%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Fix%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60Cannot%20allocate%20block%20number%20in%20ZooKeeper%60%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20ZK%20quorum%20lost.%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Restore%20ZK%3B%20replicated%20tables%20auto-recover.%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60system.replicas.is_readonly%20%3D%201%60%20even%20though%20everything%27s%20running%20%20%20%20%20%20%7C%20ZK%20session%20expired%20and%20d...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="11-common-pitfalls">11. Common pitfalls</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Replication &amp; High Availability&quot;. I want to deeply understand the section: &quot;Common pitfalls&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+| Symptom                                                                 | Cause                                                                  | Fix                                                                                                | | `Cannot allocate block number in ZooKeeper`                             | ZK quorum lost.                                                         | Restore ZK; replicated tables auto-recover.                                                       | | `system.replicas.is_readonly = 1` even though everything&#x27;s running      | ZK session expired and d...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <table>
 <thead>
 <tr>
@@ -2116,7 +2518,40 @@ ORDER BY name;
 </tbody>
 </table>
 <hr />
-<h2 id="12-talking-points-for-the-live-session">12. Talking points for the live session<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Replication%20%26%20High%20Availability%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Talking%20points%20for%20the%20live%20session%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A1.%20%2A%2AZK%20stores%20metadata%2C%20not%20data.%2A%2A%20Every%20part%20still%20moves%20over%20the%20interserver%20port%3B%20ZK%20just%20coordinates.%202.%20%2A%2AReplication%20is%20async%20by%20default.%2A%2A%20Show%20%60SYSTEM%20SYNC%20REPLICA%60%20and%20%60system.replicas.absolute_delay%60.%203.%20%2A%2AThe%20replication%20queue%20is%20a%20real%20queue.%2A%2A%20Walk%20through%20%60system.replication_queue%60%20mid-INSERT.%204.%20%2A%2A%60insert_quorum%60%20is%20your%20RPO%3D0%20knob.%2A%2A%20Works%2C%20but%20raises%20tail%20latency.%205.%20%2A%2AReplica%20disk%20loss%20is%20recoverable.%2A%2A%20Demo%20the%20%60SYSTEM%20DROP%20REPLICA%60%20%2B%20recreate%20flow%20live%20%28Module%208%20does%20this%20in%20drill%204%29.%206.%20%2A%2AZK%20%E2%86%92%20Keeper.%2A%2A%20Mention%20the%20migration.%20Keep%20ZK%20if%20you%20have%20it%3B%20new%20clusters%20should%20d...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="12-talking-points-for-the-live-session">12. Talking points for the live session</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Replication &amp; High Availability&quot;. I want to deeply understand the section: &quot;Talking points for the live session&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+1. **ZK stores metadata, not data.** Every part still moves over the interserver port; ZK just coordinates. 2. **Replication is async by default.** Show `SYSTEM SYNC REPLICA` and `system.replicas.absolute_delay`. 3. **The replication queue is a real queue.** Walk through `system.replication_queue` mid-INSERT. 4. **`insert_quorum` is your RPO=0 knob.** Works, but raises tail latency. 5. **Replica disk loss is recoverable.** Demo the `SYSTEM DROP REPLICA` + recreate flow live (Module 8 does this in drill 4). 6. **ZK → Keeper.** Mention the migration. Keep ZK if you have it; new clusters should d...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <ol>
 <li><strong>ZK stores metadata, not data.</strong> Every part still moves over the
    interserver port; ZK just coordinates.</li>
@@ -2131,7 +2566,40 @@ ORDER BY name;
    clusters should default to Keeper.</li>
 </ol>
 <hr />
-<h2 id="13-going-deeper">13. Going deeper<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Replication%20%26%20High%20Availability%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Going%20deeper%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A-%20%2A%2AModule%205%2A%2A%20%E2%80%94%20%60ON%20CLUSTER%60%20DDL%20coordination%20%28also%20via%20ZK%29.%20-%20%2A%2AModule%208%2A%2A%20%E2%80%94%20destructive%20failure%20drills%20against%20this%20same%20cluster.%20-%20ClickHouse%20docs%3A%20%3Chttps%3A%2F%2Fclickhouse.com%2Fdocs%2Fen%2Fengines%2Ftable-engines%2Fmergetree-family%2Freplication%3E%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="13-going-deeper">13. Going deeper</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Replication &amp; High Availability&quot;. I want to deeply understand the section: &quot;Going deeper&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+- **Module 5** — `ON CLUSTER` DDL coordination (also via ZK). - **Module 8** — destructive failure drills against this same cluster. - ClickHouse docs: &lt;https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replication&gt;
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <ul>
 <li><strong>Module 5</strong> — <code>ON CLUSTER</code> DDL coordination (also via ZK).</li>
 <li><strong>Module 8</strong> — destructive failure drills against this same cluster.</li>

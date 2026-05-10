@@ -1231,6 +1231,16 @@ ORDER BY absolute_delay DESC;
 
 
 
+
+
+
+</div>
+
+
+</div>
+
+
+
 <style>
 .handsOn {
   margin: 24px auto; max-width: 1200px; padding: 0 20px;
@@ -1290,24 +1300,50 @@ ORDER BY absolute_delay DESC;
 }
 .handsOn-card a { color: #1a4480; }
 
-.ai-discuss-btn {
-  display: inline-block;
-  margin-left: 12px;
-  padding: 4px 12px;
-  font-size: 0.72em;
-  font-weight: 600;
-  background: #e0f2fe;
-  color: #075985 !important;
-  text-decoration: none !important;
+.ai-discuss {
+  margin: 12px 0 18px 0;
   border: 1px solid #7dd3fc;
-  border-radius: 999px;
-  vertical-align: middle;
-  white-space: nowrap;
-  transition: background 0.15s, transform 0.15s;
+  background: #f0f9ff;
+  border-radius: 8px;
+  font-size: 0.95em;
 }
-.ai-discuss-btn:hover {
-  background: #bae6fd;
-  transform: translateY(-1px);
+.ai-discuss summary {
+  cursor: pointer;
+  padding: 8px 14px;
+  font-weight: 600;
+  color: #075985;
+  user-select: none;
+  list-style: none;
+}
+.ai-discuss summary::before { content: "▶ "; font-size: 0.8em; }
+.ai-discuss[open] summary::before { content: "▼ "; }
+.ai-discuss summary::-webkit-details-marker { display: none; }
+.ai-discuss-body {
+  padding: 4px 14px 14px 14px;
+  border-top: 1px solid #bae6fd;
+  background: #ffffff;
+}
+.ai-discuss-toolbar {
+  display: flex; align-items: center; gap: 14px;
+  margin: 10px 0;
+}
+.ai-discuss-copy {
+  background: #0f172a; color: #f1f5f9;
+  border: none; border-radius: 6px;
+  padding: 6px 14px; font-size: 0.9em;
+  cursor: pointer;
+}
+.ai-discuss-copy:hover { background: #1e293b; }
+.ai-discuss-hint { color: #475569; font-size: 0.85em; font-style: italic; }
+.ai-discuss pre {
+  background: #0f172a; color: #f1f5f9;
+  padding: 14px 16px; border-radius: 8px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.88em;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.55;
+  margin: 0;
 }
 
 .handsOn-source-tag {
@@ -1443,7 +1479,40 @@ ORDER BY absolute_delay DESC;
 <li>Sketch a TLS-secured production deployment.</li>
 </ul>
 <hr />
-<h2 id="1-the-cluster-as-one-thing-mental-model">1. The "cluster as one thing" mental model<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Cluster%20Deployment%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22The%20%22cluster%20as%20one%20thing%22%20mental%20model%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0AA%20ClickHouse%20cluster%20is%20%2Anot%2A%20a%20unified%20service%20like%20Kafka%20or%20Postgres%20streaming%20replication.%20It%27s%20%2A%2Aa%20set%20of%20independent%20CH%20processes%20that%20share%20a%20%60%3Cremote_servers%3E%60%20definition%20and%20a%20ZK%20ensemble%2A%2A.%20There%20is%20no%20%22primary%22%20or%20%22controller%22.%20Every%20node%20knows%20the%20same%20cluster%20shape.%20Coordination%20boundaries%3A%20%7C%20Concern%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Coordinated%20via%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Stored%20in%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20Replication%20queue%20%20%20%20%7C%20ZooKeeper%20%2F%20Keeper%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%60%2Fclickhouse%2Ftables%2F...%60%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20ON%20CLUSTER%20DDL%20%20%20%20%20%20%20%7C%20ZooKeeper%20%2F%20Keeper%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%60%2Fclickhouse%2Ftask_queue%2Fddl%2F...%60%20%20%20%20%20%7C%20%7C%20Sha...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="1-the-cluster-as-one-thing-mental-model">1. The "cluster as one thing" mental model</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Cluster Deployment&quot;. I want to deeply understand the section: &quot;The &quot;cluster as one thing&quot; mental model&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+A ClickHouse cluster is *not* a unified service like Kafka or Postgres streaming replication. It&#x27;s **a set of independent CH processes that share a `&lt;remote_servers&gt;` definition and a ZK ensemble**. There is no &quot;primary&quot; or &quot;controller&quot;. Every node knows the same cluster shape. Coordination boundaries: | Concern              | Coordinated via                | Stored in                            | | Replication queue    | ZooKeeper / Keeper             | `/clickhouse/tables/...`             | | ON CLUSTER DDL       | ZooKeeper / Keeper             | `/clickhouse/task_queue/ddl/...`     | | Sha...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <p>A ClickHouse cluster is <em>not</em> a unified service like Kafka or Postgres
 streaming replication. It's <strong>a set of independent CH processes that
 share a <code>&lt;remote_servers&gt;</code> definition and a ZK ensemble</strong>. There is no
@@ -1483,7 +1552,40 @@ share a <code>&lt;remote_servers&gt;</code> definition and a ZK ensemble</strong
 </tbody>
 </table>
 <hr />
-<h2 id="2-on-cluster-ddl-fanout">2. <code>ON CLUSTER</code> — DDL fanout<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Cluster%20Deployment%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22ON%20CLUSTER%20%E2%80%94%20DDL%20fanout%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A%28no%20excerpt%20%E2%80%94%20section%20heading%20was%20%22ON%20CLUSTER%20%E2%80%94%20DDL%20fanout%22%29%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="2-on-cluster-ddl-fanout">2. <code>ON CLUSTER</code> — DDL fanout</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Cluster Deployment&quot;. I want to deeply understand the section: &quot;ON CLUSTER — DDL fanout&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+(no excerpt — section heading was &quot;ON CLUSTER — DDL fanout&quot;)
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <pre><code class="language-sql">CREATE TABLE analytics.page_views_local ON CLUSTER clickhouse_cluster (
     ts DateTime, user_id UInt64, page LowCardinality(String), ...
 )
@@ -1506,7 +1608,40 @@ ORDER BY query_create_time DESC LIMIT 10;
 wait. For big clusters bump it; for CI it can be tighter.</p>
 </blockquote>
 <hr />
-<h2 id="3-the-cluster-aware-table-functions">3. The cluster-aware table functions<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Cluster%20Deployment%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22The%20cluster-aware%20table%20functions%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0AYou%20don%27t%20always%20want%20a%20Distributed%20table.%20For%20one-shot%20queries%2C%20use%3A%20%7C%20Function%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Hits%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Use%20for%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60cluster%28%27cluster_name%27%2C%20db%2C%20tbl%29%60%20%20%20%20%7C%20one%20replica%20per%20shard%20%20%20%20%20%20%20%20%20%20%20%7C%20one-off%20fan-out%20aggregation%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60clusterAllReplicas%28%27...%27%2C%20db%2C%20tbl%29%60%20%20%7C%20every%20replica%20of%20every%20shard%20%20%20%20%20%7C%20replica-equivalence%20checks%20%28NOT%20aggregations%29%20%7C%20%7C%20%60remote%28%27host%3Aport%27%2C%20db%2C%20tbl%29%60%20%20%20%20%20%20%20%20%7C%20one%20specific%20host%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20cross-cluster%20spot%20reads%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60remoteSecure%28%27host%3Aport%27%2C%20db%2C%20tbl%29%60%20%20%7C...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="3-the-cluster-aware-table-functions">3. The cluster-aware table functions</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Cluster Deployment&quot;. I want to deeply understand the section: &quot;The cluster-aware table functions&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+You don&#x27;t always want a Distributed table. For one-shot queries, use: | Function                              | Hits                            | Use for                                   | | `cluster(&#x27;cluster_name&#x27;, db, tbl)`    | one replica per shard           | one-off fan-out aggregation                | | `clusterAllReplicas(&#x27;...&#x27;, db, tbl)`  | every replica of every shard     | replica-equivalence checks (NOT aggregations) | | `remote(&#x27;host:port&#x27;, db, tbl)`        | one specific host                | cross-cluster spot reads                   | | `remoteSecure(&#x27;host:port&#x27;, db, tbl)`  |...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <p>You don't always want a Distributed table. For one-shot queries, use:</p>
 <table>
 <thead>
@@ -1553,7 +1688,40 @@ GROUP BY hostName();
 SELECT count() FROM remote('m5-s2r1:9000', analytics, page_views_local);
 </code></pre>
 <hr />
-<h2 id="4-users-profiles-quotas-roles">4. Users, profiles, quotas, roles<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Cluster%20Deployment%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Users%2C%20profiles%2C%20quotas%2C%20roles%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0AXML%20defines%20users%3B%20SQL%20defines%20roles%20and%20grants.%20Both%20live%20for%20the%20lifetime%20of%20the%20server%3B%20for%20dynamic%20auth%2C%20use%20the%20SQL%20form.%20%23%23%23%20Anatomy%20of%20%60users.xml%60%20%23%23%23%20SQL%20roles%20%2B%20grants%20Once%20users%20exist%2C%20grants%20are%20the%20SQL%20way%3A%20Inspect%3A%20%3E%20%2A%2AProduction%20tip%3A%2A%2A%20keep%20%60%3Cusers%3E%60%20in%20XML%20for%20the%20%2Abootstrap%2A%20user%20%3E%20%28%60admin%60%29%3B%20manage%20everything%20else%20via%20SQL%20%60CREATE%20USER%20%E2%80%A6%20GRANT%20%E2%80%A6%60.%20SQL%20%3E%20users%20go%20into%20ZK%20if%20%60%3Cuser_directories%3E%60%20includes%20%3E%20%60%3Creplicated%3E%3Czookeeper_path%3E...%60.%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="4-users-profiles-quotas-roles">4. Users, profiles, quotas, roles</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Cluster Deployment&quot;. I want to deeply understand the section: &quot;Users, profiles, quotas, roles&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+XML defines users; SQL defines roles and grants. Both live for the lifetime of the server; for dynamic auth, use the SQL form. ### Anatomy of `users.xml` ### SQL roles + grants Once users exist, grants are the SQL way: Inspect: &gt; **Production tip:** keep `&lt;users&gt;` in XML for the *bootstrap* user &gt; (`admin`); manage everything else via SQL `CREATE USER … GRANT …`. SQL &gt; users go into ZK if `&lt;user_directories&gt;` includes &gt; `&lt;replicated&gt;&lt;zookeeper_path&gt;...`.
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <p>XML defines users; SQL defines roles and grants. Both live for the
 lifetime of the server; for dynamic auth, use the SQL form.</p>
 <h3 id="anatomy-of-usersxml">Anatomy of <code>users.xml</code></h3>
@@ -1635,7 +1803,40 @@ users go into ZK if <code>&lt;user_directories&gt;</code> includes
 <code>&lt;replicated&gt;&lt;zookeeper_path&gt;...</code>.</p>
 </blockquote>
 <hr />
-<h2 id="5-the-prometheus-endpoint">5. The Prometheus endpoint<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Cluster%20Deployment%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22The%20Prometheus%20endpoint%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0ACH%20ships%20a%20built-in%20exporter.%20Two%20lines%20of%20config%3A%20What%20it%20exposes%3A%20%7C%20Metric%20kind%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Examples%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20Cumulative%20events%20%20%20%20%20%20%20%20%20%20%7C%20%60ClickHouseProfileEvents_Query%60%2C%20%60ClickHouseProfileEvents_InsertedRows%60%20%7C%20%7C%20Current%20values%20%28gauges%29%20%20%20%20%7C%20%60ClickHouseMetrics_Query%60%2C%20%60ClickHouseMetrics_PartsActive%60%20%20%20%7C%20%7C%20Async%20metrics%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%60ClickHouseAsyncMetrics_jemalloc_resident%60%2C%20%60..._FilesystemMainPath_AvailableINodes%60%20%7C%20%7C%20Status%20%28custom%29%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%60ClickHouseStatusInfo_DictionaryStatus%60%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Smoke%20test%3A%20A%20minimal%20Prome...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="5-the-prometheus-endpoint">5. The Prometheus endpoint</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Cluster Deployment&quot;. I want to deeply understand the section: &quot;The Prometheus endpoint&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+CH ships a built-in exporter. Two lines of config: What it exposes: | Metric kind                | Examples                                                     | | Cumulative events          | `ClickHouseProfileEvents_Query`, `ClickHouseProfileEvents_InsertedRows` | | Current values (gauges)    | `ClickHouseMetrics_Query`, `ClickHouseMetrics_PartsActive`   | | Async metrics              | `ClickHouseAsyncMetrics_jemalloc_resident`, `..._FilesystemMainPath_AvailableINodes` | | Status (custom)            | `ClickHouseStatusInfo_DictionaryStatus`                      | Smoke test: A minimal Prome...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <p>CH ships a built-in exporter. Two lines of config:</p>
 <pre><code class="language-xml">&lt;clickhouse&gt;
     &lt;prometheus&gt;
@@ -1692,7 +1893,40 @@ users go into ZK if <code>&lt;user_directories&gt;</code> includes
 </code></pre>
 <p>Grafana has a community dashboard (ID 14192) tuned to these metrics.</p>
 <hr />
-<h2 id="6-tls-securing-the-cluster">6. TLS — securing the cluster<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Cluster%20Deployment%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22TLS%20%E2%80%94%20securing%20the%20cluster%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0AThe%20demo%20doesn%27t%20ship%20certs%20%28kept%20out%20of%20source%20control%29%2C%20but%20here%27s%20the%20production%20sketch%3A%20Generate%20dev%20certs%20with%20%60mkcert%60%20%28one-liner%29%20or%20%60step-ca%60.%20Production%20should%20use%20real%20certs%20from%20your%20PKI%2C%20with%20mTLS%20for%20inter-server%20traffic.%20Connect%20with%20TLS%3A%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="6-tls-securing-the-cluster">6. TLS — securing the cluster</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Cluster Deployment&quot;. I want to deeply understand the section: &quot;TLS — securing the cluster&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+The demo doesn&#x27;t ship certs (kept out of source control), but here&#x27;s the production sketch: Generate dev certs with `mkcert` (one-liner) or `step-ca`. Production should use real certs from your PKI, with mTLS for inter-server traffic. Connect with TLS:
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <p>The demo doesn't ship certs (kept out of source control), but here's the
 production sketch:</p>
 <pre><code class="language-xml">&lt;clickhouse&gt;
@@ -1722,7 +1956,40 @@ should use real certs from your PKI, with mTLS for inter-server traffic.</p>
     -h cluster.example.com
 </code></pre>
 <hr />
-<h2 id="7-the-hands-on-demo">7. The hands-on demo<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Cluster%20Deployment%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22The%20hands-on%20demo%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A%23%23%23%20What%20you%20get%20%23%23%23%20Container%20map%20Same%20shape%20as%20M3%2FM4%20with%20the%20%60m5-%60%20prefix%3B%20ports%20%608123-8128%60%20HTTP%2C%20%609000-9005%60%20TCP.%20%23%23%23%20Execution%20flow%20%E2%80%94%20what%20runs%2C%20in%20order%20%7C%20%23%20%20%7C%20Step%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20What%20happens%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%200%20%20%7C%20self-bootstrap%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%60up.sh%60%20brings%20up%20the%20cluster%20%289%20containers%29%20and%20tears%20down%20peer%20demo%20modules.%20%60users.xml%60%2C%20%60prometheus.xml%60%2C%20and%20the%20c...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="7-the-hands-on-demo">7. The hands-on demo</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Cluster Deployment&quot;. I want to deeply understand the section: &quot;The hands-on demo&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+### What you get ### Container map Same shape as M3/M4 with the `m5-` prefix; ports `8123-8128` HTTP, `9000-9005` TCP. ### Execution flow — what runs, in order | #  | Step                                       | What happens                                                                                                                                                                                                           | | 0  | self-bootstrap                             | `up.sh` brings up the cluster (9 containers) and tears down peer demo modules. `users.xml`, `prometheus.xml`, and the c...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <h3 id="what-you-get">What you get</h3>
 <pre><code>docker-compose.yml                 9 containers (3 ZK + 6 CH, prefix m5-)
 configs/cluster-node.xml           &lt;remote_servers&gt; + ZK
@@ -1817,7 +2084,40 @@ up.sh · run.sh · down.sh
 </tbody>
 </table>
 <hr />
-<h2 id="8-operational-sql-cheatsheet">8. Operational SQL cheatsheet<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Cluster%20Deployment%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Operational%20SQL%20cheatsheet%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A%28no%20excerpt%20%E2%80%94%20section%20heading%20was%20%22Operational%20SQL%20cheatsheet%22%29%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="8-operational-sql-cheatsheet">8. Operational SQL cheatsheet</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Cluster Deployment&quot;. I want to deeply understand the section: &quot;Operational SQL cheatsheet&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+(no excerpt — section heading was &quot;Operational SQL cheatsheet&quot;)
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <pre><code class="language-sql">-- &quot;Show me the cluster&quot;
 SELECT cluster, shard_num, replica_num, host_name, host_address, port,
        errors_count, slowdowns_count
@@ -1845,7 +2145,40 @@ WHERE event_time &gt; now() - INTERVAL 1 HOUR
 ORDER BY query_duration_ms DESC LIMIT 20;
 </code></pre>
 <hr />
-<h2 id="9-settings-worth-knowing">9. Settings worth knowing<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Cluster%20Deployment%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Settings%20worth%20knowing%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A%7C%20Setting%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Default%20%7C%20What%20it%20controls%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60distributed_ddl_task_timeout%60%20%20%20%20%20%20%20%7C%20180%20%20%20%20%20%7C%20Seconds%20the%20initiator%20waits%20for%20every%20node%20to%20ack%20an%20ON%20CLUSTER%20DDL.%20%20%20%20%20%20%7C%20%7C%20%60distributed_ddl_entry_format_version%60%20%7C%20latest%20%7C%20Compat%20shim%20during%20version%20upgrades.%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60distributed_product_mode%60%20%20%20%20%20%20%20%20%20%20%20%7C%20%60%27deny%27%60%20%7C%20How%20%60IN%60%2F%60JOIN%60%20between%20two%20Distributed%20tables%20expands.%20%60%27global%27%60%20rewrites%20to%20GLOBAL%20IN.%20%7C%20%7C%20%60prefer_localhost_replica%60%20%20%20%20%20%20%20%20%20%20%20%7C%201%20%20%20%20%20%20%20%7C%20When%20the%20query%20runs%2C%20pr...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="9-settings-worth-knowing">9. Settings worth knowing</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Cluster Deployment&quot;. I want to deeply understand the section: &quot;Settings worth knowing&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+| Setting                              | Default | What it controls                                                          | | `distributed_ddl_task_timeout`       | 180     | Seconds the initiator waits for every node to ack an ON CLUSTER DDL.      | | `distributed_ddl_entry_format_version` | latest | Compat shim during version upgrades.                                      | | `distributed_product_mode`           | `&#x27;deny&#x27;` | How `IN`/`JOIN` between two Distributed tables expands. `&#x27;global&#x27;` rewrites to GLOBAL IN. | | `prefer_localhost_replica`           | 1       | When the query runs, pr...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <table>
 <thead>
 <tr>
@@ -1888,7 +2221,40 @@ ORDER BY query_duration_ms DESC LIMIT 20;
 </tbody>
 </table>
 <hr />
-<h2 id="10-common-pitfalls">10. Common pitfalls<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Cluster%20Deployment%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Common%20pitfalls%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A%7C%20Symptom%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Cause%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Fix%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60ON%20CLUSTER%60%20DDL%20hangs%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20One%20host%20unreachable%3B%20%60distributed_ddl_task_timeout%60%20exceeded.%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%60system.distributed_ddl_queue.exception_text%60%20shows%20which%20host%3B%20fix%20it%3B%20rerun.%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60Code%3A%20359.%20Table%20is%20already%20exists%60%20after%20recreate-w...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="10-common-pitfalls">10. Common pitfalls</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Cluster Deployment&quot;. I want to deeply understand the section: &quot;Common pitfalls&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+| Symptom                                                                       | Cause                                                                                  | Fix                                                                                                | | `ON CLUSTER` DDL hangs                                                        | One host unreachable; `distributed_ddl_task_timeout` exceeded.                          | `system.distributed_ddl_queue.exception_text` shows which host; fix it; rerun.                     | | `Code: 359. Table is already exists` after recreate-w...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <table>
 <thead>
 <tr>
@@ -1931,7 +2297,40 @@ ORDER BY query_duration_ms DESC LIMIT 20;
 </tbody>
 </table>
 <hr />
-<h2 id="11-talking-points-for-the-live-session">11. Talking points for the live session<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Cluster%20Deployment%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Talking%20points%20for%20the%20live%20session%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A1.%20%2A%2AThere%27s%20no%20%22primary%22%20CH%20node.%2A%2A%20Pick%20any%20healthy%20replica%20as%20the%20initiator%20for%20ON%20CLUSTER%20DDL.%20They%20all%20have%20the%20same%20view.%202.%20%2A%2A%60system.distributed_ddl_queue%60%20is%20your%20audit%20log.%2A%2A%20Show%20it%20before%20and%20after%20a%20%60CREATE%20TABLE%20ON%20CLUSTER%60.%203.%20%2A%2A%60cluster%28%29%60%20is%20for%20one-shot%20fan-outs.%2A%2A%20No%20need%20to%20create%20a%20Distributed%20table%20for%20every%20diagnostic%20query.%204.%20%2A%2AProfiles%20%2B%20quotas%20are%20CH%27s%20RBAC%20v0.%2A%2A%20Roles%20%2B%20grants%20are%20the%20modern%20way%3B%20XML%20profiles%20are%20the%20bootstrap.%205.%20%2A%2APrometheus%20is%20one%20config%20block%20away.%2A%2A%20Same%20metrics%20format%20every%20monitoring%20tool%20in%20the%20world%20speaks.%206.%20%2A%2ATLS%20in%20production%2A%2A%20isn%27t%20op...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="11-talking-points-for-the-live-session">11. Talking points for the live session</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Cluster Deployment&quot;. I want to deeply understand the section: &quot;Talking points for the live session&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+1. **There&#x27;s no &quot;primary&quot; CH node.** Pick any healthy replica as the initiator for ON CLUSTER DDL. They all have the same view. 2. **`system.distributed_ddl_queue` is your audit log.** Show it before and after a `CREATE TABLE ON CLUSTER`. 3. **`cluster()` is for one-shot fan-outs.** No need to create a Distributed table for every diagnostic query. 4. **Profiles + quotas are CH&#x27;s RBAC v0.** Roles + grants are the modern way; XML profiles are the bootstrap. 5. **Prometheus is one config block away.** Same metrics format every monitoring tool in the world speaks. 6. **TLS in production** isn&#x27;t op...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <ol>
 <li><strong>There's no "primary" CH node.</strong> Pick any healthy replica as the
    initiator for ON CLUSTER DDL. They all have the same view.</li>
@@ -1947,7 +2346,40 @@ ORDER BY query_duration_ms DESC LIMIT 20;
    generate dev certs in 60 s with <code>mkcert</code>.</li>
 </ol>
 <hr />
-<h2 id="12-going-deeper">12. Going deeper<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Cluster%20Deployment%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Going%20deeper%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A-%20%2A%2AModule%206%2A%2A%20%E2%80%94%20query%20optimisation%20against%20this%20cluster%27s%20workload.%20-%20%2A%2AModule%207%2A%2A%20%E2%80%94%20coordinated%20%60BACKUP%20TABLE%20%E2%80%A6%20ON%20CLUSTER%60.%20-%20%2A%2AModule%208%2A%2A%20%E2%80%94%20what%20happens%20when%20this%20cluster%20catches%20fire.%20-%20ClickHouse%20docs%3A%20%3Chttps%3A%2F%2Fclickhouse.com%2Fdocs%2Fen%2Foperations%2Faccess-rights%3E%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="12-going-deeper">12. Going deeper</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Cluster Deployment&quot;. I want to deeply understand the section: &quot;Going deeper&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+- **Module 6** — query optimisation against this cluster&#x27;s workload. - **Module 7** — coordinated `BACKUP TABLE … ON CLUSTER`. - **Module 8** — what happens when this cluster catches fire. - ClickHouse docs: &lt;https://clickhouse.com/docs/en/operations/access-rights&gt;
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <ul>
 <li><strong>Module 6</strong> — query optimisation against this cluster's workload.</li>
 <li><strong>Module 7</strong> — coordinated <code>BACKUP TABLE … ON CLUSTER</code>.</li>

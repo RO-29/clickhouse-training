@@ -195,14 +195,14 @@ def _normalize_lang(lang: str) -> str:
     return _LANG_MAP.get(lang.lower().strip(), "plain text")
 
 
-def md_to_blocks(md: str, ai_link_for_h2 = None) -> list[dict]:
+def md_to_blocks(md: str, ai_prompt_for_h2 = None) -> list[dict]:
     """Convert a markdown document to a list of Notion blocks.
 
-    If ``ai_link_for_h2`` is provided, it's called as ``ai_link_for_h2(title,
-    excerpt)`` for every heading_2 we emit and should return a URL — a
-    callout block with a link is inserted right after the heading.
-    The excerpt is the joined-up paragraph text following the heading
-    (capped at 600 chars).
+    If ``ai_prompt_for_h2`` is provided, it's called as
+    ``ai_prompt_for_h2(title, excerpt)`` for every heading_2 we emit
+    and should return a string prompt — a Notion **toggle** block is
+    inserted right after the heading, expanding to a code block with
+    the prompt (so users can copy-paste into any LLM chat).
     """
     lines = md.splitlines()
     out: list[dict] = []
@@ -252,7 +252,7 @@ def md_to_blocks(md: str, ai_link_for_h2 = None) -> list[dict]:
             i += 1
             # If this is an h2 and the caller wants AI links, peek ahead to
             # collect a 600-char excerpt (skipping fenced code, blanks, comments).
-            if level == 2 and ai_link_for_h2:
+            if level == 2 and ai_prompt_for_h2:
                 excerpt_buf, budget, j = [], 600, i
                 in_code = False
                 while j < n and budget > 0:
@@ -265,21 +265,22 @@ def md_to_blocks(md: str, ai_link_for_h2 = None) -> list[dict]:
                         j += 1; continue
                     excerpt_buf.append(ll); budget -= len(ll) + 1; j += 1
                 excerpt = " ".join(excerpt_buf)[:600]
-                # Strip emoji/numbering for cleaner prompt title
                 normalised = re.sub(r"^[0-9.\s]+", "", title).strip()
-                url = ai_link_for_h2(normalised or title, excerpt)
-                if url:
+                prompt = ai_prompt_for_h2(normalised or title, excerpt)
+                if prompt:
+                    # Notion toggle block with the prompt as a child code block.
+                    # Toggle's `children` are inline only on creation; that's fine here.
+                    code_children = code_block(prompt, "plain text")
                     out.append({
                         "object": "block",
-                        "type": "callout",
-                        "callout": {
-                            "icon": {"type": "emoji", "emoji": "💬"},
-                            "color": "blue_background",
+                        "type": "toggle",
+                        "toggle": {
                             "rich_text": [
-                                _rt_text("Discuss with AI: ", italic=True),
-                                _rt_text("open in chat", link=url),
-                                _rt_text("  (a context-rich prompt is pre-filled)", italic=True),
+                                _rt_text("💬 Discuss with AI", bold=True),
+                                _rt_text("  — click to expand the prompt; copy and paste into ChatGPT / Claude / Gemini.", italic=True),
                             ],
+                            "color": "blue_background",
+                            "children": code_children,
                         },
                     })
             continue

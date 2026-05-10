@@ -1156,6 +1156,19 @@ SETTINGS
 
 
 
+
+
+
+</div>
+
+
+</div>
+
+
+</div>
+
+
+
 <style>
 .handsOn {
   margin: 24px auto; max-width: 1200px; padding: 0 20px;
@@ -1215,24 +1228,50 @@ SETTINGS
 }
 .handsOn-card a { color: #1a4480; }
 
-.ai-discuss-btn {
-  display: inline-block;
-  margin-left: 12px;
-  padding: 4px 12px;
-  font-size: 0.72em;
-  font-weight: 600;
-  background: #e0f2fe;
-  color: #075985 !important;
-  text-decoration: none !important;
+.ai-discuss {
+  margin: 12px 0 18px 0;
   border: 1px solid #7dd3fc;
-  border-radius: 999px;
-  vertical-align: middle;
-  white-space: nowrap;
-  transition: background 0.15s, transform 0.15s;
+  background: #f0f9ff;
+  border-radius: 8px;
+  font-size: 0.95em;
 }
-.ai-discuss-btn:hover {
-  background: #bae6fd;
-  transform: translateY(-1px);
+.ai-discuss summary {
+  cursor: pointer;
+  padding: 8px 14px;
+  font-weight: 600;
+  color: #075985;
+  user-select: none;
+  list-style: none;
+}
+.ai-discuss summary::before { content: "▶ "; font-size: 0.8em; }
+.ai-discuss[open] summary::before { content: "▼ "; }
+.ai-discuss summary::-webkit-details-marker { display: none; }
+.ai-discuss-body {
+  padding: 4px 14px 14px 14px;
+  border-top: 1px solid #bae6fd;
+  background: #ffffff;
+}
+.ai-discuss-toolbar {
+  display: flex; align-items: center; gap: 14px;
+  margin: 10px 0;
+}
+.ai-discuss-copy {
+  background: #0f172a; color: #f1f5f9;
+  border: none; border-radius: 6px;
+  padding: 6px 14px; font-size: 0.9em;
+  cursor: pointer;
+}
+.ai-discuss-copy:hover { background: #1e293b; }
+.ai-discuss-hint { color: #475569; font-size: 0.85em; font-style: italic; }
+.ai-discuss pre {
+  background: #0f172a; color: #f1f5f9;
+  padding: 14px 16px; border-radius: 8px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.88em;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.55;
+  margin: 0;
 }
 
 .handsOn-source-tag {
@@ -1420,7 +1459,40 @@ min hands-on with measurable timings on 60M rows.</p>
 <li>Build a Materialized View that pre-aggregates at write time.</li>
 </ul>
 <hr />
-<h2 id="1-the-query-lifecycle">1. The query lifecycle<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Query%20Optimization%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22The%20query%20lifecycle%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0AWhat%20you%20actually%20tune%20at%20each%20step%3A%20%7C%20Stage%20%20%20%20%20%20%20%20%20%20%7C%20Knobs%20you%20control%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20Reader%20%20%20%20%20%20%20%20%20%7C%20%60ORDER%20BY%60%2C%20%60PARTITION%20BY%60%2C%20projections%2C%20skip-indexes%2C%20%60PREWHERE%60%2C%20%60SAMPLE%60%20%20%20%20%20%20%20%20%20%7C%20%7C%20Optimizer%20%20%20%20%20%20%7C%20settings%20%28%60optimize_read_in_order%60%2C%20%60optimize_use_projections%60%2C%20JIT%2C%20%60compile_aggregate_expressions%60%29%20%7C%20%7C%20Pipeline%20%20%20%20%20%20%20%7C%20%60max_threads%60%2C%20%60max_memory_usage%60%2C%20parallel%20replicas%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20Result%20%20%20%20%20%20%20%20%20%7C%20%60max_block_size%60%2C%20format%20choice%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="1-the-query-lifecycle">1. The query lifecycle</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Query Optimization&quot;. I want to deeply understand the section: &quot;The query lifecycle&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+What you actually tune at each step: | Stage          | Knobs you control                                                                  | | Reader         | `ORDER BY`, `PARTITION BY`, projections, skip-indexes, `PREWHERE`, `SAMPLE`         | | Optimizer      | settings (`optimize_read_in_order`, `optimize_use_projections`, JIT, `compile_aggregate_expressions`) | | Pipeline       | `max_threads`, `max_memory_usage`, parallel replicas                                | | Result         | `max_block_size`, format choice                                                     |
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <!-- mermaid rendered as SVG above -->
 
 <p>What you actually tune at each step:</p>
@@ -1451,7 +1523,40 @@ min hands-on with measurable timings on 60M rows.</p>
 </tbody>
 </table>
 <hr />
-<h2 id="2-the-first-thing-to-check-did-the-engine-read-what-you-think-it-did">2. The first thing to check: did the engine read what you think it did?<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Query%20Optimization%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22The%20first%20thing%20to%20check%3A%20did%20the%20engine%20read%20what%20you%20think%20it%20did%3F%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A%2A%2A%60read_rows%60%20is%20the%20truth.%2A%2A%20If%20your%20%60WHERE%60%20filter%20looks%20selective%20but%20%60read_rows%20%E2%89%88%20total%20table%20size%60%2C%20the%20index%20didn%27t%20help.%20%60SYSTEM%20FLUSH%20LOGS%3B%60%20first%20if%20the%20table%20is%20empty%20%E2%80%94%20%60query_log%60%20is%20flushed%20periodically%20%28~7.5%20s%20default%29%2C%20not%20synchronously.%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="2-the-first-thing-to-check-did-the-engine-read-what-you-think-it-did">2. The first thing to check: did the engine read what you think it did?</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Query Optimization&quot;. I want to deeply understand the section: &quot;The first thing to check: did the engine read what you think it did?&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+**`read_rows` is the truth.** If your `WHERE` filter looks selective but `read_rows ≈ total table size`, the index didn&#x27;t help. `SYSTEM FLUSH LOGS;` first if the table is empty — `query_log` is flushed periodically (~7.5 s default), not synchronously.
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <pre><code class="language-sql">SELECT
     query_duration_ms,
     read_rows,
@@ -1468,7 +1573,40 @@ ORDER BY event_time DESC LIMIT 10;
 <p><code>SYSTEM FLUSH LOGS;</code> first if the table is empty — <code>query_log</code> is
 flushed periodically (~7.5 s default), not synchronously.</p>
 <hr />
-<h2 id="3-order-by-shape-where-almost-every-win-comes-from">3. ORDER BY shape — where almost every win comes from<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Query%20Optimization%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22ORDER%20BY%20shape%20%E2%80%94%20where%20almost%20every%20win%20comes%20from%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0AThe%20same%2020M%20rows%2C%20three%20table%20layouts%20%28this%20is%20what%20the%20demo%20tests%29%3A%20%7C%20Layout%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Filter%20%60WHERE%20event_time%20BETWEEN%20%27a%27%20AND%20%27b%27%60%20%20%20%20%7C%20Filter%20%60WHERE%20country%20%3D%20%27US%27%60%20%7C%20%7C%20%60ORDER%20BY%20%28event_type%2C%20country%29%60%20%20%20%20%20%20%20%20%20%20%7C%20full%20scan%20%28no%20time%20prefix%20in%20PK%29%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20partial%20via%20secondary%20scan%20%20%20%20%7C%20%7C%20%60ORDER%20BY%20%28event_time%2C%20user_id%29%60%20%20%20%20%20%20%20%20%20%20%7C%20granule%20pruning%20%E2%86%92%20reads%20~1%2F30th%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20full%20scan%2C%20scans%20by%20date%20%20%20%20%20%20%7C%20%7C%20%60ORDER%20BY%20%28event_time%2C%20user_id%29%60%20%2B%20projection%20on%20%60%28country%2C%20day%29%60%20%7C%20granule%20pruning%20%20%20%20%20%20%20%20%20%20%20%20%7C%20reads%20from%20projection%20%28tiny%29%20%20%7C%20%23%23%23%20How%20to%20c...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="3-order-by-shape-where-almost-every-win-comes-from">3. ORDER BY shape — where almost every win comes from</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Query Optimization&quot;. I want to deeply understand the section: &quot;ORDER BY shape — where almost every win comes from&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+The same 20M rows, three table layouts (this is what the demo tests): | Layout                                    | Filter `WHERE event_time BETWEEN &#x27;a&#x27; AND &#x27;b&#x27;`    | Filter `WHERE country = &#x27;US&#x27;` | | `ORDER BY (event_type, country)`          | full scan (no time prefix in PK)                 | partial via secondary scan    | | `ORDER BY (event_time, user_id)`          | granule pruning → reads ~1/30th                  | full scan, scans by date      | | `ORDER BY (event_time, user_id)` + projection on `(country, day)` | granule pruning            | reads from projection (tiny)  | ### How to c...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <p>The same 20M rows, three table layouts (this is what the demo tests):</p>
 <table>
 <thead>
@@ -1508,7 +1646,40 @@ flushed periodically (~7.5 s default), not synchronously.</p>
    adjacent rows in time across the file.</li>
 </ol>
 <hr />
-<h2 id="4-projections-second-copies-optimised-for-a-different-shape">4. Projections — second copies optimised for a different shape<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Query%20Optimization%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Projections%20%E2%80%94%20second%20copies%20optimised%20for%20a%20different%20shape%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0AProjections%20are%20%2Amanaged-by-the-engine%2A%20materialised%20aggregations%20%2F%20sort%20orders%20that%20live%20alongside%20the%20main%20part.%20What%20happens%3A%20-%20Every%20part%20now%20also%20stores%20a%20projection%20part%20%28a%20tiny%20aggregated%20sub-table%29.%20-%20A%20query%20of%20the%20right%20shape%20reads%20from%20the%20projection%2C%20not%20the%20base%20table.%20-%20Triggered%20automatically%20when%20%60optimize_use_projections%20%3D%201%60%20%28default%29%20%2Aand%2A%20the%20query%20matches.%20%7C%20Win%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Cost%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20Aggregation%20queries%2010%E2%80%93100%C3%97%20faster%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Projection%20storage%20%E2%89%88%20size%20of%20the%20aggregate%20result%20%C3%97%20nu...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="4-projections-second-copies-optimised-for-a-different-shape">4. Projections — second copies optimised for a different shape</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Query Optimization&quot;. I want to deeply understand the section: &quot;Projections — second copies optimised for a different shape&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+Projections are *managed-by-the-engine* materialised aggregations / sort orders that live alongside the main part. What happens: - Every part now also stores a projection part (a tiny aggregated sub-table). - A query of the right shape reads from the projection, not the base table. - Triggered automatically when `optimize_use_projections = 1` (default) *and* the query matches. | Win                                                          | Cost                              | | Aggregation queries 10–100× faster                           | Projection storage ≈ size of the aggregate result × nu...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <p>Projections are <em>managed-by-the-engine</em> materialised aggregations / sort
 orders that live alongside the main part.</p>
 <pre><code class="language-sql">CREATE TABLE events_proj (
@@ -1563,7 +1734,40 @@ GROUP BY country, day;
 </tbody>
 </table>
 <hr />
-<h2 id="5-skip-indexes-granule-pruning-for-the-second-column">5. Skip indexes — granule pruning for the second column<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Query%20Optimization%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Skip%20indexes%20%E2%80%94%20granule%20pruning%20for%20the%20second%20column%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0ASkip%20indexes%20prune%20%2A%2Agranules%2A%2A%2C%20not%20rows.%20A%20skip%20index%20on%20column%20X%20is%20useful%20when%20X%20%2Aisn%27t%2A%20in%20the%20PK%20prefix%20but%20you%20filter%20on%20it.%20%7C%20Type%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Stores%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Best%20for%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60minmax%60%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20min%2C%20max%20per%20N%20granules%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Range%20filters%20on%20numeric%2Fdate%20columns%20%20%20%20%20%7C%20%7C%20%60set%28K%29%60%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20up%20to%20K%20distinct%20values%20per%20N%20granules%20%7C%20%60IN%60%20%2F%20%60%3D%60%20on%20low-cardinality%20columns%20%20%7C%20%7C%20%60bloom_filter%60%20%20%20%20%20%20%20%20%20%20%7C%20bloom%20filter%20per%20N%20granules%20%20%20%20%20%20%20%20%20%7C%20High-cardinality%20%60%3D%60%20filters%20%28like%20%60user_id%60%29%20%7C%20%7C%20%60tokenbf_v1%28L%2C%20K%2C%20S%29%60...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="5-skip-indexes-granule-pruning-for-the-second-column">5. Skip indexes — granule pruning for the second column</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Query Optimization&quot;. I want to deeply understand the section: &quot;Skip indexes — granule pruning for the second column&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+Skip indexes prune **granules**, not rows. A skip index on column X is useful when X *isn&#x27;t* in the PK prefix but you filter on it. | Type                    | Stores                              | Best for                                  | | `minmax`                | min, max per N granules             | Range filters on numeric/date columns     | | `set(K)`                | up to K distinct values per N granules | `IN` / `=` on low-cardinality columns  | | `bloom_filter`          | bloom filter per N granules         | High-cardinality `=` filters (like `user_id`) | | `tokenbf_v1(L, K, S)`...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <p>Skip indexes prune <strong>granules</strong>, not rows. A skip index on column X is
 useful when X <em>isn't</em> in the PK prefix but you filter on it.</p>
 <table>
@@ -1623,7 +1827,40 @@ prune (false positives in bloom filters → still read the granule). If
 your queries don't filter on the indexed column, the index is dead weight
 on writes — drop it.</p>
 <hr />
-<h2 id="6-prewhere-read-less">6. PREWHERE — read less<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Query%20Optimization%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22PREWHERE%20%E2%80%94%20read%20less%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0ACH%20automatically%20rewrites%20cheap%20predicates%20into%20%60PREWHERE%60%2C%20which%20reads%20the%20predicate%20columns%20first%2C%20prunes%20granules%2C%20and%20only%20then%20reads%20the%20remaining%20columns.%20You%27d%20write%20%60PREWHERE%60%20explicitly%20when%3A%20-%20The%20optimiser%20picks%20the%20wrong%20predicate%20to%20push%20down%20%28rare%20on%20modern%20CH%29.%20-%20You%20want%20to%20%2Aguarantee%2A%20the%20order%3A%20cheap%20filter%20first%2C%20expensive%20later.%20%60EXPLAIN%20SYNTAX%60%20shows%20what%20the%20optimiser%20actually%20did%3A%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="6-prewhere-read-less">6. PREWHERE — read less</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Query Optimization&quot;. I want to deeply understand the section: &quot;PREWHERE — read less&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+CH automatically rewrites cheap predicates into `PREWHERE`, which reads the predicate columns first, prunes granules, and only then reads the remaining columns. You&#x27;d write `PREWHERE` explicitly when: - The optimiser picks the wrong predicate to push down (rare on modern CH). - You want to *guarantee* the order: cheap filter first, expensive later. `EXPLAIN SYNTAX` shows what the optimiser actually did:
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <p>CH automatically rewrites cheap predicates into <code>PREWHERE</code>, which reads
 the predicate columns first, prunes granules, and only then reads the
 remaining columns.</p>
@@ -1641,7 +1878,40 @@ SELECT count() FROM events PREWHERE country = 'US' WHERE amount &gt; 100;
 SELECT count() FROM events WHERE country = 'US' AND amount &gt; 100;
 </code></pre>
 <hr />
-<h2 id="7-sample-orders-of-magnitude-faster-with-caveats">7. SAMPLE — orders-of-magnitude faster, with caveats<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Query%20Optimization%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22SAMPLE%20%E2%80%94%20orders-of-magnitude%20faster%2C%20with%20caveats%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A%60SAMPLE%60%20reads%20a%20%2Aconsistent%20fraction%2A%20of%20rows.%20Requires%20%60SAMPLE%20BY%60%20in%20the%20table%20definition.%20%7C%20Use%20SAMPLE%20for%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Don%27t%20use%20SAMPLE%20for%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20Real-time%20dashboards%20over%20fresh%20data%20%7C%20Exact-count%20metrics%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60quantile%60%2C%20%60avg%60%2C%20%60count%60%20approximations%20%7C%20Reports%20auditors%20will%20scrutinise%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20Iterative%20exploration%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Joins%20%28sampling%20on%20both%20sides%20is%20hard%20to%20reason%20about%29%20%20%20%20%20%7C%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="7-sample-orders-of-magnitude-faster-with-caveats">7. SAMPLE — orders-of-magnitude faster, with caveats</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Query Optimization&quot;. I want to deeply understand the section: &quot;SAMPLE — orders-of-magnitude faster, with caveats&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+`SAMPLE` reads a *consistent fraction* of rows. Requires `SAMPLE BY` in the table definition. | Use SAMPLE for                     | Don&#x27;t use SAMPLE for                                       | | Real-time dashboards over fresh data | Exact-count metrics                                       | | `quantile`, `avg`, `count` approximations | Reports auditors will scrutinise                      | | Iterative exploration              | Joins (sampling on both sides is hard to reason about)     |
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <p><code>SAMPLE</code> reads a <em>consistent fraction</em> of rows. Requires <code>SAMPLE BY</code> in
 the table definition.</p>
 <pre><code class="language-sql">CREATE TABLE events_sampled (
@@ -1677,7 +1947,40 @@ SELECT count() * 10, avg(amount) FROM events_sampled SAMPLE 0.1;
 </tbody>
 </table>
 <hr />
-<h2 id="8-join-strategies">8. JOIN strategies<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Query%20Optimization%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22JOIN%20strategies%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0ACH%20joins%20are%20%2Agenerally%2A%20slower%20than%20its%20scans.%20Pick%20wisely.%20%7C%20Join%20type%20%20%20%20%20%20%20%20%20%7C%20Right-side%20cardinality%20%7C%20Left-side%20cardinality%20%7C%20Behaviour%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60INNER%20JOIN%60%20%20%20%20%20%20%7C%20small%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20any%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Hash-build%20right%2C%20stream%20left.%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60LEFT%2FRIGHT%20JOIN%60%20%7C%20small%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20any%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Same%3B%20null-fill%20non-matches.%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60ANY%20LEFT%20JOIN%60%20%20%20%7C%20any%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20any%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20First%20match%20per%20left%20row.%20Faster%20than%20ALL.%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60ALL%20LEFT%20JOIN%60%20%20%20%7C%20any...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="8-join-strategies">8. JOIN strategies</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Query Optimization&quot;. I want to deeply understand the section: &quot;JOIN strategies&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+CH joins are *generally* slower than its scans. Pick wisely. | Join type         | Right-side cardinality | Left-side cardinality | Behaviour                                          | | `INNER JOIN`      | small                  | any                   | Hash-build right, stream left.                     | | `LEFT/RIGHT JOIN` | small                  | any                   | Same; null-fill non-matches.                       | | `ANY LEFT JOIN`   | any                    | any                   | First match per left row. Faster than ALL.         | | `ALL LEFT JOIN`   | any...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <p>CH joins are <em>generally</em> slower than its scans. Pick wisely.</p>
 <table>
 <thead>
@@ -1794,7 +2097,40 @@ FROM events_good;
 </tbody>
 </table>
 <hr />
-<h2 id="9-materialized-views-for-query-optimisation">9. Materialized Views for query optimisation<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Query%20Optimization%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Materialized%20Views%20for%20query%20optimisation%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0AA%20MV%20pre-computes%20aggregates%20%2A%2Aat%20INSERT%20time%2A%2A.%20Read%20latency%20is%20then%20a%20function%20of%20the%20MV%27s%20row%20count%2C%20not%20the%20source%27s.%20Reads%20from%20%60country_daily%60%20are%20millions%20of%20times%20smaller%20than%20from%20%60events_good%60.%20Module%202%20covers%20MV%20semantics%20in%20depth.%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="9-materialized-views-for-query-optimisation">9. Materialized Views for query optimisation</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Query Optimization&quot;. I want to deeply understand the section: &quot;Materialized Views for query optimisation&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+A MV pre-computes aggregates **at INSERT time**. Read latency is then a function of the MV&#x27;s row count, not the source&#x27;s. Reads from `country_daily` are millions of times smaller than from `events_good`. Module 2 covers MV semantics in depth.
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <p>A MV pre-computes aggregates <strong>at INSERT time</strong>. Read latency is then a
 function of the MV's row count, not the source's.</p>
 <pre><code class="language-sql">CREATE TABLE country_daily (
@@ -1816,7 +2152,40 @@ FROM events_good GROUP BY toDate(event_time), country;
 <p>Reads from <code>country_daily</code> are millions of times smaller than from
 <code>events_good</code>. Module 2 covers MV semantics in depth.</p>
 <hr />
-<h2 id="10-the-explain-family">10. The <code>EXPLAIN</code> family<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Query%20Optimization%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22The%20EXPLAIN%20family%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A%28no%20excerpt%20%E2%80%94%20section%20heading%20was%20%22The%20EXPLAIN%20family%22%29%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="10-the-explain-family">10. The <code>EXPLAIN</code> family</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Query Optimization&quot;. I want to deeply understand the section: &quot;The EXPLAIN family&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+(no excerpt — section heading was &quot;The EXPLAIN family&quot;)
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <table>
 <thead>
 <tr>
@@ -1868,7 +2237,40 @@ SELECT count() FROM events_proj WHERE user_id = 12345;
 -- Looks for: &quot;Skip index: idx_user (bloom_filter)&quot;
 </code></pre>
 <hr />
-<h2 id="11-the-hands-on-demo">11. The hands-on demo<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Query%20Optimization%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22The%20hands-on%20demo%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A%23%23%23%20What%20you%20get%20%23%23%23%20Three%20layouts%20of%20the%20same%2020M%20rows%20%23%23%23%20Execution%20flow%20%E2%80%94%20what%20runs%2C%20in%20order%20%7C%20%23%20%20%7C%20Step%20%20%20%20%20%20%20%20%20%20%7C%20What%20happens%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%200%20%20%7C%20self-bootstrap%20%7C%20If%20%60m6-clickhouse%60%20isn%27t%20healthy%2C%20%60up.sh%60%20brings%20it%20up.%20The%20container%20is%20given%20a%206%20GB%20memory%20limit%20because%20the%20dataset%20is%20large.%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%201%20%20%7C%20%60setup.sql%60...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="11-the-hands-on-demo">11. The hands-on demo</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Query Optimization&quot;. I want to deeply understand the section: &quot;The hands-on demo&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+### What you get ### Three layouts of the same 20M rows ### Execution flow — what runs, in order | #  | Step          | What happens                                                                                                                                                                                                            | | 0  | self-bootstrap | If `m6-clickhouse` isn&#x27;t healthy, `up.sh` brings it up. The container is given a 6 GB memory limit because the dataset is large.                                                                                       | | 1  | `setup.sql`...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <h3 id="what-you-get">What you get</h3>
 <pre><code>docker-compose.yml          m6-clickhouse · 6 GB memory
 configs/clickhouse-config.xml
@@ -1949,7 +2351,40 @@ M-series MacBook the demo typically prints:</p>
 </tbody>
 </table>
 <hr />
-<h2 id="12-settings-worth-knowing-for-query-work">12. Settings worth knowing for query work<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Query%20Optimization%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Settings%20worth%20knowing%20for%20query%20work%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A%7C%20Setting%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Default%20%7C%20Effect%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60max_threads%60%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20cores%20%20%7C%20Per-query%20parallelism.%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60max_memory_usage%60%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%2010%20GB%20%20%7C%20Per-query%20memory%20cap.%20Aggregations%20OOM%20here.%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60max_bytes_before_external_group_by%60%20%20%20%7C%200%20%20%20%20%20%20%7C%20If%20%3E%200%2C%20spill%20GROUP%20BY%20to%20disk%20above%20this%20size.%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60optimize_read_in_order%60%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%201%20%20%20%20%20%20%7C%20Skip%20sort%20if%20PK%20already%20orders%20the%20data....%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="12-settings-worth-knowing-for-query-work">12. Settings worth knowing for query work</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Query Optimization&quot;. I want to deeply understand the section: &quot;Settings worth knowing for query work&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+| Setting                                | Default | Effect                                                              | | `max_threads`                          | cores  | Per-query parallelism.                                              | | `max_memory_usage`                     | 10 GB  | Per-query memory cap. Aggregations OOM here.                        | | `max_bytes_before_external_group_by`   | 0      | If &gt; 0, spill GROUP BY to disk above this size.                     | | `optimize_read_in_order`               | 1      | Skip sort if PK already orders the data....
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <table>
 <thead>
 <tr>
@@ -2007,7 +2442,40 @@ M-series MacBook the demo typically prints:</p>
 </tbody>
 </table>
 <hr />
-<h2 id="13-common-pitfalls">13. Common pitfalls<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Query%20Optimization%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Common%20pitfalls%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A%7C%20Symptom%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Cause%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Fix%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60WHERE%20date_col%20%3D%20%272026-05-01%27%60%20reads%20everything%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%60date_col%60%20not%20in%20PK%20prefix%3B%20or%20filter%20on%20%60toDate%28date_col%29%60%20while%20PK%20is%20%60DateTime%60.%20%7C%20Match%20the%20type%2Fexpression%20exactly.%20Use%20a%20function-index%20or%20partition%20key.%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20Projection%20isn%27t%20picked%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Que...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="13-common-pitfalls">13. Common pitfalls</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Query Optimization&quot;. I want to deeply understand the section: &quot;Common pitfalls&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+| Symptom                                                                | Cause                                                                                | Fix                                                                                              | | `WHERE date_col = &#x27;2026-05-01&#x27;` reads everything                       | `date_col` not in PK prefix; or filter on `toDate(date_col)` while PK is `DateTime`. | Match the type/expression exactly. Use a function-index or partition key.                        | | Projection isn&#x27;t picked                                                | Que...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <table>
 <thead>
 <tr>
@@ -2055,7 +2523,40 @@ M-series MacBook the demo typically prints:</p>
 </tbody>
 </table>
 <hr />
-<h2 id="14-talking-points-for-the-live-session">14. Talking points for the live session<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Query%20Optimization%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Talking%20points%20for%20the%20live%20session%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A1.%20%2A%2A%60read_rows%60%20is%20your%20X-ray%20machine.%2A%2A%20Show%20before%2Fafter%20on%20the%20same%20query.%202.%20%2A%2A%60ORDER%20BY%60%20is%20the%20highest-leverage%20knob.%2A%2A%20Run%20Q1%20on%20the%20%60BAD%60%20and%20%60GOOD%60%20tables%20side-by-side%20and%20watch%20the%20ratio.%203.%20%2A%2AProjections%20are%20not%20free.%2A%2A%20They%20add%20write-time%20cost%20but%20query-time%20wins%20are%2010%E2%80%93100%C3%97.%204.%20%2A%2ASkip%20indexes%20prune%20granules%2C%20not%20rows.%2A%2A%20Show%20%60idx_user%60%20on%20a%20point%20lookup%3B%20%60EXPLAIN%20indexes%20%3D%201%60%20shows%20the%20prune.%205.%20%2A%2APREWHERE%20is%20auto.%2A%2A%20%60EXPLAIN%20SYNTAX%60%20reveals%20it.%20Don%27t%20write%20it%20unless%20the%20optimiser%20picks%20wrong.%206.%20%2A%2ADictionary%20%3E%20JOIN%2A%2A%20for%20small%20dim%20tables.%20Demo%20with%20the%20500k-row%20%60users_dim%60.%207.%20%2A...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="14-talking-points-for-the-live-session">14. Talking points for the live session</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Query Optimization&quot;. I want to deeply understand the section: &quot;Talking points for the live session&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+1. **`read_rows` is your X-ray machine.** Show before/after on the same query. 2. **`ORDER BY` is the highest-leverage knob.** Run Q1 on the `BAD` and `GOOD` tables side-by-side and watch the ratio. 3. **Projections are not free.** They add write-time cost but query-time wins are 10–100×. 4. **Skip indexes prune granules, not rows.** Show `idx_user` on a point lookup; `EXPLAIN indexes = 1` shows the prune. 5. **PREWHERE is auto.** `EXPLAIN SYNTAX` reveals it. Don&#x27;t write it unless the optimiser picks wrong. 6. **Dictionary &gt; JOIN** for small dim tables. Demo with the 500k-row `users_dim`. 7. *...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <ol>
 <li><strong><code>read_rows</code> is your X-ray machine.</strong> Show before/after on the same
    query.</li>
@@ -2073,7 +2574,40 @@ M-series MacBook the demo typically prints:</p>
    it's microseconds regardless of source size.</li>
 </ol>
 <hr />
-<h2 id="15-going-deeper">15. Going deeper<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20Query%20Optimization%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Going%20deeper%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A-%20%2A%2AModule%202%2A%2A%20%E2%80%94%20Materialized%20Views%20in%20detail.%20-%20%2A%2AModule%203%2A%2A%20%E2%80%94%20distributed%20query%20plans.%20-%20%2A%2ACH%20docs%2A%2A%3A%20%3Chttps%3A%2F%2Fclickhouse.com%2Fdocs%2Fen%2Foptimize%2Fquery-optimization%3E%20-%20%2A%2AProfile-guided%20optimisation%3A%2A%2A%20load%20%60system.query_log%60%20into%20a%20separate%20table%2C%20then%20aggregate%20by%20query%20pattern%20to%20find%20your%20top%20offenders.%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="15-going-deeper">15. Going deeper</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Query Optimization&quot;. I want to deeply understand the section: &quot;Going deeper&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+- **Module 2** — Materialized Views in detail. - **Module 3** — distributed query plans. - **CH docs**: &lt;https://clickhouse.com/docs/en/optimize/query-optimization&gt; - **Profile-guided optimisation:** load `system.query_log` into a separate table, then aggregate by query pattern to find your top offenders.
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <ul>
 <li><strong>Module 2</strong> — Materialized Views in detail.</li>
 <li><strong>Module 3</strong> — distributed query plans.</li>

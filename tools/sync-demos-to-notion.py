@@ -49,7 +49,7 @@ from md_to_notion import (  # noqa: E402
     md_to_blocks, heading, paragraph, bullet, divider,
     code_block, image_external,
 )
-from ai_prompts import build_url as ai_build_url  # noqa: E402
+from ai_prompts import build_prompt as ai_build_prompt  # noqa: E402
 
 NOTION_API_KEY = os.environ.get("NOTION_API_KEY", "")
 NOTION_VERSION = "2022-06-28"
@@ -189,16 +189,15 @@ def build_parent_extension_blocks(folder: Path) -> list[dict]:
             ))
 
     # 3. Full module reference (README → native blocks, with 'Discuss with AI'
-    #    callout after every h2). Notion caps link.url at 2000 chars; we cap
-    #    the URL so the excerpt gets trimmed to fit.
+    #    expandable toggle after every h2 — the prompt is in-page, no link).
     readme = folder / "README.md"
     if readme.exists():
         blocks.append(divider())
         blocks.append(heading(2, "📚 Full module reference"))
-        ai_link = lambda title, excerpt: ai_build_url(
-            folder.name, title, excerpt, max_url_chars=1990,
+        ai_prompt = lambda title, excerpt: ai_build_prompt(
+            folder.name, title, excerpt,
         )
-        blocks.extend(md_to_blocks(readme.read_text(), ai_link_for_h2=ai_link))
+        blocks.extend(md_to_blocks(readme.read_text(), ai_prompt_for_h2=ai_prompt))
 
     # 4. Pointer to the docker-demo child page
     blocks.append(divider())

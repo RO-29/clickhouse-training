@@ -1448,6 +1448,19 @@ SELECT COUNT(*) as total_events FROM events_distributed;</code></pre><div class=
 
 
 
+
+
+
+</div>
+
+
+</div>
+
+
+</div>
+
+
+
 <style>
 .handsOn {
   margin: 24px auto; max-width: 1200px; padding: 0 20px;
@@ -1507,24 +1520,50 @@ SELECT COUNT(*) as total_events FROM events_distributed;</code></pre><div class=
 }
 .handsOn-card a { color: #1a4480; }
 
-.ai-discuss-btn {
-  display: inline-block;
-  margin-left: 12px;
-  padding: 4px 12px;
-  font-size: 0.72em;
-  font-weight: 600;
-  background: #e0f2fe;
-  color: #075985 !important;
-  text-decoration: none !important;
+.ai-discuss {
+  margin: 12px 0 18px 0;
   border: 1px solid #7dd3fc;
-  border-radius: 999px;
-  vertical-align: middle;
-  white-space: nowrap;
-  transition: background 0.15s, transform 0.15s;
+  background: #f0f9ff;
+  border-radius: 8px;
+  font-size: 0.95em;
 }
-.ai-discuss-btn:hover {
-  background: #bae6fd;
-  transform: translateY(-1px);
+.ai-discuss summary {
+  cursor: pointer;
+  padding: 8px 14px;
+  font-weight: 600;
+  color: #075985;
+  user-select: none;
+  list-style: none;
+}
+.ai-discuss summary::before { content: "▶ "; font-size: 0.8em; }
+.ai-discuss[open] summary::before { content: "▼ "; }
+.ai-discuss summary::-webkit-details-marker { display: none; }
+.ai-discuss-body {
+  padding: 4px 14px 14px 14px;
+  border-top: 1px solid #bae6fd;
+  background: #ffffff;
+}
+.ai-discuss-toolbar {
+  display: flex; align-items: center; gap: 14px;
+  margin: 10px 0;
+}
+.ai-discuss-copy {
+  background: #0f172a; color: #f1f5f9;
+  border: none; border-radius: 6px;
+  padding: 6px 14px; font-size: 0.9em;
+  cursor: pointer;
+}
+.ai-discuss-copy:hover { background: #1e293b; }
+.ai-discuss-hint { color: #475569; font-size: 0.85em; font-style: italic; }
+.ai-discuss pre {
+  background: #0f172a; color: #f1f5f9;
+  padding: 14px 16px; border-radius: 8px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.88em;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.55;
+  margin: 0;
 }
 
 .handsOn-source-tag {
@@ -1698,7 +1737,40 @@ Modules 1–2. <strong>Time:</strong> ~70 min reading + 30 min hands-on.</p>
 <li>Pick the right wire format (JSON, CSV, Avro, Protobuf).</li>
 </ul>
 <hr />
-<h2 id="1-the-mental-model">1. The mental model<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20%2B%20Kafka%20Ingestion%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22The%20mental%20model%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0AClickHouse%27s%20Kafka%20engine%20is%20a%20%2A%2Aconsumer%2A%2A%2C%20not%20a%20destination.%20Selecting%20from%20it%20consumes%20messages.%20To%20make%20ingest%20durable%20you%20put%20a%20Materialized%20View%20on%20top%20of%20it%20that%20writes%20the%20consumed%20rows%20to%20a%20real%20MergeTree.%20Three%20rules%20to%20remember%3A%201.%20%2A%2ADon%27t%20%60SELECT%20%2A%20FROM%20events_kafka%60.%2A%2A%20A%20direct%20SELECT%20consumes%20messages%20and%20throws%20them%20away.%20Use%20it%20only%20for%20diagnosis%20with%20%60LIMIT%201%60.%202.%20%2A%2AThe%20MV%20is%20the%20durability%20boundary.%2A%2A%20If%20you%20DROP%20the%20MV%20without%20replacement%2C%20the%20engine%20still%20consumes%20%E2%80%94%20your%20data%20is%20gone.%203.%20%2A%2AOne%20Kafka%20source%20can%20feed%20N%20MVs.%2A%2A%20A%20single%20read%20of%20the%20topic%20can%20power%20both%20the%20dur...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="1-the-mental-model">1. The mental model</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse + Kafka Ingestion&quot;. I want to deeply understand the section: &quot;The mental model&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+ClickHouse&#x27;s Kafka engine is a **consumer**, not a destination. Selecting from it consumes messages. To make ingest durable you put a Materialized View on top of it that writes the consumed rows to a real MergeTree. Three rules to remember: 1. **Don&#x27;t `SELECT * FROM events_kafka`.** A direct SELECT consumes messages and throws them away. Use it only for diagnosis with `LIMIT 1`. 2. **The MV is the durability boundary.** If you DROP the MV without replacement, the engine still consumes — your data is gone. 3. **One Kafka source can feed N MVs.** A single read of the topic can power both the dur...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <p>ClickHouse's Kafka engine is a <strong>consumer</strong>, not a destination. Selecting
 from it consumes messages. To make ingest durable you put a Materialized
 View on top of it that writes the consumed rows to a real MergeTree.</p>
@@ -1714,7 +1786,40 @@ View on top of it that writes the consumed rows to a real MergeTree.</p>
    power both the durable destination and any number of pre-aggregations.</li>
 </ol>
 <hr />
-<h2 id="2-the-kafka-source-table">2. The Kafka source table<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20%2B%20Kafka%20Ingestion%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22The%20Kafka%20source%20table%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0ASettings%20worth%20knowing%3A%20%7C%20Setting%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Default%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20What%20it%20controls%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60kafka_broker_list%60%20%20%20%20%20%20%20%20%20%20%20%20%7C%20required%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Comma-separated%20%60host%3Aport%60.%20Multiple%20brokers%20is%20fine.%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60kafka_topic_list%60%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20required%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Comma-separated%20topics.%20Regex%20with%20%60kafka_topic_regex%60.%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60kafka_group_name%60%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20required%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Consumer%20group%20ID.%20Multiple%20CH%20instances%20in%20the%20same%20group%20share%20partitions.%20%7C%20%7C%20%60kafka_format%60...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="2-the-kafka-source-table">2. The Kafka source table</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse + Kafka Ingestion&quot;. I want to deeply understand the section: &quot;The Kafka source table&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+Settings worth knowing: | Setting                        | Default                | What it controls                                                            | | `kafka_broker_list`            | required                | Comma-separated `host:port`. Multiple brokers is fine.                      | | `kafka_topic_list`             | required                | Comma-separated topics. Regex with `kafka_topic_regex`.                     | | `kafka_group_name`             | required                | Consumer group ID. Multiple CH instances in the same group share partitions. | | `kafka_format`...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <pre><code class="language-sql">CREATE TABLE events_kafka (
     event_time DateTime,
     user_id    UInt64,
@@ -1808,7 +1913,40 @@ SETTINGS
 &lt;/kafka&gt;
 </code></pre>
 <hr />
-<h2 id="3-the-materialized-view-glue">3. The Materialized View glue<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20%2B%20Kafka%20Ingestion%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22The%20Materialized%20View%20glue%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0AThe%20MV%20reads%20the%20Kafka%20source%20and%20writes%20to%20the%20destination.%20As%20long%20as%20the%20MV%20exists%2C%20the%20engine%20consumes.%20Drop%20it%20%28%60DROP%20TABLE%20events_mv%60%29%20and%20consumption%20stops%3B%20CH%20commits%20no%20further%20offsets.%20%23%23%23%20Multiple%20MVs%20from%20one%20source%20Both%20MVs%20run%20from%20the%20same%20Kafka%20read.%20Single%20network%2FIO%2C%20two%20writes.%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="3-the-materialized-view-glue">3. The Materialized View glue</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse + Kafka Ingestion&quot;. I want to deeply understand the section: &quot;The Materialized View glue&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+The MV reads the Kafka source and writes to the destination. As long as the MV exists, the engine consumes. Drop it (`DROP TABLE events_mv`) and consumption stops; CH commits no further offsets. ### Multiple MVs from one source Both MVs run from the same Kafka read. Single network/IO, two writes.
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <pre><code class="language-sql">CREATE TABLE events (
     event_time  DateTime,
     user_id     UInt64,
@@ -1841,7 +1979,40 @@ GROUP BY minute, event_type;
 </code></pre>
 <p>Both MVs run from the same Kafka read. Single network/IO, two writes.</p>
 <hr />
-<h2 id="4-the-end-to-end-flow">4. The end-to-end flow<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20%2B%20Kafka%20Ingestion%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22The%20end-to-end%20flow%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0AFailure%20semantics%3A%20-%20%2A%2AServer%20crash%20mid-block%2A%2A%20%E2%80%94%20uncommitted%20messages%20are%20re-consumed%20on%20restart.%20%60events%60%20may%20have%20duplicates%20if%20the%20prior%20INSERT%20partially%20succeeded%3B%20deduplicate%20in%20the%20destination%20if%20it%20matters.%20-%20%2A%2AMV%20crash%2A%2A%20%E2%80%94%20same%20as%20above%3B%20the%20MV%27s%20INSERT%20errored%2C%20so%20the%20offset%20isn%27t%20committed.%20-%20%2A%2ABad%20message%2A%2A%20%E2%80%94%20by%20default%2C%20the%20%2Awhole%20block%2A%20fails.%20Enable%20%60kafka_skip_broken_messages%60%20or%20%60kafka_handle_error_mode%20%3D%20%27stream%27%60.%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="4-the-end-to-end-flow">4. The end-to-end flow</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse + Kafka Ingestion&quot;. I want to deeply understand the section: &quot;The end-to-end flow&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+Failure semantics: - **Server crash mid-block** — uncommitted messages are re-consumed on restart. `events` may have duplicates if the prior INSERT partially succeeded; deduplicate in the destination if it matters. - **MV crash** — same as above; the MV&#x27;s INSERT errored, so the offset isn&#x27;t committed. - **Bad message** — by default, the *whole block* fails. Enable `kafka_skip_broken_messages` or `kafka_handle_error_mode = &#x27;stream&#x27;`.
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <!-- mermaid rendered as SVG above -->
 
 <p>Failure semantics:</p>
@@ -1855,7 +2026,40 @@ GROUP BY minute, event_type;
   <code>kafka_skip_broken_messages</code> or <code>kafka_handle_error_mode = 'stream'</code>.</li>
 </ul>
 <hr />
-<h2 id="5-dead-letter-queue-kafka_handle_error_mode-stream">5. Dead Letter Queue — <code>kafka_handle_error_mode = 'stream'</code><a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20%2B%20Kafka%20Ingestion%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Dead%20Letter%20Queue%20%E2%80%94%20kafka_handle_error_mode%20%3D%20%27stream%27%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A%28no%20excerpt%20%E2%80%94%20section%20heading%20was%20%22Dead%20Letter%20Queue%20%E2%80%94%20kafka_handle_error_mode%20%3D%20%27stream%27%22%29%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="5-dead-letter-queue-kafka_handle_error_mode-stream">5. Dead Letter Queue — <code>kafka_handle_error_mode = 'stream'</code></h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse + Kafka Ingestion&quot;. I want to deeply understand the section: &quot;Dead Letter Queue — kafka_handle_error_mode = &#x27;stream&#x27;&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+(no excerpt — section heading was &quot;Dead Letter Queue — kafka_handle_error_mode = &#x27;stream&#x27;&quot;)
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <p>The default mode poisons a block of <em>good</em> messages if any one of them
 fails to parse. The <code>'stream'</code> mode lets bad messages flow with two extra
 virtual columns:</p>
@@ -1944,7 +2148,40 @@ WHERE _error != '';
 <p>It lands in <code>events_dlq</code>, not in <code>events_safe</code>. Inspect, fix the
 producer, optionally re-publish from the DLQ.</p>
 <hr />
-<h2 id="6-exactly-once-via-replacingmergetree">6. Exactly-once via <code>ReplacingMergeTree</code><a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20%2B%20Kafka%20Ingestion%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Exactly-once%20via%20ReplacingMergeTree%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A%28no%20excerpt%20%E2%80%94%20section%20heading%20was%20%22Exactly-once%20via%20ReplacingMergeTree%22%29%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="6-exactly-once-via-replacingmergetree">6. Exactly-once via <code>ReplacingMergeTree</code></h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse + Kafka Ingestion&quot;. I want to deeply understand the section: &quot;Exactly-once via ReplacingMergeTree&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+(no excerpt — section heading was &quot;Exactly-once via ReplacingMergeTree&quot;)
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <p>Kafka offers at-least-once delivery. After a failover or replay, you
 might see the same message twice. To get <strong>at-most-once at the table
 level</strong>, dedupe on a stable key with <code>ReplacingMergeTree</code>:</p>
@@ -1995,7 +2232,40 @@ SELECT count() FROM events_unique FINAL;
 </tbody>
 </table>
 <hr />
-<h2 id="7-format-coverage">7. Format coverage<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20%2B%20Kafka%20Ingestion%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Format%20coverage%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A%60JSONEachRow%60%20is%20the%20demo%27s%20choice.%20CH%20supports%20many%20more%3A%20%7C%20Format%20%20%20%20%20%20%20%20%20%20%7C%20Schema%20%20%20%20%20%7C%20Notes%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60JSONEachRow%60%20%20%20%7C%20implicit%20%20%20%7C%20One%20JSON%20object%20per%20line.%20Most%20flexible%3B%20modest%20overhead.%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60JSON%60%20%20%20%20%20%20%20%20%20%20%7C%20implicit%20%20%20%7C%20Single%20big%20JSON%20blob%20with%20%60data%3A%20%5B...%5D%60.%20Less%20common%20in%20Kafka.%20%20%20%20%20%7C%20%7C%20%60CSV%60%20%2F%20%60CSVWithNames%60%20%7C%20implicit%20%28or%20header%29%20%7C%20Fast%3B%20no%20nesting.%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60TabSeparated%60%20%20%7C%20implicit%20%20%20%7C%20Even%20faster%3B%20no%20quoting%20needed.%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60Protobuf%60%20%20%20%20%20%20%7C%20requi...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="7-format-coverage">7. Format coverage</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse + Kafka Ingestion&quot;. I want to deeply understand the section: &quot;Format coverage&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+`JSONEachRow` is the demo&#x27;s choice. CH supports many more: | Format          | Schema     | Notes                                                              | | `JSONEachRow`   | implicit   | One JSON object per line. Most flexible; modest overhead.          | | `JSON`          | implicit   | Single big JSON blob with `data: [...]`. Less common in Kafka.     | | `CSV` / `CSVWithNames` | implicit (or header) | Fast; no nesting.                                       | | `TabSeparated`  | implicit   | Even faster; no quoting needed.                                    | | `Protobuf`      | requi...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <p><code>JSONEachRow</code> is the demo's choice. CH supports many more:</p>
 <table>
 <thead>
@@ -2060,7 +2330,40 @@ SETTINGS
     ...;
 </code></pre>
 <hr />
-<h2 id="8-operational-sql-cheatsheet">8. Operational SQL cheatsheet<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20%2B%20Kafka%20Ingestion%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Operational%20SQL%20cheatsheet%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A%28no%20excerpt%20%E2%80%94%20section%20heading%20was%20%22Operational%20SQL%20cheatsheet%22%29%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="8-operational-sql-cheatsheet">8. Operational SQL cheatsheet</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse + Kafka Ingestion&quot;. I want to deeply understand the section: &quot;Operational SQL cheatsheet&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+(no excerpt — section heading was &quot;Operational SQL cheatsheet&quot;)
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <pre><code class="language-sql">-- Lag and assignments
 SELECT
     database, table, consumer_id,
@@ -2093,7 +2396,40 @@ docker exec m9-kafka kafka-consumer-groups \
     --group ch_consumer --describe
 </code></pre>
 <hr />
-<h2 id="9-the-hands-on-demo">9. The hands-on demo<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20%2B%20Kafka%20Ingestion%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22The%20hands-on%20demo%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A%23%23%23%20What%20you%20get%20%23%23%23%20Container%20map%20%7C%20Service%20%20%20%20%20%7C%20Container%20%20%20%20%20%20%20%7C%20Host%20ports%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20ClickHouse%20%20%7C%20%60m9-clickhouse%60%20%7C%208123%2C%209000%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20Kafka%20%20%20%20%20%20%20%7C%20%60m9-kafka%60%20%20%20%20%20%20%7C%209092%20%28host%29%2C%2029092%20%28internal%29%20%7C%20%7C%20ZooKeeper%20%20%20%7C%20%60m9-zk%60%20%20%20%20%20%20%20%20%20%7C%20%28internal%20only%29%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20Kafka%20UI%20%20%20%20%7C%20%60m9-kafka-ui%60%20%20%20%7C%208080%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Internally%20the%20broker%20is%20%60m9-kafka%3A29092%60%20%28used%20in%20%60setup.sql%60%29.%20From%20the%20host%3A%20%60localhost%3A9092%60.%20%23%23%23%20Execution%20flow%20%E2%80%94%20what%20runs%2C%20in%20order%20%7C%20%23%20%20%7C%20Step%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20What%20happens...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="9-the-hands-on-demo">9. The hands-on demo</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse + Kafka Ingestion&quot;. I want to deeply understand the section: &quot;The hands-on demo&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+### What you get ### Container map | Service     | Container       | Host ports                    | | ClickHouse  | `m9-clickhouse` | 8123, 9000                    | | Kafka       | `m9-kafka`      | 9092 (host), 29092 (internal) | | ZooKeeper   | `m9-zk`         | (internal only)               | | Kafka UI    | `m9-kafka-ui`   | 8080                          | Internally the broker is `m9-kafka:29092` (used in `setup.sql`). From the host: `localhost:9092`. ### Execution flow — what runs, in order | #  | Step                                   | What happens...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <h3 id="what-you-get">What you get</h3>
 <pre><code>docker-compose.yml          m9-clickhouse + m9-kafka + m9-zk + m9-kafka-ui
 configs/clickhouse-config.xml
@@ -2196,7 +2532,40 @@ the host: <code>localhost:9092</code>.</p>
 <pre><code class="language-bash">ROWS=500000 ./run.sh
 </code></pre>
 <hr />
-<h2 id="10-common-pitfalls">10. Common pitfalls<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20%2B%20Kafka%20Ingestion%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Common%20pitfalls%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A%7C%20Symptom%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Cause%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Fix%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20%60SELECT%20%2A%20FROM%20events_kafka%60%20returns%20rows%20once%20and%20never%20again%20%20%20%20%20%20%20%20%20%20%20%7C%20Direct%20SELECT%20consumes%20messages.%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Don%27t.%20Use%20the%20MV.%20For%20diagnostics%3A%20%60SELECT%20%2A%20FROM%20events_kafka%20LIMIT%201%60.%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20MV%20creates%20millions%20of%20tiny%20parts%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="10-common-pitfalls">10. Common pitfalls</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse + Kafka Ingestion&quot;. I want to deeply understand the section: &quot;Common pitfalls&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+| Symptom                                                                  | Cause                                                                            | Fix                                                                                                | | `SELECT * FROM events_kafka` returns rows once and never again           | Direct SELECT consumes messages.                                                  | Don&#x27;t. Use the MV. For diagnostics: `SELECT * FROM events_kafka LIMIT 1`.                          | | MV creates millions of tiny parts                                        |...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <table>
 <thead>
 <tr>
@@ -2249,7 +2618,40 @@ the host: <code>localhost:9092</code>.</p>
 </tbody>
 </table>
 <hr />
-<h2 id="11-tuning-knobs-by-goal">11. Tuning knobs by goal<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20%2B%20Kafka%20Ingestion%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Tuning%20knobs%20by%20goal%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A%7C%20Goal%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20Knobs%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20Throughput%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%60kafka_num_consumers%60%E2%86%91%2C%20%60kafka_max_block_size%60%E2%86%91%2C%20multiple%20CH%20replicas%20in%20same%20group%20%20%20%20%20%20%20%20%20%7C%20%7C%20Latency%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%60flush_interval_ms%60%E2%86%93%2C%20%60flush_on_rows%60%E2%86%93%2C%20%60kafka_max_block_size%60%E2%86%93%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20Tolerance%20to%20bad%20messages%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%60kafka_handle_error_mode%20%3D%20%27stream%27%60%20%2B%20DLQ%20MV%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20%7C%20RPO%3D0%20%28no%20message%20loss%29%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%7C%20producer%20%60ac...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="11-tuning-knobs-by-goal">11. Tuning knobs by goal</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse + Kafka Ingestion&quot;. I want to deeply understand the section: &quot;Tuning knobs by goal&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+| Goal                                  | Knobs                                                                                       | | Throughput                            | `kafka_num_consumers`↑, `kafka_max_block_size`↑, multiple CH replicas in same group         | | Latency                               | `flush_interval_ms`↓, `flush_on_rows`↓, `kafka_max_block_size`↓                              | | Tolerance to bad messages             | `kafka_handle_error_mode = &#x27;stream&#x27;` + DLQ MV                                                | | RPO=0 (no message loss)               | producer `ac...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <table>
 <thead>
 <tr>
@@ -2281,7 +2683,40 @@ the host: <code>localhost:9092</code>.</p>
 </tbody>
 </table>
 <hr />
-<h2 id="12-talking-points-for-the-live-session">12. Talking points for the live session<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20%2B%20Kafka%20Ingestion%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Talking%20points%20for%20the%20live%20session%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A1.%20%2A%2AKafka%20engine%20is%20a%20%2Aconsumer%2A%2C%20not%20a%20destination.%2A%2A%20Demonstrate%20by%20%60SELECT%20%2A%20FROM%20events_kafka%20LIMIT%205%60%20and%20watching%20messages%20disappear.%202.%20%2A%2AMV%20is%20the%20durability%20boundary.%2A%2A%20Drop%20the%20MV%2C%20produce%20more%20messages%2C%20show%20that%20they%27re%20consumed%20and%20discarded.%203.%20%2A%2ADLQ%20in%2030%20seconds.%2A%2A%20Show%20drill%205%20%28broken%20JSON%29%20and%20the%20%60events_dlq%60%20table.%204.%20%2A%2AExactly-once%20is%20a%20property%20of%20the%20destination%2C%2A%2A%20not%20the%20source.%20%60ReplacingMergeTree%60%20is%20how%20CH%20gets%20there.%205.%20%2A%2ASchema-bound%20formats%2A%2A%20%28Protobuf%2FAvro%29%20for%20production.%20Mention%20%60format_schema_path%60%20and%20the%20AvroConfluent%20magic%20byte.%206.%20%2A%2AOperational%20ergonomic...%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="12-talking-points-for-the-live-session">12. Talking points for the live session</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse + Kafka Ingestion&quot;. I want to deeply understand the section: &quot;Talking points for the live session&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+1. **Kafka engine is a *consumer*, not a destination.** Demonstrate by `SELECT * FROM events_kafka LIMIT 5` and watching messages disappear. 2. **MV is the durability boundary.** Drop the MV, produce more messages, show that they&#x27;re consumed and discarded. 3. **DLQ in 30 seconds.** Show drill 5 (broken JSON) and the `events_dlq` table. 4. **Exactly-once is a property of the destination,** not the source. `ReplacingMergeTree` is how CH gets there. 5. **Schema-bound formats** (Protobuf/Avro) for production. Mention `format_schema_path` and the AvroConfluent magic byte. 6. **Operational ergonomic...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <ol>
 <li><strong>Kafka engine is a <em>consumer</em>, not a destination.</strong> Demonstrate by
    <code>SELECT * FROM events_kafka LIMIT 5</code> and watching messages disappear.</li>
@@ -2297,7 +2732,40 @@ the host: <code>localhost:9092</code>.</p>
    group-describe, DETACH/ATTACH MV for pause/resume.</li>
 </ol>
 <hr />
-<h2 id="13-going-deeper">13. Going deeper<a class="ai-discuss-btn" href="https://letmegptthatforyou.com/?q=I%27m%20studying%20ClickHouse%20and%20working%20through%20the%20module%20%22ClickHouse%20%2B%20Kafka%20Ingestion%22.%20I%20want%20to%20deeply%20understand%20the%20section%3A%20%22Going%20deeper%22.%0A%0AHere%20is%20a%20brief%20excerpt%20from%20the%20material%20I%27m%20reading%3A%0A%0A%22%22%22%0A-%20%2A%2AModule%202%2A%2A%20%E2%80%94%20the%20engines%20this%20module%20writes%20into.%20-%20%2A%2AModule%206%2A%2A%20%E2%80%94%20query%20optimisation%20for%20the%20high-volume%20%60events%60%20table.%20-%20ClickHouse%20docs%3A%20%3Chttps%3A%2F%2Fclickhouse.com%2Fdocs%2Fen%2Fintegrations%2Fkafka%3E%20-%20Confluent%27s%20%22Kafka%20Connect%20ClickHouse%20Sink%22%20for%20the%20%2Aopposite%2A%20direction%20%28CH%20%E2%86%92%20Kafka%29.%0A%22%22%22%0A%0APlease%20explain%20this%20concept%20in%20depth.%20Cover%3A%0A%0A1.%20%2A%2ACore%20mechanics%2A%2A%20%E2%80%94%20how%20does%20it%20actually%20work%20under%20the%20hood%3F%20What%20data%20structures%2C%20algorithms%2C%20or%20engine%20internals%20are%20involved%3F%20Where%20is%20the%20implementation%20in%20the%20ClickHouse%20source%20tree%20%28file%2Ffolder%20names%29%20if%20you%20know%3F%0A%0A2.%20%2A%2AWhen%20to%20use%20vs%20avoid%2A%2A%20%E2%80%94%20what%20concrete%20workloads%20does%20this%20help%2C%20and%20when%20would%20it%20hurt%20or%20be%20wrong%3F%20Give%20specific%20scale%2Flatency%20trade-offs.%0A%0A3.%20%2A%2AComparable%20features%20in%20other%20systems%2A%2A%20%E2%80%94%20how%20does%20this%20compare%20with%20similar%20features%20in%20PostgreSQL%2C%20MySQL%2C%20BigQuery%2C%20Snowflake%2C%20Redshift%2C%20or%20DuckDB%3F%20Build%20my%20intuition%20by%20analogy.%0A%0A4.%20%2A%2ACommon%20pitfalls%20and%20gotchas%2A%2A%20%E2%80%94%20what%20trips%20engineers%20up%20in%20production%3F%20Subtle%20bugs%2C%20performance%20traps%2C%20surprising%20semantics%3F%0A%0A5.%20%2A%2AWorked%20example%2A%2A%20%E2%80%94%20show%20me%20a%20small%20but%20realistic%20SQL%20or%20config%20example%20that%20demonstrates%20the%20concept%20end-to-end.%20Include%20the%20expected%20output%20where%20useful.%0A%0A6.%20%2A%2AWhere%20to%20read%20more%2A%2A%20%E2%80%94%20a%20short%20list%20of%20authoritative%20pointers%20%28CH%20docs%2C%20blog%20posts%2C%20talks%2C%20source-code%20files%29.%0A%0AAssume%20I%20have%20solid%20SQL%20fundamentals%20but%20I%27m%20new%20to%20ClickHouse%20internals.%20Be%20technical%20but%20pragmatic%3B%20avoid%20marketing%20language.%0A" target="_blank" rel="noopener" title="Open this section in your favourite AI chat with full context">💬 Discuss with AI</a></h2>
+<h2 id="13-going-deeper">13. Going deeper</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse + Kafka Ingestion&quot;. I want to deeply understand the section: &quot;Going deeper&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+- **Module 2** — the engines this module writes into. - **Module 6** — query optimisation for the high-volume `events` table. - ClickHouse docs: &lt;https://clickhouse.com/docs/en/integrations/kafka&gt; - Confluent&#x27;s &quot;Kafka Connect ClickHouse Sink&quot; for the *opposite* direction (CH → Kafka).
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
 <ul>
 <li><strong>Module 2</strong> — the engines this module writes into.</li>
 <li><strong>Module 6</strong> — query optimisation for the high-volume <code>events</code> table.</li>
