@@ -135,6 +135,7 @@ def archive_existing_demo_child(parent_id: str) -> int:
 
 
 _EXTERNAL_IMAGES_FILE = ROOT / "tools" / "external-images.json"
+_GISTS_FILE = ROOT / "tools" / "notion-gists.json"
 
 # Sentinel marker we put on the parent page so re-runs can find and replace
 # the auto-synced section without touching curriculum content above it.
@@ -144,6 +145,11 @@ PARENT_SENTINEL = "🤖 Auto-synced training content (do not edit below)"
 def load_external_images() -> dict:
     if not _EXTERNAL_IMAGES_FILE.exists(): return {}
     return json.loads(_EXTERNAL_IMAGES_FILE.read_text())
+
+
+def load_gists() -> dict:
+    if not _GISTS_FILE.exists(): return {}
+    return json.loads(_GISTS_FILE.read_text())
 
 
 def build_parent_extension_blocks(folder: Path) -> list[dict]:
@@ -199,14 +205,61 @@ def build_parent_extension_blocks(folder: Path) -> list[dict]:
         )
         blocks.extend(md_to_blocks(readme.read_text(), ai_prompt_for_h2=ai_prompt))
 
-    # 4. Pointer to the docker-demo child page
+    # 4. Pointer to the docker-demo child page + gist
     blocks.append(divider())
     blocks.append(paragraph(
         "🐳 The runnable Docker demo (cd / up.sh / run.sh + every SQL/Python/"
         "config file as code blocks) lives in the child sub-page below this one."
     ))
+    gist_meta = load_gists().get(folder.name)
+    if gist_meta:
+        blocks.append(_gist_callout(
+            gist_meta["url"], gist_meta["id"], len(gist_meta.get("files", [])),
+        ))
 
     return blocks
+
+
+def _ai_md_to_callout(text: str) -> dict:
+    """Build a Notion callout block carrying a small inline rich-text bit
+    with a clickable URL — used for the gist pointer."""
+    return {
+        "object": "block", "type": "callout",
+        "callout": {
+            "icon": {"type": "emoji", "emoji": "📦"},
+            "color": "blue_background",
+            "rich_text": [{"type": "text", "text": {"content": text}}],
+        },
+    }
+
+
+def _gist_callout(gist_url: str, gist_id: str, file_count: int) -> dict:
+    """Make a prominent callout block linking to the module's gist."""
+    return {
+        "object": "block", "type": "callout",
+        "callout": {
+            "icon": {"type": "emoji", "emoji": "📦"},
+            "color": "purple_background",
+            "rich_text": [
+                {"type": "text",
+                 "text": {"content": "GitHub Gist for this demo "},
+                 "annotations": {"bold": True, "italic": False, "strikethrough": False,
+                                 "underline": False, "code": False, "color": "default"}},
+                {"type": "text",
+                 "text": {"content": f"({file_count} files)", "link": None},
+                 "annotations": {"bold": False, "italic": True, "strikethrough": False,
+                                 "underline": False, "code": False, "color": "default"}},
+                {"type": "text", "text": {"content": " — "}},
+                {"type": "text",
+                 "text": {"content": gist_url, "link": {"url": gist_url}}},
+                {"type": "text",
+                 "text": {"content": "  ·  Includes README, docker-compose, run.sh, all SQL/Python and configs. Clone, fork, or copy individual files.",
+                          "link": None},
+                 "annotations": {"bold": False, "italic": True, "strikethrough": False,
+                                 "underline": False, "code": False, "color": "default"}},
+            ],
+        },
+    }
 
 
 def build_child_demo_blocks(folder: Path) -> list[dict]:
@@ -214,6 +267,13 @@ def build_child_demo_blocks(folder: Path) -> list[dict]:
     actually running the demo. README is now on the parent.
     """
     blocks: list[dict] = []
+
+    # Gist link first — most prominent placement on the child page.
+    gist_meta = load_gists().get(folder.name)
+    if gist_meta:
+        blocks.append(_gist_callout(
+            gist_meta["url"], gist_meta["id"], len(gist_meta.get("files", [])),
+        ))
 
     blocks.append(paragraph(
         f"Self-contained ClickHouse Docker stack for module folder "

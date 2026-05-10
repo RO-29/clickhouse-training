@@ -1,0 +1,170 @@
+{
+  "module-1-fundamentals": {
+    "files": [
+      "README.md",
+      "module-1-fundamentals--configs--clickhouse-config.xml",
+      "module-1-fundamentals--data.sql",
+      "module-1-fundamentals--docker-compose.yml",
+      "module-1-fundamentals--down.sh",
+      "module-1-fundamentals--extras.sql",
+      "module-1-fundamentals--queries.sql",
+      "module-1-fundamentals--run.sh",
+      "module-1-fundamentals--setup.sql",
+      "module-1-fundamentals--up.sh"
+    ],
+    "id": "2961593717f31635331d500ee615a971",
+    "url": "https://gist.github.com/RO-29/2961593717f31635331d500ee615a971"
+  },
+  "module-2-table-engines": {
+    "files": [
+      "README.md",
+      "module-2-table-engines--configs--clickhouse-config.xml",
+      "module-2-table-engines--data.sql",
+      "module-2-table-engines--docker-compose.yml",
+      "module-2-table-engines--down.sh",
+      "module-2-table-engines--extras.sql",
+      "module-2-table-engines--queries.sql",
+      "module-2-table-engines--run.sh",
+      "module-2-table-engines--setup.sql",
+      "module-2-table-engines--up.sh"
+    ],
+    "id": "d2234490d5870f17d1f8a3466a6677a2",
+    "url": "https://gist.github.com/RO-29/d2234490d5870f17d1f8a3466a6677a2"
+  },
+  "module-3-sharding": {
+    "files": [
+      "README.md",
+      "module-3-sharding--configs--cluster-node.xml",
+      "module-3-sharding--configs--macros--macros-s1r1.xml",
+      "module-3-sharding--configs--macros--macros-s1r2.xml",
+      "module-3-sharding--configs--macros--macros-s2r1.xml",
+      "module-3-sharding--configs--macros--macros-s2r2.xml",
+      "module-3-sharding--configs--macros--macros-s3r1.xml",
+      "module-3-sharding--configs--macros--macros-s3r2.xml",
+      "module-3-sharding--data.sql",
+      "module-3-sharding--docker-compose.yml",
+      "module-3-sharding--down.sh",
+      "module-3-sharding--extras.sql",
+      "module-3-sharding--queries.sql",
+      "module-3-sharding--run.sh",
+      "module-3-sharding--setup.sql",
+      "module-3-sharding--up.sh"
+    ],
+    "id": "79a335c38bd1e47a92696bf739456ad4",
+    "url": "https://gist.github.com/RO-29/79a335c38bd1e47a92696bf739456ad4"
+  },
+  "module-4-replication": {
+    "files": [
+      "README.md",
+      "module-4-replication--configs--cluster-node.xml",
+      "module-4-replication--configs--macros--macros-s1r1.xml",
+      "module-4-replication--configs--macros--macros-s1r2.xml",
+      "module-4-replication--configs--macros--macros-s2r1.xml",
+      "module-4-replication--configs--macros--macros-s2r2.xml",
+      "module-4-replication--configs--macros--macros-s3r1.xml",
+      "module-4-replication--configs--macros--macros-s3r2.xml",
+      "module-4-replication--data.sql",
+      "module-4-replication--docker-compose.yml",
+      "module-4-replication--down.sh",
+      "module-4-replication--extras.sql",
+      "module-4-replication--queries.sql",
+      "module-4-replication--run.sh",
+      "module-4-replication--setup.sql",
+      "module-4-replication--up.sh"
+    ],
+    "id": "1cce60a99244309dbca85584e8879c6b",
+    "url": "https://gist.github.com/RO-29/1cce60a99244309dbca85584e8879c6b"
+  },
+  "module-5-cluster-deploy": {
+    "files": [
+      "README.md",
+      "module-5-cluster-deploy--configs--cluster-node.xml",
+      "module-5-cluster-deploy--configs--macros--macros-s1r1.xml",
+      "module-5-cluster-deploy--configs--macros--macros-s1r2.xml",
+      "module-5-cluster-deploy--configs--macros--macros-s2r1.xml",
+      "module-5-cluster-deploy--configs--macros--macros-s2r2.xml",
+      "module-5-cluster-deploy--configs--macros--macros-s3r1.xml",
+      "module-5-cluster-deploy--configs--macros--macros-s3r2.xml",
+      "module-5-cluster-deploy--configs--prometheus.xml",
+      "module-5-cluster-deploy--configs--users.xml",
+      "module-5-cluster-deploy--data.sql",
+      "module-5-cluster-deploy--docker-compose.yml",
+      "module-5-cluster-deploy--down.sh",
+      "module-5-cluster-deploy--extras.sql",
+      "module-5-cluster-deploy--queries.sql",
+      "module-5-cluster-deploy--run.sh",
+      "module-5-cluster-deploy--setup.sql",
+      "module-5-cluster-deploy--up.sh"
+    ],
+    "id": "0efbb2faf76b413d1c3848186d49e23d",
+    "url": "https://gist.github.com/RO-29/0efbb2faf76b413d1c3848186d49e23d"
+  },
+  "module-6-query-opt": {
+    "files": [
+      "README.md",
+      "module-6-query-opt--configs--clickhouse-config.xml",
+      "module-6-query-opt--data.sql",
+      "module-6-query-opt--docker-compose.yml",
+      "module-6-query-opt--down.sh",
+      "module-6-query-opt--extras.sql",
+      "module-6-query-opt--queries.sql",
+      "module-6-query-opt--run.sh",
+      "module-6-query-opt--setup.sql",
+      "module-6-query-opt--up.sh"
+    ],
+    "id": "67a0b1ac1014efa49afcf0fec02c08ef",
+    "url": "https://gist.github.com/RO-29/67a0b1ac1014efa49afcf0fec02c08ef"
+  },
+  "module-7-backup": {
+    "files": [
+      "README.md",
+      "module-7-backup--configs--clickhouse-config.xml",
+      "module-7-backup--docker-compose.yml",
+      "module-7-backup--down.sh",
+      "module-7-backup--extras.sql",
+      "module-7-backup--queries-s3.sql",
+      "module-7-backup--queries.sql",
+      "module-7-backup--run.sh",
+      "module-7-backup--setup.sql",
+      "module-7-backup--up.sh"
+    ],
+    "id": "e28258f3fe9cfea79e4dedc46585a6c6",
+    "url": "https://gist.github.com/RO-29/e28258f3fe9cfea79e4dedc46585a6c6"
+  },
+  "module-8-dr": {
+    "files": [
+      "README.md",
+      "module-8-dr--configs--cluster-node.xml",
+      "module-8-dr--configs--macros--macros-s1r1.xml",
+      "module-8-dr--configs--macros--macros-s1r2.xml",
+      "module-8-dr--configs--macros--macros-s2r1.xml",
+      "module-8-dr--configs--macros--macros-s2r2.xml",
+      "module-8-dr--configs--macros--macros-s3r1.xml",
+      "module-8-dr--configs--macros--macros-s3r2.xml",
+      "module-8-dr--data.sql",
+      "module-8-dr--docker-compose.yml",
+      "module-8-dr--down.sh",
+      "module-8-dr--run.sh",
+      "module-8-dr--setup.sql",
+      "module-8-dr--up.sh"
+    ],
+    "id": "415146abbc3e046cd4ea0130c54fb59d",
+    "url": "https://gist.github.com/RO-29/415146abbc3e046cd4ea0130c54fb59d"
+  },
+  "module-9-kafka": {
+    "files": [
+      "README.md",
+      "module-9-kafka--configs--clickhouse-config.xml",
+      "module-9-kafka--docker-compose.yml",
+      "module-9-kafka--down.sh",
+      "module-9-kafka--extras.sql",
+      "module-9-kafka--produce.py",
+      "module-9-kafka--queries.sql",
+      "module-9-kafka--run.sh",
+      "module-9-kafka--setup.sql",
+      "module-9-kafka--up.sh"
+    ],
+    "id": "04f6968d08491f583a14f366b3c8189f",
+    "url": "https://gist.github.com/RO-29/04f6968d08491f583a14f366b3c8189f"
+  }
+}
