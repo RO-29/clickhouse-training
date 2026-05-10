@@ -1,6 +1,6 @@
 version: '3.8'
 
-# Complete Migration Stack for Module 10
+# Complete Migration Stack (legacy)
 # Purpose: Data migration from MongoDB and MySQL to ClickHouse via Kafka and Debezium
 # Services: MongoDB, MySQL, ZooKeeper, Kafka, Debezium Connect, ClickHouse
 # Usage: docker-compose -f docker-compose-migration.yml up -d

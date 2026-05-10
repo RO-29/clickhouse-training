@@ -96,42 +96,6 @@ This directory contains concise, Notion-style markdown guides covering all aspec
 
 ---
 
-### 🔟 Module 10: Migration from MongoDB/MySQL
-**File:** `module-10-migration.md`
-- Data extraction (mysqldump, SELECT INTO OUTFILE, Python)
-- Schema transformation and denormalization
-- Type mapping between databases
-- Batch loading strategies
-- MongoDB document flattening
-- Data validation and checksum verification
-- Cutover procedures and rollback strategies
-- Troubleshooting guide
-
-**Key Concepts:**
-- Schema denormalization for analytics
-- Multi-phase migration (Read-only → Incremental → Cutover)
-- Parallel extraction for large datasets
-- Delta sync during cutover window
-
----
-
-## ✨ Format Features
-
-Each guide includes:
-
-✓ **Emojis** - Visual markers for sections  
-✓ **ASCII Diagrams** - Architecture visualizations  
-✓ **Tables** - Comparison matrices and reference data  
-✓ **Code Blocks** - Practical SQL and shell examples  
-✓ **Callouts** - Important notes and warnings  
-✓ **Best Practices** - Actionable checklists  
-✓ **Quick Reference** - Common commands and troubleshooting  
-✓ **200-526 lines** - Concise, focused content  
-
----
-
-## 🎯 How to Use
-
 ### For Beginners
 - Start with Module 1 (Fundamentals)
 - Progress through Module 2-3 (Table Engines & Sharding)
@@ -144,7 +108,6 @@ Each guide includes:
 
 ### For Integration/Ingestion
 - Module 9 for Kafka streaming setup
-- Module 10 for data migrations
 
 ### For Reference
 - Use TOC and headers to jump to specific topics

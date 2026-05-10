@@ -43,7 +43,6 @@ DOCKER COMPOSE FILES (5)
 4. docker-compose-migration.yml
    - Complete migration stack
    - Services: MongoDB + MySQL + ZooKeeper + Kafka + Debezium + ClickHouse
-   - Purpose: Data migration with CDC (Module 10)
    - Resources: 12 CPU, 16GB RAM
    - Status: ✓ COMPLETE
 
@@ -209,7 +208,6 @@ Module Coverage:
   ✓ Module 7: Backup & Recovery
   ✓ Module 8: Disaster Recovery
   ✓ Module 9: Kafka Ingestion
-  ✓ Module 10: Data Migration
 
 Operational Features:
   ✓ Health checks for all services
@@ -479,7 +477,6 @@ NEXT STEPS
    - Modules 1-2: docker-compose-single.yml
    - Modules 3-8: docker-compose-cluster.yml
    - Module 9: docker-compose-kafka.yml
-   - Module 10: docker-compose-migration.yml
 
 4. Start Learning:
    - docker-compose up -d

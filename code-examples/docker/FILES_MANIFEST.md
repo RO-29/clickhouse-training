@@ -205,7 +205,6 @@ code-examples/docker/
 - Module 7: Backup & Recovery ✓
 - Module 8: Disaster Recovery ✓
 - Module 9: Kafka Ingestion ✓
-- Module 10: Data Migration ✓
 
 ### Feature Implementation
 - Networking: Custom bridge networks ✓
@@ -234,7 +233,6 @@ docker-compose -f docker-compose-cluster.yml up -d
 # Module 9: Kafka
 docker-compose -f docker-compose-kafka.yml up -d
 
-# Module 10: Migration
 docker-compose -f docker-compose-migration.yml up -d
 
 # Monitoring (any time)

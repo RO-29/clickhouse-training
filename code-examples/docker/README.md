@@ -215,7 +215,7 @@ docker-compose -f docker-compose-kafka.yml exec clickhouse-client clickhouse-cli
 
 ### 4. docker-compose-migration.yml
 
-**Purpose**: Full migration stack with MongoDB, MySQL, Debezium, Kafka, and ClickHouse (Module 10)
+**Purpose**: Full migration stack with MongoDB, MySQL, Debezium, Kafka, and ClickHouse
 
 **Services**:
 - MongoDB: Source document database
@@ -379,7 +379,7 @@ docker/
 ├── docker-compose-single.yml          # Single node configuration
 ├── docker-compose-cluster.yml         # 3-shard × 2-replica cluster
 ├── docker-compose-kafka.yml           # Kafka integration (Module 9)
-├── docker-compose-migration.yml       # Migration stack (Module 10)
+├── docker-compose-migration.yml       # Migration stack
 ├── docker-compose-monitoring.yml      # Monitoring stack
 ├── Dockerfile-custom                  # Custom ClickHouse image
 ├── README.md                          # This file
@@ -408,7 +408,7 @@ docker/
 └── init-scripts/                      # SQL initialization scripts
     ├── 00-base-setup.sql              # Base database setup
     ├── kafka-setup.sql                # Kafka tables (Module 9)
-    ├── clickhouse-migration-setup.sql # Migration tables (Module 10)
+    ├── clickhouse-migration-setup.sql # Migration tables
     ├── monitoring-setup.sql           # Monitoring tables
     ├── mongodb-setup.js               # MongoDB init
     └── mysql-setup.sql                # MySQL init

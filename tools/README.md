@@ -88,4 +88,3 @@ demo SQL and Notion stays in sync without manual cleanup.
   GitHub is the source of truth — Notion gets the runnable code instead.
 - Doesn't rate-limit aggressively. Notion's published limit is ~3 req/s;
   this script does ~5–10 req/module, well within bounds for 9 modules.
-- Module 10 (migration) has no demo and is skipped.
