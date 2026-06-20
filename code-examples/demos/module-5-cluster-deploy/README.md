@@ -345,7 +345,200 @@ clickhouse-client --secure --port 9440 \
 
 ---
 
-## 7. The hands-on demo
+## 7. Hot / warm / cold storage tiers — production sizing
+
+The demo runs every node on a single local disk (kept simple so it boots on
+a laptop), so — exactly like the TLS section — this is the **production
+sketch** you layer on top. A real cluster almost never keeps a year of data
+on the same NVMe it ingests onto: it tiers.
+
+### The mental model: disks → volumes → policy
+
+ClickHouse never moves data by table or by row — it moves **parts**, and it
+moves them down an ordered list of volumes. Four nested objects:
+
+| Object           | What it is                                                            |
+|------------------|----------------------------------------------------------------------|
+| **disk**         | one physical/logical location: local NVMe, local HDD, or S3/GCS/Azure |
+| **volume**       | an ordered group of one or more disks                                 |
+| **storage policy** | an ordered list of volumes; parts flow first → last                |
+| **TTL … TO**     | the rule that *moves* a part to a later volume once it ages          |
+
+```mermaid
+flowchart LR
+    subgraph Ingest["INSERT"]
+        I[New parts]
+    end
+    subgraph Policy["storage_policy = hot_warm_cold"]
+        H["volume <b>hot</b><br/>local NVMe<br/>last ~7d"]
+        W["volume <b>warm</b><br/>local HDD / cheap SSD<br/>~7–30d"]
+        C["volume <b>cold</b><br/>S3 / object store<br/>30d–1y"]
+    end
+    D[(DELETE)]
+    I --> H
+    H -- "TTL +7d TO VOLUME 'warm'<br/>or move_factor pressure" --> W
+    W -- "TTL +30d TO VOLUME 'cold'" --> C
+    C -- "TTL +365d DELETE" --> D
+
+    classDef hot fill:#b91c1c,stroke:#fff,color:#fff
+    classDef warm fill:#b45309,stroke:#fff,color:#fff
+    classDef cold fill:#1e3a8a,stroke:#fff,color:#fff
+    class H hot
+    class W warm
+    class C cold
+```
+
+> **Why parts, not rows:** a part is the immutable unit of MergeTree storage.
+> Moving it is a file copy — no rewrite, no re-sort. That's why TTL moves are
+> cheap relative to, say, a Postgres partition migration.
+
+### Wiring it up (config + DDL)
+
+`config.d/storage.xml` defines the disks and the policy:
+
+```xml
+<clickhouse>
+  <storage_configuration>
+    <disks>
+      <hot>  <type>local</type> <path>/mnt/nvme/clickhouse/</path> </hot>
+      <warm> <type>local</type> <path>/mnt/hdd/clickhouse/</path>  </warm>
+      <cold>
+        <type>s3</type>
+        <endpoint>https://s3.amazonaws.com/my-bucket/clickhouse/</endpoint>
+        <access_key_id>...</access_key_id>
+        <secret_access_key>...</secret_access_key>
+      </cold>
+      <!-- local read-through cache so cold (S3) reads don't always hit network -->
+      <cold_cached>
+        <type>cache</type>
+        <disk>cold</disk>
+        <path>/mnt/nvme/s3_cache/</path>
+        <max_size>100Gi</max_size>
+      </cold_cached>
+    </disks>
+
+    <policies>
+      <hot_warm_cold>
+        <volumes>
+          <hot>
+            <disk>hot</disk>
+            <max_data_part_size_bytes>10737418240</max_data_part_size_bytes>
+          </hot>
+          <warm>
+            <disk>warm</disk>
+          </warm>
+          <cold>
+            <disk>cold_cached</disk>
+            <prefer_not_to_merge>true</prefer_not_to_merge>
+          </cold>
+        </volumes>
+        <move_factor>0.2</move_factor>
+      </hot_warm_cold>
+    </policies>
+  </storage_configuration>
+</clickhouse>
+```
+
+The table opts in via `storage_policy`, and TTL drives the moves:
+
+```sql
+CREATE TABLE analytics.events_local ON CLUSTER clickhouse_cluster (
+    event_time DateTime,
+    user_id    UInt64,
+    payload    String CODEC(ZSTD(3))      -- heavier codec pays off on cold
+)
+ENGINE = ReplicatedMergeTree('/clickhouse/tables/{shard}/events_local', '{replica}')
+ORDER BY (user_id, event_time)
+TTL event_time + INTERVAL 7   DAY TO VOLUME 'warm',
+    event_time + INTERVAL 30  DAY TO VOLUME 'cold',
+    event_time + INTERVAL 365 DAY DELETE
+SETTINGS storage_policy = 'hot_warm_cold';
+```
+
+Watch parts move:
+
+```sql
+SELECT disk_name, count() AS parts, formatReadableSize(sum(bytes_on_disk)) AS size
+FROM system.parts
+WHERE table = 'events_local' AND active
+GROUP BY disk_name ORDER BY disk_name;
+
+-- force a move for a demo instead of waiting for TTL:
+ALTER TABLE analytics.events_local MOVE PART 'all_1_1_0' TO VOLUME 'cold';
+```
+
+### The performance parameters that matter (and *why*)
+
+| Parameter | Scope | Default | Why you set it for tiering |
+|-----------|-------|---------|----------------------------|
+| `move_factor` | policy | `0.1` | When free space on a volume drops below this fraction, CH proactively pushes the *oldest* parts down a tier **before** TTL fires. Bump to `0.2` so the hot NVMe always keeps headroom for inserts + merges; if hot fills to 100% inserts **stall**. |
+| `max_data_part_size_bytes` | volume | unlimited | Caps the part size allowed on a volume. Keep big merged parts *off* the small/expensive hot tier so they land on warm/cold automatically. |
+| `prefer_not_to_merge` | volume | `false` | Set **true** on the cold (S3) volume. Merges re-read + re-write whole parts; on object storage that's massive egress + request cost + latency for no query benefit. |
+| `perform_ttl_move_on_insert` | MergeTree setting | `1` | Set **0** under heavy ingest so a freshly-inserted-but-already-old part isn't moved *synchronously on the insert path* (which slows inserts). Let the background mover handle it. |
+| `background_move_pool_size` | server | `8` | Threads dedicated to TTL/move work. Raise on clusters that tier large volumes so moves keep up with ingest. |
+| `allow_remote_fs_zero_copy_replication` | server / MergeTree | `false`* | **Critical on S3 cold tiers.** Without it, every replica uploads its *own* copy of cold parts to object storage → N× storage + N× egress. With it, replicas share one set of S3 objects and only replicate metadata. Has known edge cases — pin a CH version you've tested. |
+| `min_bytes_for_seek` | s3 disk | `1Mi` | Below this, CH reads a whole granule range rather than issuing a tiny ranged GET. Tunes S3 request count vs bytes transferred. |
+| codec per column | DDL | `LZ4` | Use fast `LZ4` for hot-path columns, heavier `ZSTD(3+)` for columns that spend their life on cold — you trade CPU on the rare cold read for far less storage + egress. |
+
+> **Rule of thumb for the move schedule:** size the *hot* TTL window so the
+> hot volume holds **(ingest_rate × window × replication_factor) + ~30 %
+> merge headroom**, and keep `move_factor` headroom on top. The 30 % is not
+> optional — a merge transiently needs room for both inputs and output.
+
+### RAM & CPU limits — what actually constrains a tiered cluster
+
+Tiering shifts *where* bytes live, but the bottlenecks move with them.
+
+**RAM**
+
+- **Primary-key index is held in memory for every active part.** The cold
+  tier with `prefer_not_to_merge=true` deliberately accumulates many small
+  parts — each keeps its sparse PK index resident. Lots of cold parts ⇒
+  real RAM pressure and slower SELECTs (more parts to merge at query time).
+  Watch `system.parts` count; this is the main RAM tax of tiering.
+- **`mark_cache_size`** (default 5 GiB) caches `.mrk` files. With many parts
+  spread across tiers, an undersized mark cache turns into extra random
+  reads — and on cold those are network round-trips. Size it up before you
+  size anything else.
+- **OS page cache only helps the hot/warm *local* tiers.** Cold (S3) reads
+  get no free page-cache reuse, so a `cache`-type disk (the `cold_cached`
+  disk above) is how you claw back locality — but its capacity is RAM/local
+  disk you must budget for.
+- **Queries that span hot + cold scan more total data**, so per-query
+  `max_memory_usage` for aggregations/sorts must cover the *widest* time
+  range users actually query, not just the hot window.
+
+**CPU**
+
+- **Decompression dominates cold reads.** A cold part is fetched, then
+  decompressed on every read with no page-cache shortcut — and if you chose
+  `ZSTD` to save space, that's deliberately *more* CPU per byte. Size cores
+  for the number of concurrent cold-scanning queries you allow.
+- **Merges and TTL moves are CPU + IO heavy.** `prefer_not_to_merge` on cold
+  is as much a CPU saver as a cost saver. Moves copy + checksum parts;
+  schedule wide TTL windows away from query peaks.
+- **Don't starve the background pools.** Moves, merges, and fetches share
+  CPU with queries. On an undersized box, aggressive tiering can make the
+  hot path *slower* because the mover and merger are competing for cores.
+
+> **The trap in one sentence:** tiering trades expensive-but-fast NVMe for
+> cheap-but-distant S3 — and you pay that trade back in **RAM** (more parts =
+> more resident PK indexes) and **CPU** (every cold read decompresses from
+> scratch). Budget both, or the cost win turns into a latency loss.
+
+### Gotchas
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| Inserts stall / "Cannot reserve space" | Hot volume filled before moves caught up. | Raise `move_factor`; raise `background_move_pool_size`; shorten hot TTL window. |
+| First query on old data is seconds slow | Cold part fetched from S3 with no local cache. | Add a `cache`-type disk in front of S3; pre-warm with a scheduled query. |
+| "Too many parts" on the cold tier | `prefer_not_to_merge` + long retention = thousands of small parts. | Merge *before* the move (bigger parts cross the tier boundary), or accept the RAM cost knowingly. |
+| S3 bill 3× expected | No zero-copy replication — every replica uploaded its own copy. | Enable `allow_remote_fs_zero_copy_replication` (on a version you've tested). |
+| TTL move never happens | `perform_ttl_move_on_insert=0` and the background merge that evaluates TTL hasn't run. | `ALTER TABLE … MOVE PARTITION …`, or check `system.part_log` / `background_move_pool_size`. |
+
+---
+
+## 8. The hands-on demo
 
 ### What you get
 
@@ -388,7 +581,7 @@ Same shape as M3/M4 with the `m5-` prefix; ports `8123-8128` HTTP, `9000-9005` T
 
 ---
 
-## 8. Operational SQL cheatsheet
+## 9. Operational SQL cheatsheet
 
 ```sql
 -- "Show me the cluster"
@@ -420,7 +613,7 @@ ORDER BY query_duration_ms DESC LIMIT 20;
 
 ---
 
-## 9. Settings worth knowing
+## 10. Settings worth knowing
 
 | Setting                              | Default | What it controls                                                          |
 |--------------------------------------|---------|---------------------------------------------------------------------------|
@@ -433,7 +626,7 @@ ORDER BY query_duration_ms DESC LIMIT 20;
 
 ---
 
-## 10. Common pitfalls
+## 11. Common pitfalls
 
 | Symptom                                                                       | Cause                                                                                  | Fix                                                                                                |
 |-------------------------------------------------------------------------------|----------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|
@@ -446,7 +639,7 @@ ORDER BY query_duration_ms DESC LIMIT 20;
 
 ---
 
-## 11. Talking points for the live session
+## 12. Talking points for the live session
 
 1. **There's no "primary" CH node.** Pick any healthy replica as the
    initiator for ON CLUSTER DDL. They all have the same view.
@@ -460,10 +653,14 @@ ORDER BY query_duration_ms DESC LIMIT 20;
    monitoring tool in the world speaks.
 6. **TLS in production** isn't optional. Show the `<openSSL>` block;
    generate dev certs in 60 s with `mkcert`.
+7. **Hot / warm / cold is a storage *policy*, not a feature flag.** CH moves
+   *parts* down an ordered list of volumes on a TTL — and the bill for cheap
+   cold storage is paid back in RAM (more parts = more resident PK indexes)
+   and CPU (every cold read decompresses from scratch). Size both.
 
 ---
 
-## 12. Going deeper
+## 13. Going deeper
 
 - **Module 6** — query optimisation against this cluster's workload.
 - **Module 7** — coordinated `BACKUP TABLE … ON CLUSTER`.
