@@ -1251,6 +1251,16 @@ ORDER BY absolute_delay DESC;
 
 
 
+
+
+
+</div>
+
+
+</div>
+
+
+
 <style>
 .handsOn {
   margin: 24px auto; max-width: 1200px; padding: 0 20px;
@@ -1408,6 +1418,14 @@ ORDER BY absolute_delay DESC;
           <img src="demo-assets/module-5-cluster-deploy/02-sequencediagram-actor-op-as-operator.svg" alt="Actor op as operator" loading="lazy">
         </a>
         <figcaption>Actor op as operator</figcaption>
+      </figure>
+
+
+      <figure class="handsOn-figure">
+        <a href="demo-assets/module-5-cluster-deploy/03-flowchart-hot-warm-cold-tiers-and-read-path-caches.svg" target="_blank" rel="noopener">
+          <img src="demo-assets/module-5-cluster-deploy/03-flowchart-hot-warm-cold-tiers-and-read-path-caches.svg" alt="Hot warm cold tiers and read path caches" loading="lazy">
+        </a>
+        <figcaption>Hot warm cold tiers and read path caches</figcaption>
       </figure>
 
     </div>
@@ -2052,13 +2070,23 @@ cheap relative to, say, a Postgres partition migration.</p>
         &lt;endpoint&gt;https://s3.amazonaws.com/my-bucket/clickhouse/&lt;/endpoint&gt;
         &lt;access_key_id&gt;...&lt;/access_key_id&gt;
         &lt;secret_access_key&gt;...&lt;/secret_access_key&gt;
+        &lt;!-- S3 transport tuning (see the &quot;S3 transport settings&quot; table below) --&gt;
+        &lt;s3_max_connections&gt;1024&lt;/s3_max_connections&gt;
+        &lt;min_bytes_for_seek&gt;1048576&lt;/min_bytes_for_seek&gt;   &lt;!-- 1 MiB: below this, read through instead of a new ranged GET --&gt;
+        &lt;s3_max_get_rps&gt;5000&lt;/s3_max_get_rps&gt;              &lt;!-- client-side rate limit; dodges S3 503 SlowDown --&gt;
       &lt;/cold&gt;
-      &lt;!-- local read-through cache so cold (S3) reads don't always hit network --&gt;
+      &lt;!-- local-NVMe read-through cache in FRONT of S3: first read pulls a
+           segment from S3 to disk, every later read is local. THIS is what
+           makes a cold tier query-able instead of merely cheap. --&gt;
       &lt;cold_cached&gt;
         &lt;type&gt;cache&lt;/type&gt;
         &lt;disk&gt;cold&lt;/disk&gt;
         &lt;path&gt;/mnt/nvme/s3_cache/&lt;/path&gt;
-        &lt;max_size&gt;100Gi&lt;/max_size&gt;
+        &lt;max_size&gt;200Gi&lt;/max_size&gt;                          &lt;!-- NVMe you hand to caching cold data --&gt;
+        &lt;max_file_segment_size&gt;8Mi&lt;/max_file_segment_size&gt;  &lt;!-- cache granularity --&gt;
+        &lt;cache_on_write_operations&gt;true&lt;/cache_on_write_operations&gt;  &lt;!-- moved-in parts land already-warm --&gt;
+        &lt;cache_hits_threshold&gt;2&lt;/cache_hits_threshold&gt;      &lt;!-- don't cache a one-off scan --&gt;
+        &lt;load_metadata_threads&gt;16&lt;/load_metadata_threads&gt;
       &lt;/cold_cached&gt;
     &lt;/disks&gt;
 
@@ -2172,23 +2200,145 @@ hot volume holds <strong>(ingest_rate × window × replication_factor) + ~30 %
 merge headroom</strong>, and keep <code>move_factor</code> headroom on top. The 30 % is not
 optional — a merge transiently needs room for both inputs and output.</p>
 </blockquote>
+<h3 id="caches-the-layer-that-makes-a-cold-tier-query-able">Caches — the layer that makes a cold tier <em>query-able</em></h3>
+<p>Tiering is only half the story. Cheap cold storage is useless if every query
+that touches it pays a network round-trip per granule. ClickHouse has two
+cache layers — <strong>in RAM</strong> and <strong>on local disk</strong> — and tuning them is what
+turns "cold = cheap but unusable" into "cold = cheap and fine".</p>
+<p><strong>1. RAM caches (server-level settings in <code>config.xml</code>):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Default</th>
+<th>What it holds &amp; why it matters more when tiered</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mark_cache_size</code></td>
+<td><code>5368709120</code> (5 GiB)</td>
+<td>Caches the decompressed <code>.mrk</code> <strong>marks</strong> — the map from granule number → byte offset inside each compressed column file. <em>Every</em> column read consults marks first; a mark <strong>miss on a cold part is a synchronous S3 GET</strong> before the real read even starts. This is the single highest-leverage cache on a tiered cluster — raise it to <strong>10–20 % of RAM</strong>. Watch <code>ProfileEvents</code> <code>MarkCacheHits</code>/<code>MarkCacheMisses</code> and <code>AsynchronousMetrics</code> <code>MarkCacheBytes</code>/<code>MarkCacheFiles</code>.</td>
+</tr>
+<tr>
+<td><code>primary_index_cache_size</code></td>
+<td><code>5368709120</code> (5 GiB, CH 24.x+)</td>
+<td>Lazily caches <strong>primary-key index granules</strong> instead of forcing every active part's full PK index permanently resident. This is the modern fix for the "thousands of cold parts ⇒ unbounded PK RAM" problem described below — on older versions there is no cap and the whole PK index of every part stays in memory. Size it to your hot+warm working set of parts.</td>
+</tr>
+<tr>
+<td><code>uncompressed_cache_size</code></td>
+<td><code>8 GiB</code>, but <strong>off</strong> (<code>use_uncompressed_cache=0</code>)</td>
+<td>Caches <em>decompressed</em> data blocks. A win for high-QPS point lookups that re-hit the same blocks; pure waste for big scans (it just churns). Leave off globally, enable per-query/profile where the access pattern is repetitive point reads.</td>
+</tr>
+<tr>
+<td><code>index_mark_cache_size</code> / <code>index_uncompressed_cache_size</code></td>
+<td>small</td>
+<td>Same idea, for <strong>secondary (skip) indexes</strong>. Bump only if you lean on skip indexes over cold data.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>2. Filesystem cache for the object-store tier (the <code>cache</code> disk above):</strong></p>
+<p>The <code>cache</code>-type disk is a <strong>local-NVMe read-through cache that sits in front
+of S3</strong>. First read of a cold segment fetches it from S3 onto local disk;
+every subsequent read is a local read at NVMe latency. Sizing and behaviour:</p>
+<table>
+<thead>
+<tr>
+<th>Setting (on the <code>cache</code> disk)</th>
+<th>Guidance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>max_size</code></td>
+<td>The headline number: <strong>how much NVMe you allocate to cache cold data</strong>. Size it to your <em>hot subset of cold</em> — the slice of historical data users actually re-query (e.g. last quarter of a 1-year cold tier), not the whole tier. It competes with the hot volume for the same NVMe, so budget them together.</td>
+</tr>
+<tr>
+<td><code>cache_on_write_operations</code></td>
+<td><code>true</code> so parts are cached <strong>as they're moved/written into cold</strong>, so freshly-tiered data is immediately warm instead of cold-cold on its first read.</td>
+</tr>
+<tr>
+<td><code>max_file_segment_size</code></td>
+<td>Segment granularity (default 8 MiB). Smaller = finer eviction but more metadata; the default is usually right.</td>
+</tr>
+<tr>
+<td><code>cache_hits_threshold</code></td>
+<td>Require N accesses before a segment is admitted, so a single ad-hoc full-history scan can't evict the genuinely-hot working set.</td>
+</tr>
+<tr>
+<td><code>load_metadata_threads</code></td>
+<td>Parallelism for loading cache metadata on startup — raise for large caches so restarts aren't slow.</td>
+</tr>
+</tbody>
+</table>
+<p>Query-level knobs that pair with it: <code>enable_filesystem_cache</code> (default 1);
+<code>read_from_filesystem_cache_if_exists_otherwise_bypass_cache=1</code> for one-off
+backfills/exports so they <strong>read</strong> cache but don't <strong>pollute</strong> it;
+<code>filesystem_cache_max_download_size</code> to bound a single query's footprint.
+Observe hit ratio via <code>system.filesystem_cache</code>, <code>AsynchronousMetrics</code>
+<code>FilesystemCacheSize</code>/<code>FilesystemCacheFiles</code>, and the <code>ProfileEvents</code> pair
+<code>CachedReadBufferReadFromCacheBytes</code> vs <code>CachedReadBufferReadFromSourceBytes</code>.</p>
+<p><strong>3. S3 transport settings (request count, throughput, cost):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Default</th>
+<th>Why you touch it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>s3_max_connections</code></td>
+<td><code>1024</code></td>
+<td>Concurrent connections per S3 disk. Raise for highly-parallel cold scans; lower to cap pressure on a shared bucket.</td>
+</tr>
+<tr>
+<td><code>min_bytes_for_seek</code></td>
+<td><code>1Mi</code></td>
+<td>Below this gap, CH reads straight through rather than issuing a new ranged GET. Each GET is latency <strong>and</strong> a billed request — raising this trades bytes transferred for fewer requests.</td>
+</tr>
+<tr>
+<td><code>s3_max_get_rps</code> / <code>s3_max_put_rps</code></td>
+<td><code>0</code> (unlimited)</td>
+<td>Client-side rate limits. Set them to stay under S3's per-prefix limits and dodge <code>503 SlowDown</code>, and to put a ceiling on request-cost spikes.</td>
+</tr>
+<tr>
+<td><code>s3_min_upload_part_size</code> / <code>s3_max_single_part_upload_size</code></td>
+<td><code>16Mi</code> / <code>32Mi</code></td>
+<td>Multipart-upload sizing for the <strong>move-out</strong> path (writing parts to cold). Larger parts ⇒ fewer PUTs.</td>
+</tr>
+<tr>
+<td><code>remote_filesystem_read_method</code></td>
+<td><code>threadpool</code></td>
+<td>Keep as <code>threadpool</code> so ranged reads parallelise instead of serialising.</td>
+</tr>
+<tr>
+<td><code>s3_retry_attempts</code> / <code>s3_request_timeout_ms</code></td>
+<td><code>10</code> / <code>30000</code></td>
+<td>Resilience against transient S3 errors; tune for your provider's tail latency.</td>
+</tr>
+</tbody>
+</table>
 <h3 id="ram-cpu-limits-what-actually-constrains-a-tiered-cluster">RAM &amp; CPU limits — what actually constrains a tiered cluster</h3>
 <p>Tiering shifts <em>where</em> bytes live, but the bottlenecks move with them.</p>
 <p><strong>RAM</strong></p>
 <ul>
-<li><strong>Primary-key index is held in memory for every active part.</strong> The cold
-  tier with <code>prefer_not_to_merge=true</code> deliberately accumulates many small
-  parts — each keeps its sparse PK index resident. Lots of cold parts ⇒
-  real RAM pressure and slower SELECTs (more parts to merge at query time).
-  Watch <code>system.parts</code> count; this is the main RAM tax of tiering.</li>
-<li><strong><code>mark_cache_size</code></strong> (default 5 GiB) caches <code>.mrk</code> files. With many parts
-  spread across tiers, an undersized mark cache turns into extra random
-  reads — and on cold those are network round-trips. Size it up before you
-  size anything else.</li>
+<li><strong>Primary-key index RAM scales with part count.</strong> The cold tier with
+  <code>prefer_not_to_merge=true</code> deliberately accumulates many small parts. On
+  older CH the <em>full</em> sparse PK index of every active part stays permanently
+  resident → lots of cold parts ⇒ real RAM pressure (and slower SELECTs,
+  since there are more parts to merge at query time). On CH 24.x+,
+  <code>primary_index_cache_size</code> (see the caches section) bounds this — but you
+  still want to watch <code>system.parts</code> count, the root cause.</li>
+<li><strong><code>mark_cache_size</code> is the highest-leverage cache when tiered</strong> (default
+  5 GiB). A mark miss on a cold part is a synchronous S3 GET <em>before</em> the
+  real read. Raise it to 10–20 % of RAM and watch <code>MarkCacheMisses</code> — size
+  this before you size anything else. (Full detail in the caches section.)</li>
 <li><strong>OS page cache only helps the hot/warm <em>local</em> tiers.</strong> Cold (S3) reads
-  get no free page-cache reuse, so a <code>cache</code>-type disk (the <code>cold_cached</code>
-  disk above) is how you claw back locality — but its capacity is RAM/local
-  disk you must budget for.</li>
+  get no free page-cache reuse, so the local-NVMe <strong>filesystem cache</strong> (the
+  <code>cold_cached</code> disk above) is how you claw back locality — but its <code>max_size</code>
+  is NVMe you must budget against the hot volume on the same disk.</li>
 <li><strong>Queries that span hot + cold scan more total data</strong>, so per-query
   <code>max_memory_usage</code> for aggregations/sorts must cover the <em>widest</em> time
   range users actually query, not just the hot window.</li>
@@ -2231,6 +2381,21 @@ scratch). Budget both, or the cost win turns into a latency loss.</p>
 <td>First query on old data is seconds slow</td>
 <td>Cold part fetched from S3 with no local cache.</td>
 <td>Add a <code>cache</code>-type disk in front of S3; pre-warm with a scheduled query.</td>
+</tr>
+<tr>
+<td>Cold queries <em>stay</em> slow after a warm-up read</td>
+<td>Filesystem cache too small, or a big ad-hoc scan evicted the working set.</td>
+<td>Raise the cache disk <code>max_size</code>; set <code>cache_hits_threshold</code>; run pollution-prone backfills with <code>read_from_filesystem_cache_if_exists_otherwise_bypass_cache=1</code>.</td>
+</tr>
+<tr>
+<td>Point queries on cold are slow but scans are fine</td>
+<td><code>mark_cache_size</code> too small — each query re-fetches marks from S3.</td>
+<td>Raise <code>mark_cache_size</code> to 10–20 % of RAM; check <code>MarkCacheMisses</code>.</td>
+</tr>
+<tr>
+<td>S3 <code>503 SlowDown</code> / throttling under load</td>
+<td>Too many small ranged GETs against one bucket prefix.</td>
+<td>Set <code>s3_max_get_rps</code>; raise <code>min_bytes_for_seek</code>; make sure the filesystem cache is actually hitting.</td>
 </tr>
 <tr>
 <td>"Too many parts" on the cold tier</td>
