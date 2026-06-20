@@ -65,6 +65,7 @@ services:
       - m4_s1r1:/var/lib/clickhouse
       - ./configs/cluster-node.xml:/etc/clickhouse-server/config.d/00-cluster.xml:ro
       - ./configs/macros/macros-s1r1.xml:/etc/clickhouse-server/config.d/01-macros.xml:ro
+      - ./configs/default-user.xml:/etc/clickhouse-server/users.d/default-user.xml:ro
 
   m4-s1r2:
     <<: *ch-base
@@ -79,6 +80,7 @@ services:
       - m4_s1r2:/var/lib/clickhouse
       - ./configs/cluster-node.xml:/etc/clickhouse-server/config.d/00-cluster.xml:ro
       - ./configs/macros/macros-s1r2.xml:/etc/clickhouse-server/config.d/01-macros.xml:ro
+      - ./configs/default-user.xml:/etc/clickhouse-server/users.d/default-user.xml:ro
 
   m4-s2r1:
     <<: *ch-base
@@ -93,6 +95,7 @@ services:
       - m4_s2r1:/var/lib/clickhouse
       - ./configs/cluster-node.xml:/etc/clickhouse-server/config.d/00-cluster.xml:ro
       - ./configs/macros/macros-s2r1.xml:/etc/clickhouse-server/config.d/01-macros.xml:ro
+      - ./configs/default-user.xml:/etc/clickhouse-server/users.d/default-user.xml:ro
 
   m4-s2r2:
     <<: *ch-base
@@ -107,6 +110,7 @@ services:
       - m4_s2r2:/var/lib/clickhouse
       - ./configs/cluster-node.xml:/etc/clickhouse-server/config.d/00-cluster.xml:ro
       - ./configs/macros/macros-s2r2.xml:/etc/clickhouse-server/config.d/01-macros.xml:ro
+      - ./configs/default-user.xml:/etc/clickhouse-server/users.d/default-user.xml:ro
 
   m4-s3r1:
     <<: *ch-base
@@ -121,6 +125,7 @@ services:
       - m4_s3r1:/var/lib/clickhouse
       - ./configs/cluster-node.xml:/etc/clickhouse-server/config.d/00-cluster.xml:ro
       - ./configs/macros/macros-s3r1.xml:/etc/clickhouse-server/config.d/01-macros.xml:ro
+      - ./configs/default-user.xml:/etc/clickhouse-server/users.d/default-user.xml:ro
 
   m4-s3r2:
     <<: *ch-base
@@ -135,6 +140,7 @@ services:
       - m4_s3r2:/var/lib/clickhouse
       - ./configs/cluster-node.xml:/etc/clickhouse-server/config.d/00-cluster.xml:ro
       - ./configs/macros/macros-s3r2.xml:/etc/clickhouse-server/config.d/01-macros.xml:ro
+      - ./configs/default-user.xml:/etc/clickhouse-server/users.d/default-user.xml:ro
 
 volumes:
   m4_zk1_data: {}

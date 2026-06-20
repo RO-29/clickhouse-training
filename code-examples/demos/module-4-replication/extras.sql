@@ -4,10 +4,10 @@ SET async_insert = 0;  -- VALUES + --multiquery clashes with async_insert defaul
 
 -- ============================================================
 -- 1. insert_quorum — block the INSERT until N replicas have applied it.
---    Combine with insert_quorum_timeout_ms (default 600000ms).
+--    Combine with insert_quorum_timeout (default 600000ms).
 -- ============================================================
-SET insert_quorum            = 2;          -- both replicas of a shard must ack
-SET insert_quorum_timeout_ms = 5000;       -- otherwise fail in 5s
+SET insert_quorum         = 2;          -- both replicas of a shard must ack
+SET insert_quorum_timeout = 5000;       -- otherwise fail in 5s
 
 INSERT INTO sensor_local VALUES
     (now(), 1, 'us', 1.23),

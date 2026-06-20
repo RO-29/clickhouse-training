@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<!-- Override the upstream image's localhost-only ACL on the default user.
+     Distributed queries fan out node-to-node as `default`, so the default
+     user must be reachable across the docker network. -->
+<clickhouse>
+  <users>
+    <default>
+      <networks replace="1"><ip>::/0</ip></networks>
+    </default>
+  </users>
+</clickhouse>
