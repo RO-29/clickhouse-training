@@ -1241,6 +1241,16 @@ ORDER BY absolute_delay DESC;
 
 
 
+
+
+
+</div>
+
+
+</div>
+
+
+
 <style>
 .handsOn {
   margin: 24px auto; max-width: 1200px; padding: 0 20px;
@@ -1956,7 +1966,291 @@ should use real certs from your PKI, with mTLS for inter-server traffic.</p>
     -h cluster.example.com
 </code></pre>
 <hr />
-<h2 id="7-the-hands-on-demo">7. The hands-on demo</h2>
+<h2 id="7-hot-warm-cold-storage-tiers-production-sizing">7. Hot / warm / cold storage tiers — production sizing</h2>
+<details class="ai-discuss">
+  <summary>💬 Discuss with AI — click to view prompt</summary>
+  <div class="ai-discuss-body">
+    <div class="ai-discuss-toolbar">
+      <button type="button" class="ai-discuss-copy" onclick="(function(b){const p=b.parentElement.parentElement.querySelector('pre').innerText;navigator.clipboard.writeText(p).then(()=>{const o=b.textContent;b.textContent='✓ Copied';setTimeout(()=>{b.textContent=o},1500);});})(this)">📋 Copy prompt</button>
+      <span class="ai-discuss-hint">Paste into ChatGPT, Claude, Gemini, or any LLM chat.</span>
+    </div>
+    <pre>I&#x27;m studying ClickHouse and working through the module &quot;ClickHouse Cluster Deployment&quot;. I want to deeply understand the section: &quot;Hot / warm / cold storage tiers — production sizing&quot;.
+
+Here is a brief excerpt from the material I&#x27;m reading:
+
+&quot;&quot;&quot;
+The demo runs every node on a single local disk (kept simple so it boots on a laptop), so — exactly like the TLS section — this is the **production sketch** you layer on top. A real cluster almost never keeps a year of data on the same NVMe it ingests onto: it tiers. ### The mental model: disks → volumes → policy ClickHouse never moves data by table or by row — it moves **parts**, and it moves them down an ordered list of volumes. Four nested objects: | Object           | What it is                                                            | | **disk**         | one physical/logical location:...
+&quot;&quot;&quot;
+
+Please explain this concept in depth. Cover:
+
+1. **Core mechanics** — how does it actually work under the hood? What data structures, algorithms, or engine internals are involved? Where is the implementation in the ClickHouse source tree (file/folder names) if you know?
+
+2. **When to use vs avoid** — what concrete workloads does this help, and when would it hurt or be wrong? Give specific scale/latency trade-offs.
+
+3. **Comparable features in other systems** — how does this compare with similar features in PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, or DuckDB? Build my intuition by analogy.
+
+4. **Common pitfalls and gotchas** — what trips engineers up in production? Subtle bugs, performance traps, surprising semantics?
+
+5. **Worked example** — show me a small but realistic SQL or config example that demonstrates the concept end-to-end. Include the expected output where useful.
+
+6. **Where to read more** — a short list of authoritative pointers (CH docs, blog posts, talks, source-code files).
+
+Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. Be technical but pragmatic; avoid marketing language.
+</pre>
+  </div>
+</details>
+<p>The demo runs every node on a single local disk (kept simple so it boots on
+a laptop), so — exactly like the TLS section — this is the <strong>production
+sketch</strong> you layer on top. A real cluster almost never keeps a year of data
+on the same NVMe it ingests onto: it tiers.</p>
+<h3 id="the-mental-model-disks-volumes-policy">The mental model: disks → volumes → policy</h3>
+<p>ClickHouse never moves data by table or by row — it moves <strong>parts</strong>, and it
+moves them down an ordered list of volumes. Four nested objects:</p>
+<table>
+<thead>
+<tr>
+<th>Object</th>
+<th>What it is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>disk</strong></td>
+<td>one physical/logical location: local NVMe, local HDD, or S3/GCS/Azure</td>
+</tr>
+<tr>
+<td><strong>volume</strong></td>
+<td>an ordered group of one or more disks</td>
+</tr>
+<tr>
+<td><strong>storage policy</strong></td>
+<td>an ordered list of volumes; parts flow first → last</td>
+</tr>
+<tr>
+<td><strong>TTL … TO</strong></td>
+<td>the rule that <em>moves</em> a part to a later volume once it ages</td>
+</tr>
+</tbody>
+</table>
+<!-- mermaid rendered as SVG above -->
+
+<blockquote>
+<p><strong>Why parts, not rows:</strong> a part is the immutable unit of MergeTree storage.
+Moving it is a file copy — no rewrite, no re-sort. That's why TTL moves are
+cheap relative to, say, a Postgres partition migration.</p>
+</blockquote>
+<h3 id="wiring-it-up-config-ddl">Wiring it up (config + DDL)</h3>
+<p><code>config.d/storage.xml</code> defines the disks and the policy:</p>
+<pre><code class="language-xml">&lt;clickhouse&gt;
+  &lt;storage_configuration&gt;
+    &lt;disks&gt;
+      &lt;hot&gt;  &lt;type&gt;local&lt;/type&gt; &lt;path&gt;/mnt/nvme/clickhouse/&lt;/path&gt; &lt;/hot&gt;
+      &lt;warm&gt; &lt;type&gt;local&lt;/type&gt; &lt;path&gt;/mnt/hdd/clickhouse/&lt;/path&gt;  &lt;/warm&gt;
+      &lt;cold&gt;
+        &lt;type&gt;s3&lt;/type&gt;
+        &lt;endpoint&gt;https://s3.amazonaws.com/my-bucket/clickhouse/&lt;/endpoint&gt;
+        &lt;access_key_id&gt;...&lt;/access_key_id&gt;
+        &lt;secret_access_key&gt;...&lt;/secret_access_key&gt;
+      &lt;/cold&gt;
+      &lt;!-- local read-through cache so cold (S3) reads don't always hit network --&gt;
+      &lt;cold_cached&gt;
+        &lt;type&gt;cache&lt;/type&gt;
+        &lt;disk&gt;cold&lt;/disk&gt;
+        &lt;path&gt;/mnt/nvme/s3_cache/&lt;/path&gt;
+        &lt;max_size&gt;100Gi&lt;/max_size&gt;
+      &lt;/cold_cached&gt;
+    &lt;/disks&gt;
+
+    &lt;policies&gt;
+      &lt;hot_warm_cold&gt;
+        &lt;volumes&gt;
+          &lt;hot&gt;
+            &lt;disk&gt;hot&lt;/disk&gt;
+            &lt;max_data_part_size_bytes&gt;10737418240&lt;/max_data_part_size_bytes&gt;
+          &lt;/hot&gt;
+          &lt;warm&gt;
+            &lt;disk&gt;warm&lt;/disk&gt;
+          &lt;/warm&gt;
+          &lt;cold&gt;
+            &lt;disk&gt;cold_cached&lt;/disk&gt;
+            &lt;prefer_not_to_merge&gt;true&lt;/prefer_not_to_merge&gt;
+          &lt;/cold&gt;
+        &lt;/volumes&gt;
+        &lt;move_factor&gt;0.2&lt;/move_factor&gt;
+      &lt;/hot_warm_cold&gt;
+    &lt;/policies&gt;
+  &lt;/storage_configuration&gt;
+&lt;/clickhouse&gt;
+</code></pre>
+<p>The table opts in via <code>storage_policy</code>, and TTL drives the moves:</p>
+<pre><code class="language-sql">CREATE TABLE analytics.events_local ON CLUSTER clickhouse_cluster (
+    event_time DateTime,
+    user_id    UInt64,
+    payload    String CODEC(ZSTD(3))      -- heavier codec pays off on cold
+)
+ENGINE = ReplicatedMergeTree('/clickhouse/tables/{shard}/events_local', '{replica}')
+ORDER BY (user_id, event_time)
+TTL event_time + INTERVAL 7   DAY TO VOLUME 'warm',
+    event_time + INTERVAL 30  DAY TO VOLUME 'cold',
+    event_time + INTERVAL 365 DAY DELETE
+SETTINGS storage_policy = 'hot_warm_cold';
+</code></pre>
+<p>Watch parts move:</p>
+<pre><code class="language-sql">SELECT disk_name, count() AS parts, formatReadableSize(sum(bytes_on_disk)) AS size
+FROM system.parts
+WHERE table = 'events_local' AND active
+GROUP BY disk_name ORDER BY disk_name;
+
+-- force a move for a demo instead of waiting for TTL:
+ALTER TABLE analytics.events_local MOVE PART 'all_1_1_0' TO VOLUME 'cold';
+</code></pre>
+<h3 id="the-performance-parameters-that-matter-and-why">The performance parameters that matter (and <em>why</em>)</h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Scope</th>
+<th>Default</th>
+<th>Why you set it for tiering</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>move_factor</code></td>
+<td>policy</td>
+<td><code>0.1</code></td>
+<td>When free space on a volume drops below this fraction, CH proactively pushes the <em>oldest</em> parts down a tier <strong>before</strong> TTL fires. Bump to <code>0.2</code> so the hot NVMe always keeps headroom for inserts + merges; if hot fills to 100% inserts <strong>stall</strong>.</td>
+</tr>
+<tr>
+<td><code>max_data_part_size_bytes</code></td>
+<td>volume</td>
+<td>unlimited</td>
+<td>Caps the part size allowed on a volume. Keep big merged parts <em>off</em> the small/expensive hot tier so they land on warm/cold automatically.</td>
+</tr>
+<tr>
+<td><code>prefer_not_to_merge</code></td>
+<td>volume</td>
+<td><code>false</code></td>
+<td>Set <strong>true</strong> on the cold (S3) volume. Merges re-read + re-write whole parts; on object storage that's massive egress + request cost + latency for no query benefit.</td>
+</tr>
+<tr>
+<td><code>perform_ttl_move_on_insert</code></td>
+<td>MergeTree setting</td>
+<td><code>1</code></td>
+<td>Set <strong>0</strong> under heavy ingest so a freshly-inserted-but-already-old part isn't moved <em>synchronously on the insert path</em> (which slows inserts). Let the background mover handle it.</td>
+</tr>
+<tr>
+<td><code>background_move_pool_size</code></td>
+<td>server</td>
+<td><code>8</code></td>
+<td>Threads dedicated to TTL/move work. Raise on clusters that tier large volumes so moves keep up with ingest.</td>
+</tr>
+<tr>
+<td><code>allow_remote_fs_zero_copy_replication</code></td>
+<td>server / MergeTree</td>
+<td><code>false</code>*</td>
+<td><strong>Critical on S3 cold tiers.</strong> Without it, every replica uploads its <em>own</em> copy of cold parts to object storage → N× storage + N× egress. With it, replicas share one set of S3 objects and only replicate metadata. Has known edge cases — pin a CH version you've tested.</td>
+</tr>
+<tr>
+<td><code>min_bytes_for_seek</code></td>
+<td>s3 disk</td>
+<td><code>1Mi</code></td>
+<td>Below this, CH reads a whole granule range rather than issuing a tiny ranged GET. Tunes S3 request count vs bytes transferred.</td>
+</tr>
+<tr>
+<td>codec per column</td>
+<td>DDL</td>
+<td><code>LZ4</code></td>
+<td>Use fast <code>LZ4</code> for hot-path columns, heavier <code>ZSTD(3+)</code> for columns that spend their life on cold — you trade CPU on the rare cold read for far less storage + egress.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Rule of thumb for the move schedule:</strong> size the <em>hot</em> TTL window so the
+hot volume holds <strong>(ingest_rate × window × replication_factor) + ~30 %
+merge headroom</strong>, and keep <code>move_factor</code> headroom on top. The 30 % is not
+optional — a merge transiently needs room for both inputs and output.</p>
+</blockquote>
+<h3 id="ram-cpu-limits-what-actually-constrains-a-tiered-cluster">RAM &amp; CPU limits — what actually constrains a tiered cluster</h3>
+<p>Tiering shifts <em>where</em> bytes live, but the bottlenecks move with them.</p>
+<p><strong>RAM</strong></p>
+<ul>
+<li><strong>Primary-key index is held in memory for every active part.</strong> The cold
+  tier with <code>prefer_not_to_merge=true</code> deliberately accumulates many small
+  parts — each keeps its sparse PK index resident. Lots of cold parts ⇒
+  real RAM pressure and slower SELECTs (more parts to merge at query time).
+  Watch <code>system.parts</code> count; this is the main RAM tax of tiering.</li>
+<li><strong><code>mark_cache_size</code></strong> (default 5 GiB) caches <code>.mrk</code> files. With many parts
+  spread across tiers, an undersized mark cache turns into extra random
+  reads — and on cold those are network round-trips. Size it up before you
+  size anything else.</li>
+<li><strong>OS page cache only helps the hot/warm <em>local</em> tiers.</strong> Cold (S3) reads
+  get no free page-cache reuse, so a <code>cache</code>-type disk (the <code>cold_cached</code>
+  disk above) is how you claw back locality — but its capacity is RAM/local
+  disk you must budget for.</li>
+<li><strong>Queries that span hot + cold scan more total data</strong>, so per-query
+  <code>max_memory_usage</code> for aggregations/sorts must cover the <em>widest</em> time
+  range users actually query, not just the hot window.</li>
+</ul>
+<p><strong>CPU</strong></p>
+<ul>
+<li><strong>Decompression dominates cold reads.</strong> A cold part is fetched, then
+  decompressed on every read with no page-cache shortcut — and if you chose
+  <code>ZSTD</code> to save space, that's deliberately <em>more</em> CPU per byte. Size cores
+  for the number of concurrent cold-scanning queries you allow.</li>
+<li><strong>Merges and TTL moves are CPU + IO heavy.</strong> <code>prefer_not_to_merge</code> on cold
+  is as much a CPU saver as a cost saver. Moves copy + checksum parts;
+  schedule wide TTL windows away from query peaks.</li>
+<li><strong>Don't starve the background pools.</strong> Moves, merges, and fetches share
+  CPU with queries. On an undersized box, aggressive tiering can make the
+  hot path <em>slower</em> because the mover and merger are competing for cores.</li>
+</ul>
+<blockquote>
+<p><strong>The trap in one sentence:</strong> tiering trades expensive-but-fast NVMe for
+cheap-but-distant S3 — and you pay that trade back in <strong>RAM</strong> (more parts =
+more resident PK indexes) and <strong>CPU</strong> (every cold read decompresses from
+scratch). Budget both, or the cost win turns into a latency loss.</p>
+</blockquote>
+<h3 id="gotchas">Gotchas</h3>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Inserts stall / "Cannot reserve space"</td>
+<td>Hot volume filled before moves caught up.</td>
+<td>Raise <code>move_factor</code>; raise <code>background_move_pool_size</code>; shorten hot TTL window.</td>
+</tr>
+<tr>
+<td>First query on old data is seconds slow</td>
+<td>Cold part fetched from S3 with no local cache.</td>
+<td>Add a <code>cache</code>-type disk in front of S3; pre-warm with a scheduled query.</td>
+</tr>
+<tr>
+<td>"Too many parts" on the cold tier</td>
+<td><code>prefer_not_to_merge</code> + long retention = thousands of small parts.</td>
+<td>Merge <em>before</em> the move (bigger parts cross the tier boundary), or accept the RAM cost knowingly.</td>
+</tr>
+<tr>
+<td>S3 bill 3× expected</td>
+<td>No zero-copy replication — every replica uploaded its own copy.</td>
+<td>Enable <code>allow_remote_fs_zero_copy_replication</code> (on a version you've tested).</td>
+</tr>
+<tr>
+<td>TTL move never happens</td>
+<td><code>perform_ttl_move_on_insert=0</code> and the background merge that evaluates TTL hasn't run.</td>
+<td><code>ALTER TABLE … MOVE PARTITION …</code>, or check <code>system.part_log</code> / <code>background_move_pool_size</code>.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="8-the-hands-on-demo">8. The hands-on demo</h2>
 <details class="ai-discuss">
   <summary>💬 Discuss with AI — click to view prompt</summary>
   <div class="ai-discuss-body">
@@ -2084,7 +2378,7 @@ up.sh · run.sh · down.sh
 </tbody>
 </table>
 <hr />
-<h2 id="8-operational-sql-cheatsheet">8. Operational SQL cheatsheet</h2>
+<h2 id="9-operational-sql-cheatsheet">9. Operational SQL cheatsheet</h2>
 <details class="ai-discuss">
   <summary>💬 Discuss with AI — click to view prompt</summary>
   <div class="ai-discuss-body">
@@ -2145,7 +2439,7 @@ WHERE event_time &gt; now() - INTERVAL 1 HOUR
 ORDER BY query_duration_ms DESC LIMIT 20;
 </code></pre>
 <hr />
-<h2 id="9-settings-worth-knowing">9. Settings worth knowing</h2>
+<h2 id="10-settings-worth-knowing">10. Settings worth knowing</h2>
 <details class="ai-discuss">
   <summary>💬 Discuss with AI — click to view prompt</summary>
   <div class="ai-discuss-body">
@@ -2221,7 +2515,7 @@ Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. B
 </tbody>
 </table>
 <hr />
-<h2 id="10-common-pitfalls">10. Common pitfalls</h2>
+<h2 id="11-common-pitfalls">11. Common pitfalls</h2>
 <details class="ai-discuss">
   <summary>💬 Discuss with AI — click to view prompt</summary>
   <div class="ai-discuss-body">
@@ -2297,7 +2591,7 @@ Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. B
 </tbody>
 </table>
 <hr />
-<h2 id="11-talking-points-for-the-live-session">11. Talking points for the live session</h2>
+<h2 id="12-talking-points-for-the-live-session">12. Talking points for the live session</h2>
 <details class="ai-discuss">
   <summary>💬 Discuss with AI — click to view prompt</summary>
   <div class="ai-discuss-body">
@@ -2344,9 +2638,13 @@ Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. B
    monitoring tool in the world speaks.</li>
 <li><strong>TLS in production</strong> isn't optional. Show the <code>&lt;openSSL&gt;</code> block;
    generate dev certs in 60 s with <code>mkcert</code>.</li>
+<li><strong>Hot / warm / cold is a storage <em>policy</em>, not a feature flag.</strong> CH moves
+   <em>parts</em> down an ordered list of volumes on a TTL — and the bill for cheap
+   cold storage is paid back in RAM (more parts = more resident PK indexes)
+   and CPU (every cold read decompresses from scratch). Size both.</li>
 </ol>
 <hr />
-<h2 id="12-going-deeper">12. Going deeper</h2>
+<h2 id="13-going-deeper">13. Going deeper</h2>
 <details class="ai-discuss">
   <summary>💬 Discuss with AI — click to view prompt</summary>
   <div class="ai-discuss-body">
