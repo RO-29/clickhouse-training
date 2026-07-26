@@ -1431,7 +1431,7 @@ server.5=zk2.dc2.example.com:2888:3888:observer
 Here is a brief excerpt from the material I&#x27;m reading:
 
 &quot;&quot;&quot;
-| #  | Class                       | Likelihood | Blast radius            | Recovery primitive                   | | 1  | Single replica down         | high       | none (peer covers)      | restart + `SYSTEM SYNC REPLICA`      | | 2  | Whole shard down            | medium     | partial reads           | `skip_unavailable_shards = 1`        | | 3  | ZK / Keeper quorum lost     | medium     | writes blocked          | restore ZK quorum                    | | 4  | Replica disk loss           | medium     | one replica empty       | `SYSTEM DROP REPLICA` + recreate     | | 5  | Bad DROP / TRUNCAT...
+DR isn&#x27;t a ClickHouse feature. It&#x27;s a set of answers to three questions — **what can break**, **how fast must we be back**, **how much may we lose**. ClickHouse gives you three independent tools — replication, quorum, backups — and each one covers a failure class the others can&#x27;t touch. The single sentence to carry through the module: &gt; **Replication protects you from hardware loss. Backups protect you from &gt; human and software loss.** `DROP TABLE` replicates. Faithfully. In milliseconds. To every replica in every DC. That&#x27;s why Modules 7 and 8 are separate modules. ### 1.1 The defense ladder
 &quot;&quot;&quot;
 
 Please explain this concept in depth. Cover:
@@ -1452,6 +1452,87 @@ Assume I have solid SQL fundamentals but I&#x27;m new to ClickHouse internals. B
 </pre>
   </div>
 </details>
+<p>DR isn't a ClickHouse feature. It's a set of answers to three questions —
+<strong>what can break</strong>, <strong>how fast must we be back</strong>, <strong>how much may we lose</strong>.
+ClickHouse gives you three independent tools — replication, quorum, backups
+— and each one covers a failure class the others can't touch. The single
+sentence to carry through the module:</p>
+<blockquote>
+<p><strong>Replication protects you from hardware loss. Backups protect you from
+human and software loss.</strong></p>
+</blockquote>
+<p><code>DROP TABLE</code> replicates. Faithfully. In milliseconds. To every replica in
+every DC. That's why Modules 7 and 8 are separate modules.</p>
+<h3 id="11-the-defense-ladder">1.1 The defense ladder</h3>
+<p>Read this top-down and ask after each rung: <em>"what still kills us?"</em> The
+answer is the reason the next rung exists. Every rung is a <strong>purchase</strong>, not
+a best practice — where you stop is a business decision (§2), not an
+engineering one.</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What you add</th>
+<th>Failure it kills</th>
+<th>What it costs</th>
+<th>Drilled in</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>single node</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>1</td>
+<td>2nd replica per shard</td>
+<td>host / disk loss</td>
+<td>2× storage</td>
+<td>§3, §6</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>insert_quorum = 2</code></td>
+<td><em>silent</em> redundancy loss on write</td>
+<td>write availability</td>
+<td>§7</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Keeper quorum across AZs</td>
+<td>coordination loss</td>
+<td>3–5 more nodes</td>
+<td>§5</td>
+</tr>
+<tr>
+<td>4</td>
+<td>backups → S3</td>
+<td>human error, corruption, ransomware</td>
+<td>cadence = your RPO</td>
+<td>§8</td>
+</tr>
+<tr>
+<td>5</td>
+<td>replicas in a 2nd DC</td>
+<td>site loss</td>
+<td>WAN latency on every write</td>
+<td>§10</td>
+</tr>
+</tbody>
+</table>
+<p>Two corrections the ladder makes for you:</p>
+<ul>
+<li><strong>Layer 1 alone is not RPO=0.</strong> Replication is async; a host that dies
+  with parts that never left it takes them with it. Layer 2 is the fix.</li>
+<li><strong>Losing Keeper quorum loses nothing.</strong> Writes and DDL stall, replicated
+  tables go read-only, reads keep serving. Read-only is a safety property,
+  not damage.</li>
+</ul>
+<h3 id="12-the-failure-taxonomy">1.2 The failure taxonomy</h3>
+<p>The reference view of the same material — the one to come back to at 3 a.m.</p>
 <!-- mermaid rendered as SVG above -->
 
 <table>

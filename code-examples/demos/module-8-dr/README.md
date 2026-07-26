@@ -15,6 +15,46 @@ By the end you will be able to:
 
 ## 1. Failure modes you should be ready for
 
+DR isn't a ClickHouse feature. It's a set of answers to three questions —
+**what can break**, **how fast must we be back**, **how much may we lose**.
+ClickHouse gives you three independent tools — replication, quorum, backups
+— and each one covers a failure class the others can't touch. The single
+sentence to carry through the module:
+
+> **Replication protects you from hardware loss. Backups protect you from
+> human and software loss.**
+
+`DROP TABLE` replicates. Faithfully. In milliseconds. To every replica in
+every DC. That's why Modules 7 and 8 are separate modules.
+
+### 1.1 The defense ladder
+
+Read this top-down and ask after each rung: *"what still kills us?"* The
+answer is the reason the next rung exists. Every rung is a **purchase**, not
+a best practice — where you stop is a business decision (§2), not an
+engineering one.
+
+| Layer | What you add                | Failure it kills                    | What it costs                    | Drilled in |
+|-------|-----------------------------|-------------------------------------|----------------------------------|------------|
+| 0     | single node                 | —                                   | —                                | —          |
+| 1     | 2nd replica per shard       | host / disk loss                    | 2× storage                       | §3, §6     |
+| 2     | `insert_quorum = 2`         | *silent* redundancy loss on write   | write availability               | §7         |
+| 3     | Keeper quorum across AZs    | coordination loss                   | 3–5 more nodes                   | §5         |
+| 4     | backups → S3                | human error, corruption, ransomware | cadence = your RPO               | §8         |
+| 5     | replicas in a 2nd DC        | site loss                           | WAN latency on every write       | §10        |
+
+Two corrections the ladder makes for you:
+
+- **Layer 1 alone is not RPO=0.** Replication is async; a host that dies
+  with parts that never left it takes them with it. Layer 2 is the fix.
+- **Losing Keeper quorum loses nothing.** Writes and DDL stall, replicated
+  tables go read-only, reads keep serving. Read-only is a safety property,
+  not damage.
+
+### 1.2 The failure taxonomy
+
+The reference view of the same material — the one to come back to at 3 a.m.
+
 ```mermaid
 flowchart TB
     Cluster[ClickHouse cluster]
