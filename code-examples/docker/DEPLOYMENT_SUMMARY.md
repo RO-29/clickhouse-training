@@ -241,7 +241,6 @@ cAdvisor ────┘                  (Visualization)
 - ✓ Module 7: Backup & Recovery
 - ✓ Module 8: Disaster Recovery
 - ✓ Module 9: Kafka Ingestion
-- ✓ Module 10: Data Migration
 
 ### Operational Features
 - ✓ Health checks for all services
@@ -428,13 +427,6 @@ docker-compose -f docker-compose-cluster.yml exec clickhouse-s1r1 \
 - Stream ingestion patterns
 - Materialized view processing
 - Real-time aggregations
-
-### Module 10: Migration (migration compose)
-- CDC setup and verification
-- Data reconciliation
-- Migration validation
-
-## Troubleshooting Quick Guide
 
 ### Container Won't Start
 1. Check logs: `docker-compose logs <service>`

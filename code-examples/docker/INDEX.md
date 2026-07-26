@@ -105,7 +105,6 @@ docker-compose -f docker-compose-kafka.yml up -d
 **File**: `docker-compose-migration.yml`
 
 Best for:
-- Module 10 training
 - Data migration patterns
 - Change Data Capture (CDC)
 - Multi-source ingestion
@@ -278,38 +277,6 @@ Learn: Stream tables, Kafka integration
 Follow: README.md - Kafka Configuration
 ```
 
-### Module 10: Data Migration
-```
-Start: docker-compose-migration.yml
-Learn: CDC, Debezium, multi-source migration
-Follow: README.md - Migration Configuration
-```
-
-## Ports Reference
-
-Quick port lookup:
-
-```
-ClickHouse HTTP:       8123
-ClickHouse Native:     9000
-ClickHouse Interserver: 9009
-Kafka:                 9092
-ZooKeeper:             2181
-Prometheus:            9090
-Grafana:               3000
-AlertManager:          9093
-Node Exporter:         9100
-cAdvisor:              8085
-Kafka UI:              8080
-MongoDB:               27017
-MySQL:                 3306
-Debezium:              8083
-```
-
-Full reference: [README.md - Ports](README.md#ports)
-
-## Common Commands
-
 ### View Status
 ```bash
 docker-compose -f docker-compose-*.yml ps
@@ -446,7 +413,6 @@ docker/
 - Module 5: [Deployment Guide](README.md#2-docker-compose-clusteryml)
 - Module 6-8: [Operations Guide](README.md#production-considerations)
 - Module 9: [Kafka Guide](QUICK_START.md#option-3-kafka-integration-module-9)
-- Module 10: [Migration Guide](QUICK_START.md#option-4-monitoring-stack)
 
 ## Support & Help
 

@@ -268,7 +268,6 @@ COMPOSE_PROJECT_NAME=clickhouse-ks
 1. Read the full [README.md](README.md) for detailed documentation
 2. Review module-specific guides:
    - Module 9: Kafka integration
-   - Module 10: Migration with Debezium
 3. Explore ClickHouse documentation: https://clickhouse.com/docs/
 4. Check monitoring dashboards: http://localhost:3000 (if running monitoring stack)
 
@@ -324,21 +323,3 @@ docker-compose -f docker-compose-kafka.yml up -d
 # Stream data using Kafka topics
 ```
 
-### Module 10: Migration
-```bash
-docker-compose -f docker-compose-migration.yml up -d
-# Practice migrating from MongoDB and MySQL
-```
-
-## Support
-
-For issues:
-1. Check logs: `docker-compose logs <service>`
-2. Review README.md troubleshooting section
-3. Verify Docker resources: `docker system df`
-4. Check free disk space: `df -h`
-5. Restart services: `docker-compose restart`
-
----
-
-Happy learning with ClickHouse!

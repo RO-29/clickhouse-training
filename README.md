@@ -10,7 +10,7 @@ This repository contains a complete ClickHouse training curriculum designed to t
 
 - **Duration:** 6-8 weeks
 - **Total Hours:** 66-88 hours
-- **Modules:** 10 comprehensive modules
+- **Modules:** 9 comprehensive modules
 - **Session Frequency:** 2-3 sessions per week
 - **Session Length:** 2-3 hours each
 - **Code Examples:** 100+ production-ready SQL examples
@@ -33,7 +33,6 @@ clickhouse-ks/
 ├── module-7-backup-recovery.html       # Module 7: Backup, Recovery & PITR
 ├── module-8-disaster-recovery.html     # Module 8: Disaster Recovery & Business Continuity
 ├── module-9-kafka-ingestion.html       # Module 9: Kafka-Based Real-Time Ingestion
-└── module-10-migration.html            # Module 10: Migration from MongoDB/MySQL
 │
 ├── notion-guides/                      # Concise Notion-style markdown guides
 │   ├── module-1-fundamentals.md
@@ -45,7 +44,6 @@ clickhouse-ks/
 │   ├── module-7-backup-recovery.md
 │   ├── module-8-disaster-recovery.md
 │   ├── module-9-kafka-ingestion.md
-│   └── module-10-migration.md
 │
 └── code-examples/                      # Production-ready code examples
     ├── demos/                         # ⭐ Self-contained per-module demos (recommended)
@@ -61,7 +59,7 @@ clickhouse-ks/
     │   └── module-9-kafka/           # kafka   · Kafka engine + MV pipeline
     │
     ├── sql/                          # Stand-alone SQL snippets per module
-    │   └── module-1/ ... module-10/
+    │   └── module-1/ ... module-9/
     │
     ├── configs/                      # Reference ClickHouse configs (legacy)
     │   ├── config.xml · users.xml · metrika.xml
@@ -262,16 +260,6 @@ docker compose -f docker-compose-monitoring.yml up -d  # Grafana + Prometheus
 - Message format handling (JSON, Avro, Protobuf)
 - Performance optimization
 
-### Week 7-8: Migration
-
-**Module 10: Migration from MongoDB/MySQL** (10-14 hours)
-- Schema mapping strategies
-- Debezium CDC setup
-- Historical + live streaming
-- Data validation and cutover
-
-## 💻 Reference Material
-
 ### Production-grade configs
 
 Reference XML configs in `code-examples/configs/` — useful for copying into a
@@ -323,11 +311,10 @@ Focus on data modeling, ingestion, and optimization:
 - Module 2 (Table Engines)
 - Module 9 (Kafka Ingestion)
 - Module 6 (Query Optimization)
-- Module 10 (Migration)
 
 ### Path 3: Architect
 Complete comprehensive path:
-- Follow all 10 modules sequentially
+- Follow all 9 modules sequentially
 - Complete all code examples
 - Deploy all Docker environments
 - Build production-grade solutions

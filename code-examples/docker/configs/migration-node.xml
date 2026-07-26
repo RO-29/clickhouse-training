@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<!-- ClickHouse Configuration for Migration (Module 10) -->
+<!-- ClickHouse Configuration for Migration (legacy) -->
 <!-- Optimized for receiving data from multiple sources via Debezium/Kafka -->
 
 <config>
