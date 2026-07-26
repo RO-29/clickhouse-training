@@ -157,6 +157,59 @@ SETTINGS base_backup = Disk('backups', 't_full.zip');
 RESTORE TABLE t FROM Disk('backups', 't_inc_v2.zip');
 ```
 
+The same setting works against S3 — see
+[`queries-incremental-s3.sql`](queries-incremental-s3.sql) for the runnable
+version. `base_backup` takes a **full destination spec**, not a name:
+
+```sql
+BACKUP TABLE m7.transactions
+TO S3('http://m7-minio:9000/clickhouse-backups/txn_inc_v2', 'minioadmin', 'minioadmin')
+SETTINGS base_backup = S3('http://m7-minio:9000/clickhouse-backups/txn_inc_base', 'minioadmin', 'minioadmin');
+```
+
+#### Reading the result
+
+`system.backups` distinguishes what a backup *contains* from what it
+*stored*. This is the pair to show people:
+
+```sql
+SELECT name, base_backup_name, num_files, num_entries,
+       formatReadableSize(total_size)      AS logical_size,
+       formatReadableSize(compressed_size) AS actually_written
+FROM system.backups ORDER BY start_time;
+```
+
+| backup | base | num_files | num_entries | logical | written |
+|---|---|---|---|---|---|
+| `txn_inc_base` | — | 62 | 55 | 27.69 MiB | 27.70 MiB |
+| `txn_inc_v2` | `txn_inc_base` | 74 | **9** | 30.52 MiB | **2.84 MiB** |
+
+74 files visible, 9 written. In the bucket that's 56 objects / 28 MiB for
+the base against 10 objects / 2.8 MiB for the incremental, and the
+incremental's `data/m7/transactions/` holds exactly one part directory
+(`202602_4_4_0`).
+
+Dedup is at **part** granularity. Append-only partitioned tables
+incremental beautifully. A table that rewrites parts — heavy merges, a
+mutation, a re-inserted partition — can produce an "incremental" nearly the
+size of a full, because a rewritten part is a *new* part.
+
+#### The chain is a hard dependency
+
+Restoring points at the newest incremental and ClickHouse walks backwards.
+Delete the base, though, and every incremental behind it is scrap:
+
+```
+Code: 599. DB::Exception: Backup S3('.../txn_inc_base', ...) not found.
+           (BACKUP_NOT_FOUND)
+```
+
+No partial recovery, and no warning when you delete it — the bucket is
+happy to let you. Retention must expire a base together with its
+dependants, or take a fresh full before expiring the old one. This is the
+usual way teams find out their backups were worthless, and the best
+argument for section 5's tooling over a hand-rolled cron job.
+
 ### Backup specific partitions
 
 ```sql
@@ -234,27 +287,115 @@ FROM S3(
 
 ## 5. `clickhouse-backup` — the operations layer
 
-The Altinity tool wraps BACKUP/RESTORE plus operational concerns:
+Runnable in this demo: **[`backup-tool.sh`](backup-tool.sh)**, configured by
+**[`configs/clickhouse-backup.yml`](configs/clickhouse-backup.yml)**.
+
+### How it actually works
+
+It does *not* issue `BACKUP TO S3` on the server's behalf. It runs
+`ALTER TABLE ... FREEZE`, reads the resulting hardlinks out of
+`/var/lib/clickhouse/shadow/`, and uploads them itself. Two consequences:
+
+- It must have the ClickHouse **data directory on a local mount** — hence
+  `m7-backup-tool` sharing the `m7_data` volume in `docker-compose.yml`.
+- It connects over the **native protocol** (9000), not HTTP.
+
+### Commands
 
 ```bash
-clickhouse-backup create   nightly-2026-05-09
-clickhouse-backup upload   nightly-2026-05-09       # to remote storage
-clickhouse-backup download nightly-2026-05-09
-clickhouse-backup restore  nightly-2026-05-09
+# Two-phase: snapshot now (cheap, instant), ship later
+clickhouse-backup create        nightly-2026-07-26
+clickhouse-backup upload        nightly-2026-07-26
+
+# Or both at once
+clickhouse-backup create_remote nightly-2026-07-26
+
+# Incremental — diff against a REMOTE backup by name
+clickhouse-backup create_remote --diff-from-remote=nightly-2026-07-26 \
+                                inc-2026-07-27
+#   --diff-from  is the local-only equivalent
+
+# Recovery
+clickhouse-backup restore_remote inc-2026-07-27
+clickhouse-backup restore_remote --schema inc-2026-07-27     # schema only
+clickhouse-backup restore_remote --restore-table-mapping='transactions:transactions_verify' \
+                                 inc-2026-07-27              # restore beside the live table
 
 # Maintenance
-clickhouse-backup list                              # local + remote
-clickhouse-backup delete   local nightly-2026-04-01
-clickhouse-backup delete   remote nightly-2026-04-01
+clickhouse-backup list local
+clickhouse-backup list remote
+clickhouse-backup delete remote nightly-2026-04-01
+clickhouse-backup print-config          # merged config incl. env overrides
+clickhouse-backup default-config        # every key with its default
 ```
 
-What it adds beyond raw SQL:
+### What incremental looks like
 
-- A YAML config (`clickhouse-backup.yml`) per environment.
-- Retention rules (keep N daily, M weekly, K monthly).
-- Pre/post hooks (notify on success, run integrity checks).
-- Schema-only restore (`--schema`).
-- Differential semantics on top of CH's incremental.
+`list remote` shows the dependency in a `required` column:
+
+```
+full-20260726-114022   remote                          all:30.58MiB, ...
+inc-20260726-114022    remote  +full-20260726-114022   all:2.16MiB,  ...
+```
+
+Measured on the demo table: **full upload 30.58 MiB → incremental upload
+2.16 MiB**. But restoring the incremental with nothing cached locally
+downloads **32.67 MiB**:
+
+```
+downloadDiffParts  table=m7.transactions  diff_parts=4  diff_bytes=30.52MiB
+download           download_size=32.67MiB
+```
+
+Backup cost scales with what changed; **restore cost scales with the whole
+dataset**. Size your RTO against the second number.
+
+### Config keys that matter
+
+Full annotated file in `configs/clickhouse-backup.yml`. The ones people get
+wrong:
+
+| Key | Why it matters |
+|---|---|
+| `general.upload_by_part: true` | What makes `--diff-from-remote` cheap. Off = every backup is silently a full. Default true — don't "tidy" it away. |
+| `general.backups_to_keep_local` / `_remote` | Retention. Default **0 = keep forever**, which is how disks and S3 bills fill up. |
+| `s3.force_path_style: true` | **Required for MinIO** (bucket in path, not in hostname). Leave `false` for real AWS S3. |
+| `s3.disable_ssl: true` | Only because the demo MinIO is plain HTTP. Never in production. |
+| `s3.compression_format: tar` | `tar` = package, don't compress. `.bin` files are already codec-compressed; gzip/zstd burns CPU for near-zero gain. |
+| `clickhouse.log_sql_queries` | Defaults to `true` and logs every internal query at INF. Set `false` or output is unreadable. |
+| `general.upload_max_bytes_per_second` | Throttle so backups don't starve query I/O. `0` = unlimited. |
+| `clickhouse.host` + `port: 9000` | Native protocol. Pointing at 8123 fails confusingly. |
+
+Every key is overridable by env var (`SECTION_KEY` uppercased —
+`S3_ACCESS_KEY`, `CLICKHOUSE_PASSWORD`). That is how you keep credentials
+out of the YAML in production.
+
+### Gotcha: `DROP TABLE ... SYNC` before a tool restore
+
+A plain `DROP TABLE` on an Atomic database parks the data directory for
+`database_atomic_delay_before_drop_table_sec` (**default 480s**) so
+`UNDROP TABLE` can work. `clickhouse-backup` recreates the table with its
+**original UUID**, so it collides with the parked directory:
+
+```
+Code: 57. Directory for table data store/ae2/ae215ea4-.../ already exists
+```
+
+Native `RESTORE` never hits this — it assigns a fresh UUID. Only the tool
+preserves them. Use `DROP TABLE ... SYNC`, or
+`--restore-table-mapping` to a different name. Cleaning up after the
+collision means deleting `metadata_dropped/` entries and `store/` dirs by
+hand.
+
+### What it adds over raw SQL
+
+- Retention rules, applied automatically on every create/upload.
+- Named backups instead of hand-managed S3 key prefixes.
+- Dependency tracking, so it knows an incremental needs its base.
+- Schema-only restore, table remapping, resumable uploads, I/O throttling.
+- `watch` mode: a built-in scheduler (`full_interval`, `watch_interval`).
+- RBAC (users/roles/grants) backed up alongside data — `rbac_backup_always`
+  defaults to true. Restoring data without RBAC is a classic half-recovery.
 
 Repo: <https://github.com/Altinity/clickhouse-backup>.
 
@@ -291,21 +432,38 @@ staging table into the live table" — fully atomic, no rewrites.
 ### What you get
 
 ```
-docker-compose.yml          m7-clickhouse + m7-minio + m7-minio-init
+docker-compose.yml                 m7-clickhouse + m7-minio + m7-minio-init + m7-backup-tool
 configs/clickhouse-config.xml      includes <backups> + <storage_configuration>
-setup.sql · queries.sql · queries-s3.sql · extras.sql
+configs/default-user.xml           opens the default-user ACL to the docker network
+configs/clickhouse-backup.yml      annotated clickhouse-backup config
+setup.sql · queries.sql · queries-s3.sql · queries-incremental-s3.sql · extras.sql
+backup-tool.sh                     clickhouse-backup full + incremental + DR restore
 up.sh · run.sh · down.sh
 ```
 
 ### Container map
 
-| Service     | Container       | Host ports         |
-|-------------|-----------------|--------------------|
-| ClickHouse  | `m7-clickhouse` | 8123, 9000         |
-| MinIO       | `m7-minio`      | 9100 (S3), 9101 (console) |
-| Bootstrap   | `m7-minio-init` | (one-shot)         |
+| Service     | Container         | Host ports         |
+|-------------|-------------------|--------------------|
+| ClickHouse  | `m7-clickhouse`   | 8123, 9000         |
+| MinIO       | `m7-minio`        | 9100 (S3), 9101 (console) |
+| Bootstrap   | `m7-minio-init`   | (one-shot)         |
+| Backup tool | `m7-backup-tool`  | (idle; `docker exec` into it) |
 
 MinIO console: <http://localhost:9101>, login `minioadmin` / `minioadmin`.
+From your host the S3 API is `localhost:9100`; from inside `m7-net` it is
+`m7-minio:9000`. Same MinIO, opposite sides of the port mapping — that is
+why the SQL says `9000` and your browser says `9101`.
+
+`m7-backup-tool` shares the `m7_data` volume with ClickHouse because
+`clickhouse-backup` reads the data directory directly. It idles on
+`sleep infinity`; drive it with `docker exec m7-backup-tool clickhouse-backup …`
+or just run `./backup-tool.sh`.
+
+The `default` user's ACL is widened in `configs/default-user.xml` — the
+stock image restricts it to `127.0.0.1`, which the backup tool (a separate
+container) cannot satisfy. Same fix modules 3 and 4 needed for distributed
+queries.
 
 ### Execution flow — what runs, in order
 
@@ -315,7 +473,9 @@ MinIO console: <http://localhost:9101>, login `minioadmin` / `minioadmin`.
 | 1  | `setup.sql`                                     | Creates database `m7`, table `m7.transactions` (MergeTree partitioned by month, ordered by `(account_id, txn_time, txn_id)`), inserts 2M synthetic rows.                                  |
 | 2  | `queries.sql` — local-disk backup path          | `ALTER TABLE … FREEZE WITH NAME 'demo_snap'` (instant hardlinks under `/var/lib/clickhouse/shadow/`), `BACKUP TABLE … TO Disk('backups', 'transactions_disk_v1.zip')`, `DROP TABLE`, `RESTORE TABLE … FROM Disk(…)`, then per-partition `DETACH PARTITION '202601'` + `ATTACH PARTITION '202601'`. |
 | 3  | `queries-s3.sql` — S3 backup path               | `BACKUP TABLE … TO S3('http://m7-minio:9000/clickhouse-backups/transactions_s3_v1', 'minioadmin', 'minioadmin')`, look up the backup row in `system.backups`, `DROP TABLE`, `RESTORE … FROM S3(…)`. Verify row count returns to 2M. |
-| 4  | `extras.sql` — async + incremental              | `BACKUP TABLE … SETTINGS async = 1` (returns immediately), poll loop on `system.backups.status` until `BACKUP_CREATED`. Insert 50k more rows, then `BACKUP … SETTINGS base_backup = Disk('backups', 'transactions_disk_v1.zip')` — the resulting incremental zip is much smaller. `DROP TABLE`, `RESTORE FROM Disk('backups', 'transactions_inc_v2.zip')` — CH walks the chain to the base. Prints notes on `clickhouse-backup` CLI and `BACKUP ON CLUSTER`. |
+| 4  | `extras.sql` — async + incremental              | `BACKUP TABLE … SETTINGS async = 1` (returns immediately), poll loop on `system.backups.status` until `BACKUP_CREATED`. Insert 50k more rows, then `BACKUP … SETTINGS base_backup = Disk('backups', 'transactions_disk_v1.zip')` — the resulting incremental zip is much smaller. `DROP TABLE`, `RESTORE FROM Disk('backups', 'transactions_inc_v2.zip')` — CH walks the chain to the base. Prints notes on `BACKUP ON CLUSTER`. |
+| 5  | `queries-incremental-s3.sql` — incremental to S3 | Full base to MinIO, insert a new February partition, then `BACKUP … SETTINGS base_backup = S3(…)`. Compares `num_files` vs `num_entries` in `system.backups` (74 visible / 9 written), restores from the incremental alone, and documents the `BACKUP_NOT_FOUND` failure you get when the base is deleted. |
+| 6  | `backup-tool.sh` — the ops layer (run separately) | `clickhouse-backup create_remote`, insert a March partition, `create_remote --diff-from-remote`, `list remote` (shows the `+base` dependency), then a genuine DR drill: delete local backups, `DROP TABLE … SYNC`, `restore_remote` from the incremental. Not part of `run.sh` — invoke it yourself. |
 
 ### What you should observe
 

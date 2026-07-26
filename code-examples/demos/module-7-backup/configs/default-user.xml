@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<!-- Override the upstream image's localhost-only ACL on the default user.
+     clickhouse-backup runs in its own container and connects to m7-clickhouse
+     over the native protocol, so `default` must be reachable across the
+     docker network. Demo-only: scope this properly in production. -->
+<clickhouse>
+  <users>
+    <default>
+      <networks replace="1"><ip>::/0</ip></networks>
+    </default>
+  </users>
+</clickhouse>
