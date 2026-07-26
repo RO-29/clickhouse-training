@@ -1,0 +1,107 @@
+# ============================================================================
+# clickhouse-backup (Altinity) — config for the Module 7 demo.
+#
+# Only the keys that matter in practice are listed. Run
+#   docker exec m7-backup-tool clickhouse-backup default-config
+# to see the full ~150-key surface with defaults.
+#
+# EVERY key can be overridden by an env var: SECTION_KEY, uppercased.
+#   general.remote_storage -> REMOTE_STORAGE
+#   s3.access_key          -> S3_ACCESS_KEY
+#   clickhouse.password    -> CLICKHOUSE_PASSWORD
+# That is how you keep credentials out of the file in production.
+# ============================================================================
+
+general:
+  remote_storage: s3           # s3 | gcs | azblob | ftp | sftp | cos | none
+
+  # --- Retention. The tool's main reason to exist. ---------------------------
+  # Applied on each create/upload: oldest beyond the count are deleted.
+  # 0 = keep forever (the default, and a common way to fill a disk).
+  backups_to_keep_local: 2     # local copies under /var/lib/clickhouse/backup
+  backups_to_keep_remote: 14   # copies in the bucket
+
+  # --- Incremental behaviour -------------------------------------------------
+  # upload_by_part is what makes --diff-from-remote actually cheap: parts are
+  # uploaded individually, so an incremental only ships parts the base lacks.
+  # Turning this off makes every backup a full one, silently.
+  upload_by_part: true
+  download_by_part: true
+
+  # --- Throughput ------------------------------------------------------------
+  upload_concurrency: 4        # parallel part uploads
+  download_concurrency: 4
+  upload_max_bytes_per_second: 0    # 0 = unlimited; set this to protect prod I/O
+  download_max_bytes_per_second: 0
+
+  # --- Resilience ------------------------------------------------------------
+  retries_on_failure: 3
+  retries_pause: 5s
+  use_resumable_state: true    # resume a half-finished upload instead of restarting
+
+  # --- Niceness: keep backups off the query path -----------------------------
+  cpu_nice_priority: 15
+  io_nice_priority: idle
+
+  # --- Cluster ---------------------------------------------------------------
+  # Set to your cluster name to run schema restores as ON CLUSTER.
+  # Leave empty on single node.
+  restore_schema_on_cluster: ""
+
+  log_level: info
+  allow_empty_backups: true    # don't error when a table produced no parts
+
+clickhouse:
+  host: m7-clickhouse          # native protocol, NOT http
+  port: 9000
+  username: default
+  password: ""
+  secure: false
+
+  # The tool needs the ClickHouse *data directory* on a local mount — it works
+  # by ALTER TABLE ... FREEZE and then reading the hardlinks out of shadow/.
+  # This is why the container shares the m7_data volume.
+  config_dir: /etc/clickhouse-server/
+
+  skip_tables:
+    - system.*
+    - INFORMATION_SCHEMA.*
+    - information_schema.*
+    - _temporary_and_external_tables.*
+
+  timeout: 30m
+  sync_replicated_tables: true # wait for replicas to sync before freezing
+  check_parts_columns: true    # catch schema drift between parts
+  log_sql_queries: false       # default true = every internal query at INF; noisy
+
+  # Backup access control (users/roles/grants) alongside the data.
+  # Restoring data without RBAC is a classic half-recovery.
+  # (general.rbac_backup_always defaults to true in 2.x)
+
+s3:
+  endpoint: http://m7-minio:9000
+  bucket: clickhouse-backups
+  path: tool-backups           # key prefix inside the bucket
+  access_key: minioadmin       # prod: drop these, use S3_ACCESS_KEY / IAM role
+  secret_key: minioadmin
+  region: us-east-1
+
+  # --- The two MinIO gotchas -------------------------------------------------
+  force_path_style: true       # MinIO needs bucket-in-path, not bucket-in-host.
+                               # Leave false for real AWS S3.
+  disable_ssl: true            # demo MinIO is plain http. NEVER true in prod.
+
+  # --- Compression -----------------------------------------------------------
+  # tar = no compression, just packaging. .bin files are already compressed by
+  # the column codecs, so tar+none is usually right; gzip burns CPU for ~nothing.
+  compression_format: tar      # tar | gzip | zstd | lz4 | none
+  compression_level: 1
+
+  concurrency: 8
+  chunk_size: 5242880          # 5 MiB multipart chunks
+  acl: private
+  storage_class: STANDARD      # AWS: GLACIER_IR / DEEP_ARCHIVE for cold copies
+
+  # --- Server-side encryption (AWS) ------------------------------------------
+  # sse: aws:kms
+  # sse_kms_key_id: arn:aws:kms:...

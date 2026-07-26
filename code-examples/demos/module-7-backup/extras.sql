@@ -14,13 +14,17 @@ SELECT id, name, status, total_size FROM system.backups
 WHERE name LIKE '%transactions_async_v1%' ORDER BY start_time DESC LIMIT 1;
 
 -- Tiny poll loop: in production you'd do this from your scheduler.
+-- sleepEachRow is capped by function_sleep_max_microseconds_per_block
+-- (default 3s per block); 20 rows x 0.5s = 10s needs the cap raised, or
+-- you get: Code 160, TOO_SLOW: The maximum sleep time is 3000000 microseconds.
 SELECT
     sleepEachRow(0.5),
     (SELECT status FROM system.backups
      WHERE name LIKE '%transactions_async_v1%' ORDER BY start_time DESC LIMIT 1)
 FROM numbers(20)
 WHERE (SELECT status FROM system.backups
-       WHERE name LIKE '%transactions_async_v1%' ORDER BY start_time DESC LIMIT 1) != 'BACKUP_CREATED';
+       WHERE name LIKE '%transactions_async_v1%' ORDER BY start_time DESC LIMIT 1) != 'BACKUP_CREATED'
+SETTINGS function_sleep_max_microseconds_per_block = 15000000;
 
 SELECT 'Async backup status:',
        (SELECT status FROM system.backups
@@ -71,13 +75,12 @@ RESTORE TABLE m7.transactions FROM Disk('backups', 'transactions_inc_v2.zip');
 SELECT count() AS rows_after_inc_restore FROM m7.transactions;
 
 -- ============================================================
--- 4. clickhouse-backup CLI (text-only).
---    Operationally this is the tool most teams use:
---      clickhouse-backup create   nightly-2026-05-09
---      clickhouse-backup upload   nightly-2026-05-09           # to S3
---      clickhouse-backup download nightly-2026-05-09
---      clickhouse-backup restore  nightly-2026-05-09
---    It wraps BACKUP/RESTORE plus a remote-storage manifest.
+-- 4. clickhouse-backup CLI — no longer text-only. It runs in this stack
+--    as m7-backup-tool, configured by configs/clickhouse-backup.yml.
+--    Full walkthrough (full -> incremental -> disaster restore):
+--
+--      ./backup-tool.sh
+--
 --    Repo: https://github.com/Altinity/clickhouse-backup
 -- ============================================================
 

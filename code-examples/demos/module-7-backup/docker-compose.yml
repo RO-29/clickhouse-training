@@ -15,6 +15,7 @@ services:
       - m7_data:/var/lib/clickhouse
       - m7_logs:/var/log/clickhouse-server
       - ./configs/clickhouse-config.xml:/etc/clickhouse-server/config.d/00-custom.xml:ro
+      - ./configs/default-user.xml:/etc/clickhouse-server/users.d/default-user.xml:ro
     networks: [m7-net]
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
@@ -42,6 +43,23 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    restart: unless-stopped
+
+  # The Altinity operations tool. It does NOT talk S3 on ClickHouse's behalf —
+  # it FREEZEs tables and reads the hardlinks straight out of the data dir, so
+  # it must share m7_data with the server. Idles until you exec into it.
+  backup-tool:
+    image: altinity/clickhouse-backup:latest
+    container_name: m7-backup-tool
+    hostname: m7-backup-tool
+    depends_on:
+      clickhouse: { condition: service_healthy }
+      minio:      { condition: service_healthy }
+    volumes:
+      - m7_data:/var/lib/clickhouse                  # rw — restore writes here
+      - ./configs/clickhouse-backup.yml:/etc/clickhouse-backup/config.yml:ro
+    networks: [m7-net]
+    entrypoint: ["/bin/sh", "-c", "sleep infinity"]
     restart: unless-stopped
 
   minio-init:
